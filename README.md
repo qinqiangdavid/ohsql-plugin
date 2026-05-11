@@ -186,16 +186,6 @@ LLM 编排的 7 阶段流水线：
 
 ---
 
-## Credentials & privacy
-
-- **SSH 密码**：默认只本会话内存里用一次，通过 OpenSSH 的 `SSH_ASKPASS` 临时脚本传给 `ssh`，不出现在进程列表、不写日志、不落盘。
-- **SSH 私钥**：`privateKeyPath=` 只引用本机已有文件，不复制不上传。
-- **凭据落盘需 opt-in**：`perf-kp-sql` 第一次连上之后会问你"要不要把密码存进 `~/.perf-kp-sql/hosts.json`(chmod 600)"，选"不保存"就只在本会话用，下次重输。
-- **采集数据 / 报告全本地**：环境画像、采集原始输出、报告都只在你本机 `~/.perf-kp-sql/runs/<TS>/` 下，不上传任何远端。
-- **NotebookLM 是可选增强**：开了它之后，会经 Google NotebookLM 走云的只是**查询文本**(配置项名 / 案例追问语句)；采集数据、密码、主机名都不走。不想用就在 `/perf-kp-sql-setup` 那一步跳过，案例阈值判定纯本地不受影响。
-
----
-
 ## Architecture
 
 仓库本体就是一个 `marketplace.json` 索引 + 两个自包含的 plugin。布局：
@@ -225,8 +215,6 @@ ohsql-plugin/
             ├── cases/{INDEX,CASES}.md     # 109 条 (DF 96 + Flame 13)
             └── best-practice/{INDEX,CASES}.md  # 93 条 BP 巡检 · 合计 202 案例
 ```
-
-**跨 harness 一致性**：所有 SKILL.md 遵循 [Anthropic Agent Skills 开放标准](https://github.com/anthropics/skills)。Frontmatter 极简（`name` + `description` + 可选 `compatibility` / `metadata` / `argument-hint`），body 用自然语言意图 + 普通 shell 命令，不绑特定 agent 的私有 tool（不依赖 ohsql kernel 的 `SshExec`，也不依赖 CC 的 `TodoWrite`）。路径用字面 `<PLUGIN_ROOT>` 占位符，agent 从 harness 给的 skill 加载上下文取根目录、运行时替换为绝对路径，同一份 SKILL.md 源在 Claude Code / Codex CLI / ohsql 上一字不差地跑。
 
 ---
 
