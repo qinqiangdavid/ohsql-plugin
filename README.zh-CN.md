@@ -143,16 +143,24 @@ Phase 1 — 必装项
 ✓ 登录完成，cookie 已落盘
 
 开始创建各领域知识库
-✓ mongo   notebook 已创建，同步 12 个源
-✓ kunpeng notebook 已创建，同步 8 个源
-✓ os      notebook 已创建，同步 15 个源
+✓ mongodb 知识库创建完成 — 新加 12/12 篇
+✓ kunpeng 知识库创建完成 — 新加 8/8 篇
+✓ os 知识库创建完成 — 新加 15/15 篇
 
 ✅ perf-kp-sql setup complete
 
-Phase 1 — 必装项                          🟢
-Phase 2 — NotebookLM 增强                 🟢
+Phase 1 — 必装项
+   node v22.4.0                            🟢
+   data/cases/ + data/best-practice/       🟢
 
-随时可重跑 /perf-kp-sql-setup 重新校验或切换状态。
+Phase 2 — NotebookLM 增强
+已经基于 35 篇官方文档帮你创建 mongodb/kunpeng/os 三个领域 notebook 知识库用于后续诊断。
+
+   ohsql-mongo-kb     🟢  12 篇文档
+   ohsql-kunpeng-kb   🟢  8 篇文档
+   ohsql-os-kb        🟢  15 篇文档
+
+随时可重跑 /perf-kp-sql-setup 重新校验或切换 NLM 启用状态。
 ```
 
 ### `perf-kp-sql`
