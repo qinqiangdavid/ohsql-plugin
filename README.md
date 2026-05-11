@@ -147,7 +147,7 @@ The skill runs a 7-phase LLM-orchestrated pipeline: 环境画像(Phase 0)→ 对
 报告已落盘 : ~/.perf-kp-sql/runs/20260510-143022/report.md
 ```
 
-`## 诊断结果` 主表后还会跟 `## 综合描述` / `## 辅助信息 · 现场观测` / `## 参考链接` 三段，篇幅原因不在样例展示。表里的 `[参考N]` 链接在 `## 参考链接` 段展开为具体 URL，全部来自案例库 `source_url` 字段或 NotebookLM 返回的 `references`——不允许凭模型自身知识编造。Phase 6（用户追问）在拿到报告后才出现，纯基于 Phase 3 已采数据 + 案例库内容回答，不再连机也不再查 NotebookLM。
+`## 诊断结果` 主表后还会跟 `## 综合描述` / `## 辅助信息 · 现场观测` / `## 参考链接` 三段，篇幅原因不在样例展示。表里的 `[参考N]` 链接在 `## 参考链接` 段展开为具体 URL，全部来自案例库 `source_url` 字段或 NotebookLM 返回的 `references`——不允许凭模型自身知识编造。
 
 ---
 
@@ -170,20 +170,6 @@ The skill runs a 7-phase LLM-orchestrated pipeline: 环境画像(Phase 0)→ 对
 | `flame.svg` | 火焰图(本轮采了才有) |
 
 跨 run 复用的配置另外两个文件：`~/.perf-kp-sql/notebooklm.json`(NLM 配置)、`~/.perf-kp-sql/hosts.json`(SSH/DB 历史，mode 0600，凭据用户 opt-in 才存)。
-
----
-
-## Update & uninstall
-
-```text
-/plugin update cpu-flamegraph
-/plugin update perf-kp-sql
-
-/plugin uninstall perf-kp-sql
-/plugin uninstall cpu-flamegraph
-```
-
-`perf-kp-sql` 依赖 `cpu-flamegraph`，请先卸 `perf-kp-sql` 再卸 `cpu-flamegraph`。卸载只动 plugin cache，不删 `~/.perf-kp-sql/runs/` 下的历史报告——想清就手动 `rm -rf`。
 
 ---
 
