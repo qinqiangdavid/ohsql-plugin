@@ -49,18 +49,6 @@ codex plugin marketplace add zlxtqbdgdgd/ohsql-plugin
 # For perf-kp-sql, also run: /perf-kp-sql-setup (verifies runtime + registers NotebookLM)
 ```
 
-### Update & uninstall
-
-```text
-/plugin update cpu-flamegraph
-/plugin update perf-kp-sql
-
-/plugin uninstall perf-kp-sql
-/plugin uninstall cpu-flamegraph
-```
-
-`perf-kp-sql` 依赖 `cpu-flamegraph`，请先卸 `perf-kp-sql` 再卸 `cpu-flamegraph`。卸载只动 plugin cache，不删 `~/.perf-kp-sql/runs/` 下的历史报告——想清就手动 `rm -rf`。
-
 ---
 
 ## Usage
