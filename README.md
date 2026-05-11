@@ -57,8 +57,17 @@ codex plugin marketplace add zlxtqbdgdgd/ohsql-plugin
 
 ### `cpu-flamegraph`
 
+三种调用方式都行：
+
 ```text
+# slash + 完整参数
 /cpu-flamegraph host=test.host user=root process=mongod duration=10 type=oncpu
+
+# slash 不带参数 — skill 反问你要参数
+/cpu-flamegraph
+
+# 自然语言 — agent 看到 "CPU 高 / 卡顿 / 火焰图 / perf record" 等关键词自动挂 skill
+> 帮我看下 test.host 上 mongod 的 CPU 热点在哪
 ```
 
 Single-shot 采集 + 解读：
@@ -96,8 +105,17 @@ SVG 留在远端 `/tmp/cpu-flamegraph_<ts>/`，自己 `scp` 取回。
 
 ### `perf-kp-sql`
 
+三种调用方式都行：
+
 ```text
+# slash + 完整参数
 /perf-kp-sql host=10.0.0.1 user=root privateKeyPath=~/.ssh/id_ed25519 engine=mongo
+
+# slash 不带参数 — skill 走 Phase 0 历史选单 + 交互收凭据
+/perf-kp-sql
+
+# 自然语言 — agent 看到 "数据库慢 / CPU 高 / 抖动 / mongo perf / Kunpeng 性能" 等关键词自动挂 skill
+> 鲲鹏机器上 MongoDB 凌晨 2 点起 CPU 100%，帮诊断一下
 ```
 
 LLM 编排的 7 阶段流水线：
