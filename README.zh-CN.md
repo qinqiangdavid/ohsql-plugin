@@ -125,15 +125,34 @@ SVG 保留在远端 `/tmp/cpu-flamegraph_<ts>/`，需手动 `scp` 拉取。
 
 perf-kp-sql checking dependencies...
 
-✅ perf-kp-sql setup complete
-
 Phase 1 — 必装项
    node v22.4.0                            🟢
    data/cases/ + data/best-practice/       🟢
 
-Phase 2 — NotebookLM 增强：跳过
+━ NotebookLM 增强（可选）━
+是否启用 NotebookLM 增强（多源诊断的二次确认源）？
+  1. 启用 (Recommended)
+  2. 跳过
 
-随时可重跑 /perf-kp-sql-setup 重新校验或切换为启用。
+> 1
+
+✓ uv 0.11.3 已就绪
+✓ Google Chrome 已检测到
+✓ nlm CLI 已安装到 ~/.local/bin/nlm
+🌐 已打开独立 Chrome（不影响日常浏览器），请在弹出窗口完成 Google 登录…
+✓ 登录完成，cookie 已落盘
+
+开始创建各领域知识库
+✓ mongo   notebook 已创建，同步 12 个源
+✓ kunpeng notebook 已创建，同步 8 个源
+✓ os      notebook 已创建，同步 15 个源
+
+✅ perf-kp-sql setup complete
+
+Phase 1 — 必装项                          🟢
+Phase 2 — NotebookLM 增强                 🟢
+
+随时可重跑 /perf-kp-sql-setup 重新校验或切换状态。
 ```
 
 ### `perf-kp-sql`
