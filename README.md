@@ -53,33 +53,33 @@ codex plugin marketplace add zlxtqbdgdgd/ohsql-plugin
 
 ## Usage
 
-两个 plugin 的执行模型不同：`cpu-flamegraph` 是 single-shot 程序化采集 + 解读；`perf-kp-sql` 是 LLM 编排的 7 阶段流水线。每个子节给出调用方式 + 一句行为说明 + 一次完整 run 在终端里大致看到的样子（数据为示意）。
+两个 plugin 的执行模型不同——`cpu-flamegraph` 是 single-shot 程序化采集与解读，`perf-kp-sql` 是 LLM 编排的 7 阶段流水线。每个子节包含调用方式、行为说明、终端输出示例（数据为示意）。
 
 ### `cpu-flamegraph`
 
-三种调用方式都行：
+支持三种调用方式：
 
 ```text
 # slash + 完整参数
 /cpu-flamegraph host=test.host user=root process=mongod duration=10 type=oncpu
 
-# slash 不带参数 — skill 反问你要参数
+# slash 不带参数 — skill 交互式询问缺失参数
 /cpu-flamegraph
 
-# 自然语言 — agent 看到 "CPU 高 / 卡顿 / 火焰图 / perf record" 等关键词自动挂 skill
+# 自然语言 — agent 命中 "CPU 高 / 卡顿 / 火焰图 / perf record" 等关键词后自动加载 skill
 > 帮我看下 test.host 上 mongod 的 CPU 热点在哪
 ```
 
-Single-shot 采集 + 解读：
+Single-shot 采集与解读流程：
 
-- SSH 连远端跑 `perf record` 采样 `<duration>` 秒
-- `perf script` 抽栈 → 本地折叠 → `flamegraph.pl` 渲 SVG
-- 解析 Top-N 热点函数，命中 KB seed 时附函数级解读
-- 终端渲染 Top-N 表 + 远端 SVG 的 `scp` 命令
+- SSH 连接远端执行 `perf record`，采样时长 `<duration>` 秒
+- `perf script` 提取调用栈 → 本地折叠 → `flamegraph.pl` 生成 SVG
+- 解析 Top-N 热点函数；命中 KB seed 时附加函数级解读
+- 终端渲染 Top-N 表格，并输出远端 SVG 的 `scp` 拉取命令
 
-SVG 留在远端 `/tmp/cpu-flamegraph_<ts>/`，自己 `scp` 取回。
+SVG 保留在远端 `/tmp/cpu-flamegraph_<ts>/`，需手动 `scp` 拉取。
 
-跑完聊天里大致这样：
+终端输出示例：
 
 ```text
 > /cpu-flamegraph host=10.0.0.1 user=root process=mongod duration=3 type=oncpu
@@ -105,32 +105,32 @@ SVG 留在远端 `/tmp/cpu-flamegraph_<ts>/`，自己 `scp` 取回。
 
 ### `perf-kp-sql`
 
-三种调用方式都行：
+支持三种调用方式：
 
 ```text
 # slash + 完整参数
 /perf-kp-sql host=10.0.0.1 user=root privateKeyPath=~/.ssh/id_ed25519 engine=mongo
 
-# slash 不带参数 — skill 走 Phase 0 历史选单 + 交互收凭据
+# slash 不带参数 — 进入 Phase 0 历史选单 + 交互式收集凭据
 /perf-kp-sql
 
-# 自然语言 — agent 看到 "数据库慢 / CPU 高 / 抖动 / mongo perf / Kunpeng 性能" 等关键词自动挂 skill
+# 自然语言 — agent 命中 "数据库慢 / CPU 高 / 抖动 / mongo perf / Kunpeng 性能" 等关键词后自动加载 skill
 > 鲲鹏机器上 MongoDB 凌晨 2 点起 CPU 100%，帮诊断一下
 ```
 
 LLM 编排的 7 阶段流水线：
 
-- 环境画像（Phase 0）— 一次 SSH 拉 OS / DB / 硬件 / 部署形态
-- 对话引导（Phase 1）— 收用户问题现象
-- 现象路由（Phase 2）— LLM 匹配 `cases/INDEX.md`，收敛到候选案例
-- 批量采集（Phase 3）— 按 case 的 `collection_method_quote` 拉指标
-- 多源诊断（Phase 4）— 案例阈值直判 + NotebookLM 兜底刷新
-- 报告生成（Phase 5）— 8 列诊断表 + 措施落盘
-- 深入对话（Phase 6，可选）— 基于已采数据追问
+- 环境画像（Phase 0）— 单次 SSH 采集 OS / DB / 硬件 / 部署形态
+- 对话引导（Phase 1）— 采集用户描述的问题现象
+- 现象路由（Phase 2）— LLM 匹配 `cases/INDEX.md`，收敛到候选案例集
+- 批量采集（Phase 3）— 按 case 的 `collection_method_quote` 执行指标采集
+- 多源诊断（Phase 4）— 案例阈值直判 + NotebookLM 在线知识库补充查询
+- 报告生成（Phase 5）— 8 列诊断表 + 建议措施，落盘至本地
+- 深入对话（Phase 6，可选）— 基于已采数据回答用户的进一步提问
 
-需要火焰图时自动调起 `cpu-flamegraph`。
+需要火焰图时自动调用 `cpu-flamegraph`。
 
-跑完聊天里大致这样：
+终端输出示例：
 
 ```text
 > /perf-kp-sql host=10.0.0.1 user=root engine=mongo
@@ -178,60 +178,60 @@ LLM 编排的 7 阶段流水线：
 报告已落盘 : ~/.perf-kp-sql/runs/20260510-143022/report.md
 ```
 
-`## 诊断结果` 主表后还会跟 `## 综合描述` / `## 辅助信息 · 现场观测` / `## 参考链接` 三段，篇幅原因不在样例展示。表里的 `[参考N]` 链接在 `## 参考链接` 段展开为具体 URL，全部来自案例库 `source_url` 字段或 NotebookLM 返回的 `references`——不允许凭模型自身知识编造。
+`## 诊断结果` 主表之后还有 `## 综合描述` / `## 辅助信息 · 现场观测` / `## 参考链接` 三段，受篇幅所限不在示例中展示。表中 `[参考N]` 链接在 `## 参考链接` 段展开为具体 URL，全部来自案例库 `source_url` 字段或 NotebookLM 返回的 `references`，不基于模型自身知识推断生成。
 
 ---
 
 ## Output artifacts
 
-**cpu-flamegraph**(standalone)
+**`cpu-flamegraph`**（独立运行）
 
-- 远端 `/tmp/cpu-flamegraph_<YYYYMMDD-HHMMSS>/flamegraph.svg` — SVG 火焰图，不自动拉回，skill 会打印 `scp` 命令让你自己取
-- 同目录下还有一份 `perf script` 原始文本，文件名是被采集进程的进程名
-- Top-N 热点函数表直接渲染在聊天里，不落盘
+- 远端 `/tmp/cpu-flamegraph_<YYYYMMDD-HHMMSS>/flamegraph.svg` — SVG 火焰图，不自动下载；skill 输出 `scp` 命令供手动拉取
+- 同目录下保留 `perf script` 原始输出，文件名为被采集进程名
+- Top-N 热点函数表渲染至对话通道，不落盘
 
-**perf-kp-sql**(本地单目录归档 `~/.perf-kp-sql/runs/<YYYYMMDD-HHMMSS>/`)
+**`perf-kp-sql`**（本地单目录归档 `~/.perf-kp-sql/runs/<YYYYMMDD-HHMMSS>/`）
 
 | 文件 | 内容 |
 |---|---|
-| `report.md` | 主报告(impact 排序的诊断表 + 措施) |
+| `report.md` | 主报告（按 impact 排序的诊断表 + 建议措施） |
 | `env.txt` | Phase 0 环境画像原始输出 |
-| `collect-os.txt` | OS 层采集(vmstat / iostat / 等) |
-| `collect-mongo.txt` | MongoDB 层采集(serverStatus / 等) |
-| `flame.svg` | 火焰图(本轮采了才有) |
+| `collect-os.txt` | OS 层采集（vmstat / iostat 等） |
+| `collect-mongo.txt` | MongoDB 层采集（serverStatus 等） |
+| `flame.svg` | 火焰图（本轮采集时生成） |
 
-跨 run 复用的配置另外两个文件：`~/.perf-kp-sql/notebooklm.json`(NLM 配置)、`~/.perf-kp-sql/hosts.json`(SSH/DB 历史，mode 0600，凭据用户 opt-in 才存)。
+另有两个跨 run 复用的配置文件：`~/.perf-kp-sql/notebooklm.json`（NLM 配置）、`~/.perf-kp-sql/hosts.json`（SSH/DB 连接历史，mode 0600，凭据仅在用户 opt-in 后写入）。
 
 ---
 
 ## Architecture
 
-仓库本体就是一个 `marketplace.json` 索引 + 两个自包含的 plugin。布局：
+仓库由 `marketplace.json` 索引文件与两个自包含 plugin 构成。目录布局：
 
 ```text
 ohsql-plugin/
-├── marketplace.json                       # 列出可装的 plugins
+├── marketplace.json                       # 可安装 plugin 列表
 └── plugins/
     ├── cpu-flamegraph/
-    │   ├── .claude-plugin/plugin.json     # version / 元数据
+    │   ├── .claude-plugin/plugin.json     # 版本 / 元数据
     │   ├── skills/cpu-flamegraph/
-    │   │   ├── SKILL.md                   # prose 指挥 LLM
-    │   │   └── scripts/capture.mjs        # SSH + perf + flamegraph.pl 渲 SVG
+    │   │   ├── SKILL.md                   # 自然语言意图描述,指挥 LLM
+    │   │   └── scripts/capture.mjs        # SSH + perf + flamegraph.pl 生成 SVG
     │   └── data/kb-seeds/                 # 函数级热点解读字典
     └── perf-kp-sql/
-        ├── .claude-plugin/plugin.json     # version + 依赖 cpu-flamegraph ^0.4.0
+        ├── .claude-plugin/plugin.json     # 版本 + 依赖 cpu-flamegraph ^0.4.0
         ├── skills/
-        │   ├── perf-kp-sql/SKILL.md       # 主诊断流水线(7 phase)
-        │   └── perf-kp-sql-setup/SKILL.md # 首次安装的 runtime 校验 + NLM 注册
+        │   ├── perf-kp-sql/SKILL.md       # 主诊断流水线 (7 阶段)
+        │   └── perf-kp-sql-setup/SKILL.md # 首次安装运行时校验 + NLM 注册
         ├── scripts/
-        │   ├── ssh.mjs                    # SSH_ASKPASS 包装 + ControlMaster 长连接
-        │   ├── notebooklm.mjs             # 调 nlm CLI 走 Google NotebookLM
-        │   ├── capture-flamegraph.mjs     # 调 cpu-flamegraph 子 skill
+        │   ├── ssh.mjs                    # SSH_ASKPASS 封装 + ControlMaster 长连接
+        │   ├── notebooklm.mjs             # 通过 nlm CLI 调用 Google NotebookLM
+        │   ├── capture-flamegraph.mjs     # 调用 cpu-flamegraph 子 skill
         │   ├── format-chat.mjs            # 终端 box-drawing 报告渲染
         │   └── history.mjs                # ~/.perf-kp-sql/hosts.json 读写
         └── data/
             ├── cases/{INDEX,CASES}.md     # 109 条 (DF 96 + Flame 13)
-            └── best-practice/{INDEX,CASES}.md  # 93 条 BP 巡检 · 合计 202 案例
+            └── best-practice/{INDEX,CASES}.md  # 93 条 BP 巡检 (合计 202 案例)
 ```
 
 ---
