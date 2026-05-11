@@ -81,7 +81,7 @@ Single-shot capture-and-interpret flow:
 
 The SVG stays on the remote at `/tmp/cpu-flamegraph_<ts>/`; pull it with `scp` manually.
 
-Sample terminal output (the skill renders in Chinese):
+Sample terminal output:
 
 ```text
 > /cpu-flamegraph host=10.0.0.1 user=root process=mongod duration=3 type=oncpu
@@ -132,7 +132,7 @@ LLM-orchestrated 7-phase pipeline:
 
 `cpu-flamegraph` is invoked automatically when a flamegraph is needed.
 
-Sample terminal output (the skill renders in Chinese):
+Sample terminal output:
 
 ```text
 > /perf-kp-sql host=10.0.0.1 user=root engine=mongo
