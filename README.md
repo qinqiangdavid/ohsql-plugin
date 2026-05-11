@@ -81,16 +81,16 @@ Single-shot capture-and-interpret flow:
 
 The SVG stays on the remote at `/tmp/cpu-flamegraph_<ts>/`; pull it with `scp` manually.
 
-Sample terminal output:
+Sample terminal output (the skill renders in Chinese):
 
 ```text
 > /cpu-flamegraph host=10.0.0.1 user=root process=mongod duration=3 type=oncpu
 
-Hotspot     : WiredTigerRecordStore::_insertRecords 24.0% (module mongod)
-Sampling    : CPU time 12.3 ms ; scope mongod (pid=911593)
-Implication : Hotspot is inside the database engine; correlate with slow query, lock, and cache metrics next
+热点结论 : WiredTigerRecordStore::_insertRecords 24.0% （模块 mongod）
+采样说明 : CPU 时间 12.3 ms ; 范围 mongod (pid=911593)
+热点含义 : 热点已进入数据库引擎侧, 建议结合慢查询、锁与缓存指标继续深挖
 
-═══ Sampling metadata ════════════════════════════════════════════════
+═══ 采样元信息 ═══════════════════════════════════════════════════════
 ┌────┬──────────────────────────────────────────┬─────────┬─────────┐
 │ #  │ Function                                 │ Module  │ Percent │
 ├────┼──────────────────────────────────────────┼─────────┼─────────┤
@@ -100,7 +100,7 @@ Implication : Hotspot is inside the database engine; correlate with slow query, 
 │ 4  │ ...                                      │ ...     │  ...    │
 └────┴──────────────────────────────────────────┴─────────┴─────────┘
 
-Artifacts (left on remote, fetch manually):
+可视化产物 （留在远端, 自取）:
   scp root@10.0.0.1:/tmp/cpu-flamegraph_20260510-143022/flamegraph.svg .
   scp root@10.0.0.1:/tmp/cpu-flamegraph_20260510-143022/mongod .
 ```
@@ -132,55 +132,55 @@ LLM-orchestrated 7-phase pipeline:
 
 `cpu-flamegraph` is invoked automatically when a flamegraph is needed.
 
-Sample terminal output:
+Sample terminal output (the skill renders in Chinese):
 
 ```text
 > /perf-kp-sql host=10.0.0.1 user=root engine=mongo
 
-━ ohsql perf-kp-sql · perf diagnosis ━
-5-step pipeline: 1.env probe / 2.case match /
-                3.metric collection / 4.multi-source diagnosis / 5.report
+━ ohsql perf-kp-sql · 性能诊断 ━
+本次按 5 步执行: 1.环境信息采集 / 2.诊断案例匹配 /
+                3.诊断指标采集 / 4.多源综合诊断 / 5.报告生成
 
-[1. Env probe : OS / DB version / hardware]
-[Context]
+[1. 环境信息采集 : 系统/数据库版本/硬件信息]
+[环境上下文]
   OS     : Linux 4.19 aarch64 (Kunpeng 920)
   Mongo  : 6.0.5 (replSet primary, 96C / 256G / NVMe)
   sysctl : vm.swappiness=10 / transparent_hugepage=[always]
   ulimit : nofile=65535
 
-> CPU has been at 100% on mongod since 2 AM
+> 凌晨 2 点起 CPU 持续 100%, 集中在 mongod
 
-[2. Case match : 202-case library index]
-  5 candidates → narrowed to 3 :
-    • Flame-007 $where JavaScript interpretation
-    • DF-042    WT cache eviction pressure
-    • DF-001    slow query latency distribution
+[2. 诊断案例匹配 : 202 条案例库索引]
+  匹配 5 条 → 收敛到 3 条候选 :
+    • Flame-007 $where JavaScript 解释执行
+    • DF-042    WT cache eviction 压力
+    • DF-001    慢查询时间分布异常
 
-[3. Metric collection]
-  ✔ OS layer : CPU / memory / disk / network
-  ✔ MongoDB layer : connection pool / slow query / locks / WiredTiger
-  ✔ mongod CPU flamegraph (perf 3s)
+[3. 诊断指标采集]
+  ✔ 操作系统层 : CPU / 内存 / 磁盘 / 网络
+  ✔ MongoDB 层 : 连接池 / 慢查询 / 锁竞争 / WiredTiger
+  ✔ mongod CPU 火焰图 (perf 3s)
 
-[4. Multi-source diagnosis : case library + NotebookLM online KB]
-  ✔ Threshold judgment from case library (3 hits)
-  ✔ NotebookLM KB query (2/2)
-  ✔ Final assessment
+[4. 多源综合诊断 : 案例库 + NotebookLM 在线知识库]
+  ✔ 案例库阈值直判 (3 条触发)
+  ✔ NotebookLM 知识库查询 (2/2)
+  ✔ 综合判定
 
-[5. Report]
+[5. 报告生成]
 
-## Diagnosis
-┌────┬───────────────────────────┬──────┬─────────────────┬───────────┬────────────────────────┬─────────┬─────────┐
-│ #  │ Root cause                │ Sev  │ Evidence        │ Case      │ Action                 │ Conf    │ Ref     │
-├────┼───────────────────────────┼──────┼─────────────────┼───────────┼────────────────────────┼─────────┼─────────┤
-│ 1  │ $where JS burns CPU       │ HIGH │ flame self 47%  │ Flame-007 │ use $expr/$function    │ high    │ [ref 1] │
-│ 2  │ WT cache pressure         │ HIGH │ dirty 18% > 5%  │ DF-042    │ tune eviction_*_target │ med-hi  │ [ref 2] │
-│ 3  │ COLLSCAN-heavy queries    │ MED  │ COLLSCAN 23%    │ DF-001    │ add index / batch      │ medium  │ [ref 3] │
-└────┴───────────────────────────┴──────┴─────────────────┴───────────┴────────────────────────┴─────────┴─────────┘
+## 诊断结果
+┌────┬───────────────────────┬──────┬─────────────────┬───────────┬─────────────────────┬────────┬─────────┐
+│ #  │ 根因                  │ 等级 │ 判断依据        │ 命中案例  │ 建议措施            │ 置信度 │ 参考    │
+├────┼───────────────────────┼──────┼─────────────────┼───────────┼─────────────────────┼────────┼─────────┤
+│ 1  │ $where JS 烧 CPU      │ HIGH │ flame self 47%  │ Flame-007 │ 改用 $expr/$function│ 高     │ [参考1] │
+│ 2  │ WT cache 压力         │ HIGH │ dirty 18% > 5%  │ DF-042    │ 调 eviction_*_target│ 中-高  │ [参考2] │
+│ 3  │ 全表扫慢查询占比偏高  │ MED  │ COLLSCAN 23%    │ DF-001    │ 加索引 / 拆 batch   │ 中     │ [参考3] │
+└────┴───────────────────────┴──────┴─────────────────┴───────────┴─────────────────────┴────────┴─────────┘
 
-Report : ~/.perf-kp-sql/runs/20260510-143022/report.md
+报告已落盘 : ~/.perf-kp-sql/runs/20260510-143022/report.md
 ```
 
-The main `## Diagnosis` table is followed by `## Summary` / `## Auxiliary info · Field observations` / `## References` sections (omitted from this sample for brevity). Each `[ref N]` link in the table is expanded under `## References` to a concrete URL — every URL comes from a case library `source_url` field or a NotebookLM `references` payload, never inferred from the model's own knowledge.
+The main `## 诊断结果` (Diagnosis) table is followed by `## 综合描述` (Summary) / `## 辅助信息 · 现场观测` (Auxiliary info · Field observations) / `## 参考链接` (References) sections (omitted from this sample for brevity). Each `[参考N]` (ref N) link in the table is expanded under `## 参考链接` to a concrete URL — every URL comes from a case library `source_url` field or a NotebookLM `references` payload, never inferred from the model's own knowledge.
 
 ---
 
