@@ -105,6 +105,37 @@ Sample terminal output:
   scp root@10.0.0.1:/tmp/cpu-flamegraph_20260510-143022/mongod .
 ```
 
+### `perf-kp-sql-setup`
+
+```text
+/perf-kp-sql-setup
+```
+
+Run once after installing `perf-kp-sql`. Two responsibilities:
+
+- **Runtime check** — verifies Node.js ≥ 18 and that the bundled case-library files (`data/cases/` + `data/best-practice/`) are in place; missing files prompt `/plugin reinstall perf-kp-sql`
+- **NotebookLM enablement (optional)** — interactively asks whether to enable the NotebookLM online KB. Enabling installs `uv` + `notebooklm-mcp-cli`, opens an isolated Chrome (`--user-data-dir=…`, does not interfere with your daily browser) for Google sign-in, then provisions three domain notebooks (mongo / kunpeng / os)
+
+Rerun when you want to switch NotebookLM from skipped to enabled, refresh expired Google credentials, or revalidate the case library after a reinstall. Skipping NotebookLM keeps `perf-kp-sql` fully functional — Phase 4 falls back to local-only threshold judgment and the report is flagged "NLM unavailable".
+
+Sample terminal output:
+
+```text
+> /perf-kp-sql-setup
+
+perf-kp-sql checking dependencies...
+
+✅ perf-kp-sql setup complete
+
+Phase 1 — 必装项
+   node v22.4.0                            🟢
+   data/cases/ + data/best-practice/       🟢
+
+Phase 2 — NotebookLM 增强：跳过
+
+随时可重跑 /perf-kp-sql-setup 重新校验或切换为启用。
+```
+
 ### `perf-kp-sql`
 
 Three invocation methods are supported:
