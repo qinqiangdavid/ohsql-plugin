@@ -49,33 +49,33 @@ codex plugin marketplace add zlxtqbdgdgd/ohsql-plugin
 # For perf-kp-sql, also run: /perf-kp-sql-setup (verifies runtime + registers NotebookLM)
 ```
 
+### Update & uninstall
+
+```text
+/plugin update cpu-flamegraph
+/plugin update perf-kp-sql
+
+/plugin uninstall perf-kp-sql
+/plugin uninstall cpu-flamegraph
+```
+
+`perf-kp-sql` 依赖 `cpu-flamegraph`，请先卸 `perf-kp-sql` 再卸 `cpu-flamegraph`。卸载只动 plugin cache，不删 `~/.perf-kp-sql/runs/` 下的历史报告——想清就手动 `rm -rf`。
+
 ---
 
-## Quick example
+## Usage
 
-Capture and analyze a CPU flamegraph standalone:
+两个 plugin 的执行模型不同：`cpu-flamegraph` 是 single-shot 程序化采集 + 解读；`perf-kp-sql` 是 LLM 编排的 7 阶段流水线。每个子节给出调用方式 + 一句行为说明 + 一次完整 run 在终端里大致看到的样子（数据为示意）。
+
+### `cpu-flamegraph`
 
 ```text
 /cpu-flamegraph host=test.host user=root process=mongod duration=10 type=oncpu
 ```
 
-The skill renders a top-N hotspot table inline, leaves the SVG on the remote at `/tmp/cpu-flamegraph_<ts>/`, and prints the `scp` command to pull it.
+Single-shot：连远端 `perf record` → 折叠栈 → `flamegraph.pl` 渲 SVG → 解析 Top-N 热点。终端渲染 Top-N 表 + 远端 SVG 的 `scp` 命令；SVG 留在远端 `/tmp/cpu-flamegraph_<ts>/` 需自己 `scp` 取回。
 
-End-to-end diagnosis with `perf-kp-sql`:
-
-```text
-/perf-kp-sql host=10.0.0.1 user=root privateKeyPath=~/.ssh/id_ed25519 engine=mongo
-```
-
-The skill runs a 7-phase LLM-orchestrated pipeline: 环境画像(Phase 0)→ 对话引导(Phase 1)→ 现象路由(Phase 2 · LLM 匹配 cases/INDEX.md)→ 批量采集(Phase 3 · per-case collection_method_quote)→ 推断(Phase 4 · 案例阈值直判 + NotebookLM 兜底刷新)→ markdown 报告(Phase 5)→ 深入对话(Phase 6 · 用户追问可选)。Optionally invokes `cpu-flamegraph` for hotspot stack analysis.
-
----
-
-## Workflow
-
-两个 plugin 的执行模型不同：`cpu-flamegraph` 是 single-shot 程序化采集 + 解读；`perf-kp-sql` 是 LLM 编排的 7 阶段流水线。下面是各自一次完整 run 在终端里大致看到的样子（数据为示意）。
-
-### `cpu-flamegraph`
+跑完聊天里大致这样：
 
 ```text
 > /cpu-flamegraph host=10.0.0.1 user=root process=mongod duration=3 type=oncpu
@@ -100,6 +100,14 @@ The skill runs a 7-phase LLM-orchestrated pipeline: 环境画像(Phase 0)→ 对
 ```
 
 ### `perf-kp-sql`
+
+```text
+/perf-kp-sql host=10.0.0.1 user=root privateKeyPath=~/.ssh/id_ed25519 engine=mongo
+```
+
+7-phase LLM-orchestrated pipeline: 环境画像(Phase 0)→ 对话引导(Phase 1)→ 现象路由(Phase 2 · LLM 匹配 cases/INDEX.md)→ 批量采集(Phase 3 · per-case collection_method_quote)→ 推断(Phase 4 · 案例阈值直判 + NotebookLM 兜底刷新)→ markdown 报告(Phase 5)→ 深入对话(Phase 6 · 用户追问可选)。需要火焰图时自动调 `cpu-flamegraph`。
+
+跑完聊天里大致这样：
 
 ```text
 > /perf-kp-sql host=10.0.0.1 user=root engine=mongo
@@ -180,16 +188,6 @@ The skill runs a 7-phase LLM-orchestrated pipeline: 环境画像(Phase 0)→ 对
 - **凭据落盘需 opt-in**：`perf-kp-sql` 第一次连上之后会问你"要不要把密码存进 `~/.perf-kp-sql/hosts.json`(chmod 600)"，选"不保存"就只在本会话用，下次重输。
 - **采集数据 / 报告全本地**：环境画像、采集原始输出、报告都只在你本机 `~/.perf-kp-sql/runs/<TS>/` 下，不上传任何远端。
 - **NotebookLM 是可选增强**：开了它之后，会经 Google NotebookLM 走云的只是**查询文本**(配置项名 / 案例追问语句)；采集数据、密码、主机名都不走。不想用就在 `/perf-kp-sql-setup` 那一步跳过，案例阈值判定纯本地不受影响。
-
----
-
-## Troubleshooting
-
-- **装完 `perf-kp-sql` 直接跑** → 报缺 `data/cases/{INDEX.md,CASES.md}`。先跑 `/perf-kp-sql-setup`，必要时 `/plugin reinstall perf-kp-sql`。
-- **远端没装 `perf`** → `command not found: perf`。Debian/Ubuntu: `apt install linux-tools-$(uname -r)`；RHEL/CentOS: `yum install perf`。
-- **没注册 NotebookLM** → Phase 4 的在线知识库查询自动跳过，报告标注 `NLM unavailable`；案例阈值判定不受影响，结果照样能用。
-- **同时传 `password=` 和 `privateKeyPath=`** → key 优先，password 被忽略。想用密码就别传 key。
-- **火焰图采样太少 / 看不出热点** → `duration=` 默认偏短，机器闲时加到 `duration=3` 或 `duration=5`。
 
 ---
 
