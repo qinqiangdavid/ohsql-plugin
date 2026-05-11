@@ -209,23 +209,6 @@ ohsql-plugin/
             └── best-practice/{INDEX,CASES}.md  # BP 巡检表
 ```
 
-跑 `/perf-kp-sql ...` 时的数据流：
-
-```text
-harness (Claude Code / Codex CLI / ohsql)
-   │  加载 SKILL.md
-   ▼
-perf-kp-sql skill (prose 指挥 LLM)
-   ├── Bash ──▶ scripts/ssh.mjs              ──▶ SSH ──▶ 远端机器
-   ├── Bash ──▶ scripts/notebooklm.mjs       ──▶ nlm CLI ──▶ Google NotebookLM
-   ├── Bash ──▶ scripts/capture-flamegraph.mjs ──▶ cpu-flamegraph skill
-   ├── Bash ──▶ scripts/format-chat.mjs      (终端表渲染)
-   ├── Read   ──▶ data/cases/{INDEX,CASES}.md
-   └── Write  ──▶ ~/.perf-kp-sql/runs/<TS>/{report.md, env.txt, collect-*.txt, flame.svg}
-```
-
-`cpu-flamegraph` 既能独立跑（`/cpu-flamegraph host=... user=...`），也被 `perf-kp-sql` 在 Phase 3 当依赖调起——所以两个 plugin 一起装能拿到完整诊断报告 + 火焰图栈分析。
-
 **跨 harness 一致性**：所有 SKILL.md 遵循 [Anthropic Agent Skills 开放标准](https://github.com/anthropics/skills)。Frontmatter 极简（`name` + `description` + 可选 `compatibility` / `metadata` / `argument-hint`），body 用自然语言意图 + 普通 shell 命令，不绑特定 agent 的私有 tool（不依赖 ohsql kernel 的 `SshExec`，也不依赖 CC 的 `TodoWrite`）。路径用字面 `<PLUGIN_ROOT>` 占位符，agent 从 harness 给的 skill 加载上下文取根目录、运行时替换为绝对路径，同一份 SKILL.md 源在 Claude Code / Codex CLI / ohsql 上一字不差地跑。
 
 ---
