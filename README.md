@@ -231,7 +231,7 @@ ohsql-plugin/
         │   └── history.mjs                # ~/.perf-kp-sql/hosts.json 读写
         └── data/
             ├── cases/{INDEX,CASES}.md     # 109 条 (DF 96 + Flame 13)
-            └── best-practice/{INDEX,CASES}.md  # 93 条 BP 巡检 (合计 202 案例)
+            └── best-practice/{INDEX,CASES}.md  # 93 条 BP 巡检
 ```
 
 ---
