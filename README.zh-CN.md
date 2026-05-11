@@ -114,7 +114,7 @@ SVG 保留在远端 `/tmp/cpu-flamegraph_<ts>/`，需手动 `scp` 拉取。
 首次安装 `perf-kp-sql` 后跑一次，做两件事：
 
 - **运行时校验**——检查 Node.js ≥ 18，以及 plugin 自带的案例库文件（`data/cases/` + `data/best-practice/`）是否齐备；案例文件缺失时建议 `/plugin reinstall perf-kp-sql`
-- **NotebookLM 增强（可选）**——交互式询问是否启用 NotebookLM 在线知识库。选择启用会自动安装 `uv` + `notebooklm-mcp-cli`，启动一个独立 Chrome（`--user-data-dir=…`，不干扰日常浏览器）登录 Google 账号，并创建三个领域 notebooks（mongo / kunpeng / os）
+- **NotebookLM 增强（可选）**——交互式询问是否启用 NotebookLM 在线知识库。启用前需本机已装 Chromium 系浏览器（Chrome / Edge / Brave 任一）；选择启用后会自动安装 `uv` + `notebooklm-mcp-cli`，启动一个独立 Chrome 实例（`--user-data-dir=…`，不干扰日常浏览器）登录 Google 账号，并创建三个领域 notebooks（mongo / kunpeng / os）
 
 需要重跑的场景：将 NotebookLM 从"跳过"切换到"启用"、Google 凭据失效需要重登录、或重装后想重新校验案例库。跳过 NotebookLM 不影响 `perf-kp-sql` 的基本功能——Phase 4 会自动降级为仅本地案例阈值判定，报告标注 "NLM unavailable"。
 

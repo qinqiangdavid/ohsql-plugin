@@ -114,7 +114,7 @@ Sample terminal output:
 Run once after installing `perf-kp-sql`. Two responsibilities:
 
 - **Runtime check** — verifies Node.js ≥ 18 and that the bundled case-library files (`data/cases/` + `data/best-practice/`) are in place; missing files prompt `/plugin reinstall perf-kp-sql`
-- **NotebookLM enablement (optional)** — interactively asks whether to enable the NotebookLM online KB. Enabling installs `uv` + `notebooklm-mcp-cli`, opens an isolated Chrome (`--user-data-dir=…`, does not interfere with your daily browser) for Google sign-in, then provisions three domain notebooks (mongo / kunpeng / os)
+- **NotebookLM enablement (optional)** — interactively asks whether to enable the NotebookLM online KB. Enabling requires a Chromium-family browser (Chrome / Edge / Brave — any one) installed locally beforehand; the setup then installs `uv` + `notebooklm-mcp-cli`, opens an isolated Chrome instance (`--user-data-dir=…`, does not interfere with your daily browser) for Google sign-in, and provisions three domain notebooks (mongo / kunpeng / os)
 
 Rerun when you want to switch NotebookLM from skipped to enabled, refresh expired Google credentials, or revalidate the case library after a reinstall. Skipping NotebookLM keeps `perf-kp-sql` fully functional — Phase 4 falls back to local-only threshold judgment and the report is flagged "NLM unavailable".
 
