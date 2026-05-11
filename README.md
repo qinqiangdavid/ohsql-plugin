@@ -11,7 +11,7 @@ All skills follow the [Anthropic Agent Skills open standard](https://github.com/
 | Plugin | Version | Hosts | What it does |
 |---|---|---|---|
 | [`cpu-flamegraph`](./plugins/cpu-flamegraph/) | 0.4.0 | Claude Code · Codex CLI · ohsql · any agent with shell + read/write | Remote `perf` over SSH → on-CPU / off-CPU flamegraph SVG → top-N hotspot extraction. Pure local `ssh` + Perl `flamegraph.pl`, zero kernel-tool dependency. |
-| [`perf-kp-sql`](./plugins/perf-kp-sql/) | 0.54.0 | Claude Code · Codex CLI · ohsql · any standard-compliant agent | Kunpeng ARM64 + MongoDB joint perf diagnosis. SSH-based collection → 7-phase LLM-orchestrated pipeline against 202-case markdown case library → NotebookLM authoritative refresh → impact-ranked markdown report. |
+| [`perf-kp-sql`](./plugins/perf-kp-sql/) | 0.54.0 | Claude Code · Codex CLI · ohsql · any standard-compliant agent | Kunpeng ARM64 + MongoDB joint perf diagnosis. SSH-based collection → 7-phase LLM-orchestrated pipeline against 109-case markdown case library → NotebookLM authoritative refresh → impact-ranked markdown report. |
 
 ---
 
@@ -130,7 +130,7 @@ LLM 编排的 7 阶段流水线：
 
 > 凌晨 2 点起 CPU 持续 100%, 集中在 mongod
 
-[2. 诊断案例匹配 : 202 条案例库索引]
+[2. 诊断案例匹配 : 109 条案例库索引]
   匹配 5 条 → 收敛到 3 条候选 :
     • Flame-007 $where JavaScript 解释执行
     • DF-042    WT cache eviction 压力
@@ -222,7 +222,7 @@ ohsql-plugin/
         │   ├── format-chat.mjs            # 终端 box-drawing 报告渲染
         │   └── history.mjs                # ~/.perf-kp-sql/hosts.json 读写
         └── data/
-            ├── cases/{INDEX,CASES}.md     # 202 案例库
+            ├── cases/{INDEX,CASES}.md     # 109 案例库 (DF 96 + Flame 13)
             └── best-practice/{INDEX,CASES}.md  # BP 巡检表
 ```
 
