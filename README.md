@@ -61,7 +61,14 @@ codex plugin marketplace add zlxtqbdgdgd/ohsql-plugin
 /cpu-flamegraph host=test.host user=root process=mongod duration=10 type=oncpu
 ```
 
-Single-shot：连远端 `perf record` → 折叠栈 → `flamegraph.pl` 渲 SVG → 解析 Top-N 热点。终端渲染 Top-N 表 + 远端 SVG 的 `scp` 命令；SVG 留在远端 `/tmp/cpu-flamegraph_<ts>/` 需自己 `scp` 取回。
+Single-shot 采集 + 解读：
+
+- SSH 连远端跑 `perf record` 采样 `<duration>` 秒
+- `perf script` 抽栈 → 本地折叠 → `flamegraph.pl` 渲 SVG
+- 解析 Top-N 热点函数，命中 KB seed 时附函数级解读
+- 终端渲染 Top-N 表 + 远端 SVG 的 `scp` 命令
+
+SVG 留在远端 `/tmp/cpu-flamegraph_<ts>/`，自己 `scp` 取回。
 
 跑完聊天里大致这样：
 
@@ -93,7 +100,17 @@ Single-shot：连远端 `perf record` → 折叠栈 → `flamegraph.pl` 渲 SVG 
 /perf-kp-sql host=10.0.0.1 user=root privateKeyPath=~/.ssh/id_ed25519 engine=mongo
 ```
 
-7-phase LLM-orchestrated pipeline: 环境画像(Phase 0)→ 对话引导(Phase 1)→ 现象路由(Phase 2 · LLM 匹配 cases/INDEX.md)→ 批量采集(Phase 3 · per-case collection_method_quote)→ 推断(Phase 4 · 案例阈值直判 + NotebookLM 兜底刷新)→ markdown 报告(Phase 5)→ 深入对话(Phase 6 · 用户追问可选)。需要火焰图时自动调 `cpu-flamegraph`。
+LLM 编排的 7 阶段流水线：
+
+- 环境画像（Phase 0）— 一次 SSH 拉 OS / DB / 硬件 / 部署形态
+- 对话引导（Phase 1）— 收用户问题现象
+- 现象路由（Phase 2）— LLM 匹配 `cases/INDEX.md`，收敛到候选案例
+- 批量采集（Phase 3）— 按 case 的 `collection_method_quote` 拉指标
+- 多源诊断（Phase 4）— 案例阈值直判 + NotebookLM 兜底刷新
+- 报告生成（Phase 5）— 8 列诊断表 + 措施落盘
+- 深入对话（Phase 6，可选）— 基于已采数据追问
+
+需要火焰图时自动调起 `cpu-flamegraph`。
 
 跑完聊天里大致这样：
 
