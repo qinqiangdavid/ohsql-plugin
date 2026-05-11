@@ -2,33 +2,33 @@
 
 [![validate](https://github.com/zlxtqbdgdgd/ohsql-plugin/actions/workflows/validate.yml/badge.svg)](https://github.com/zlxtqbdgdgd/ohsql-plugin/actions/workflows/validate.yml)
 
-> 中文 · [English](README.en.md)
+> English · [中文](README.zh-CN.md)
 
-[OpenHarness-SQL](https://github.com/zlxtqbdgdgd/OpenHarness-SQL) 官方插件 marketplace——性能诊断、CPU 火焰图、数据库工具集。
+Official plugin marketplace for [OpenHarness-SQL](https://github.com/zlxtqbdgdgd/OpenHarness-SQL) — performance diagnosis, CPU flamegraphs, and database tooling.
 
-所有 skill 遵循 [Anthropic Agent Skills 开放标准](https://github.com/anthropics/skills)，同一份 skill 源码可在 Claude Code、OpenAI Codex CLI、ohsql ≥ 0.38.0 上原生运行，无需为不同 agent 做工具映射或构建期转换。
+All skills follow the [Anthropic Agent Skills open standard](https://github.com/anthropics/skills), so the same skill source runs natively on Claude Code, OpenAI Codex CLI, and ohsql ≥ 0.38.0 — no per-platform tool mapping or build-time conversion required.
 
-## 插件列表
+## Plugins
 
-| 插件 | 版本 | 支持的 agent | 功能 |
+| Plugin | Version | Hosts | What it does |
 |---|---|---|---|
-| [`cpu-flamegraph`](./plugins/cpu-flamegraph/) | 0.4.0 | Claude Code · Codex CLI · ohsql · 任何提供 shell + read/write 能力的 agent | 通过 SSH 远程执行 `perf` → 生成 on-CPU / off-CPU 火焰图 SVG → 提取 Top-N 热点函数。纯本地 `ssh` + Perl `flamegraph.pl` 实现，零内核工具依赖。 |
-| [`perf-kp-sql`](./plugins/perf-kp-sql/) | 0.54.0 | Claude Code · Codex CLI · ohsql · 任何符合开放标准的 agent | 鲲鹏 ARM64 + MongoDB 联合性能诊断。基于 SSH 的远程数据采集 → LLM 编排的 7 阶段流水线 → 匹配 202 案例的 markdown 案例库 → NotebookLM 在线知识库补充 → 生成按 impact 排序的 markdown 报告。 |
+| [`cpu-flamegraph`](./plugins/cpu-flamegraph/) | 0.4.0 | Claude Code · Codex CLI · ohsql · any agent with shell + read/write | Remote `perf` over SSH → on-CPU / off-CPU flamegraph SVG → top-N hotspot extraction. Pure local `ssh` + Perl `flamegraph.pl`, zero kernel-tool dependency. |
+| [`perf-kp-sql`](./plugins/perf-kp-sql/) | 0.54.0 | Claude Code · Codex CLI · ohsql · any standard-compliant agent | Kunpeng ARM64 + MongoDB joint perf diagnosis. SSH-based collection → 7-phase LLM-orchestrated pipeline against 202-case markdown case library → NotebookLM authoritative refresh → impact-ranked markdown report. |
 
 ---
 
-## 安装
+## Install
 
 ### OpenHarness-SQL (ohsql ≥ 0.38.0)
 
 ```text
 /plugin marketplace add zlxtqbdgdgd/ohsql-plugin
-/plugin install cpu-flamegraph                  # 安装即可用
-/plugin install perf-kp-sql                     # 自动安装依赖 cpu-flamegraph
-/perf-kp-sql-setup                              # 校验运行时环境 + 注册 NotebookLM
+/plugin install cpu-flamegraph                  # ready immediately
+/plugin install perf-kp-sql                     # auto-installs cpu-flamegraph dep
+/perf-kp-sql-setup                              # verify runtime + register NotebookLM
 ```
 
-`perf-kp-sql-setup` 完成后：
+After `perf-kp-sql-setup` completes:
 
 ```text
 /perf-kp-sql host=10.0.0.1 user=root password=xxx engine=mongo
@@ -40,57 +40,57 @@
 /plugin marketplace add zlxtqbdgdgd/ohsql-plugin
 /plugin install cpu-flamegraph
 /plugin install perf-kp-sql
-/perf-kp-sql-setup                              # 校验运行时环境 + 注册 NotebookLM
+/perf-kp-sql-setup                              # verify runtime + register NotebookLM
 ```
 
 ### OpenAI Codex CLI
 
 ```text
 codex plugin marketplace add zlxtqbdgdgd/ohsql-plugin
-# Codex 自动从 plugin 的 skills/ 目录发现 skill
-# 对于 perf-kp-sql，还需运行: /perf-kp-sql-setup (校验运行时 + 注册 NotebookLM)
+# Codex auto-discovers skills from the plugin's skills/ directory
+# For perf-kp-sql, also run: /perf-kp-sql-setup (verifies runtime + registers NotebookLM)
 ```
 
 ---
 
-## 用法
+## Usage
 
-两个 plugin 的执行模型不同——`cpu-flamegraph` 是 single-shot 程序化采集与解读，`perf-kp-sql` 是 LLM 编排的 7 阶段流水线。每个子节包含调用方式、行为说明、终端输出示例（数据为示意）。
+The two plugins follow different execution models — `cpu-flamegraph` is a single-shot programmatic capture-and-interpret tool, while `perf-kp-sql` is an LLM-orchestrated 7-phase pipeline. Each subsection covers invocation, behavior, and a sample terminal session (illustrative data).
 
 ### `cpu-flamegraph`
 
-支持三种调用方式：
+Three invocation methods are supported:
 
 ```text
-# slash + 完整参数
+# slash + full arguments
 /cpu-flamegraph host=test.host user=root process=mongod duration=10 type=oncpu
 
-# slash 不带参数 — skill 交互式询问缺失参数
+# slash without arguments — the skill interactively prompts for missing parameters
 /cpu-flamegraph
 
-# 自然语言 — agent 命中 "CPU 高 / 卡顿 / 火焰图 / perf record" 等关键词后自动加载 skill
-> 帮我看下 test.host 上 mongod 的 CPU 热点在哪
+# natural language — agent auto-loads the skill on keywords like "high CPU / latency spike / flamegraph / perf record"
+> show me the CPU hotspots in mongod on test.host
 ```
 
-Single-shot 采集与解读流程：
+Single-shot capture-and-interpret flow:
 
-- SSH 连接远端执行 `perf record`，采样时长 `<duration>` 秒
-- `perf script` 提取调用栈 → 本地折叠 → `flamegraph.pl` 生成 SVG
-- 解析 Top-N 热点函数；命中 KB seed 时附加函数级解读
-- 终端渲染 Top-N 表格，并输出远端 SVG 的 `scp` 拉取命令
+- SSH to the remote host and run `perf record` for `<duration>` seconds
+- `perf script` extracts call stacks → fold locally → `flamegraph.pl` renders SVG
+- Parse top-N hotspot functions; attach function-level interpretation when a KB seed matches
+- Render the top-N table in the terminal and print the `scp` command for the remote SVG
 
-SVG 保留在远端 `/tmp/cpu-flamegraph_<ts>/`，需手动 `scp` 拉取。
+The SVG stays on the remote at `/tmp/cpu-flamegraph_<ts>/`; pull it with `scp` manually.
 
-终端输出示例：
+Sample terminal output:
 
 ```text
 > /cpu-flamegraph host=10.0.0.1 user=root process=mongod duration=3 type=oncpu
 
-热点结论 : WiredTigerRecordStore::_insertRecords 24.0% （模块 mongod）
-采样说明 : CPU 时间 12.3 ms ; 范围 mongod (pid=911593)
-热点含义 : 热点已进入数据库引擎侧, 建议结合慢查询、锁与缓存指标继续深挖
+Hotspot     : WiredTigerRecordStore::_insertRecords 24.0% (module mongod)
+Sampling    : CPU time 12.3 ms ; scope mongod (pid=911593)
+Implication : Hotspot is inside the database engine; correlate with slow query, lock, and cache metrics next
 
-═══ 采样元信息 ═══════════════════════════════════════════════════════
+═══ Sampling metadata ════════════════════════════════════════════════
 ┌────┬──────────────────────────────────────────┬─────────┬─────────┐
 │ #  │ Function                                 │ Module  │ Percent │
 ├────┼──────────────────────────────────────────┼─────────┼─────────┤
@@ -100,144 +100,144 @@ SVG 保留在远端 `/tmp/cpu-flamegraph_<ts>/`，需手动 `scp` 拉取。
 │ 4  │ ...                                      │ ...     │  ...    │
 └────┴──────────────────────────────────────────┴─────────┴─────────┘
 
-可视化产物 （留在远端, 自取）:
+Artifacts (left on remote, fetch manually):
   scp root@10.0.0.1:/tmp/cpu-flamegraph_20260510-143022/flamegraph.svg .
   scp root@10.0.0.1:/tmp/cpu-flamegraph_20260510-143022/mongod .
 ```
 
 ### `perf-kp-sql`
 
-支持三种调用方式：
+Three invocation methods are supported:
 
 ```text
-# slash + 完整参数
+# slash + full arguments
 /perf-kp-sql host=10.0.0.1 user=root privateKeyPath=~/.ssh/id_ed25519 engine=mongo
 
-# slash 不带参数 — 进入 Phase 0 历史选单 + 交互式收集凭据
+# slash without arguments — enters Phase 0 history menu and interactively collects credentials
 /perf-kp-sql
 
-# 自然语言 — agent 命中 "数据库慢 / CPU 高 / 抖动 / mongo perf / Kunpeng 性能" 等关键词后自动加载 skill
-> 鲲鹏机器上 MongoDB 凌晨 2 点起 CPU 100%，帮诊断一下
+# natural language — agent auto-loads the skill on keywords like "slow database / high CPU / latency spike / mongo perf / Kunpeng performance"
+> mongod on a Kunpeng box has been at 100% CPU since 2 AM, please diagnose
 ```
 
-LLM 编排的 7 阶段流水线：
+LLM-orchestrated 7-phase pipeline:
 
-- 环境画像（Phase 0）— 单次 SSH 采集 OS / DB / 硬件 / 部署形态
-- 对话引导（Phase 1）— 采集用户描述的问题现象
-- 现象路由（Phase 2）— LLM 匹配 `cases/INDEX.md`，收敛到候选案例集
-- 批量采集（Phase 3）— 按 case 的 `collection_method_quote` 执行指标采集
-- 多源诊断（Phase 4）— 案例阈值直判 + NotebookLM 在线知识库补充查询
-- 报告生成（Phase 5）— 8 列诊断表 + 建议措施，落盘至本地
-- 深入对话（Phase 6，可选）— 基于已采数据回答用户的进一步提问
+- Env probe (Phase 0) — one SSH session collects OS / DB / hardware / deployment topology
+- Symptom intake (Phase 1) — gather the user's description of the issue
+- Symptom routing (Phase 2) — LLM matches against `cases/INDEX.md` and narrows to a candidate set
+- Metric collection (Phase 3) — issue per-case `collection_method_quote` commands to gather metrics
+- Multi-source diagnosis (Phase 4) — threshold judgment from the case library + NotebookLM online KB lookup
+- Report generation (Phase 5) — 8-column diagnosis table + remediation steps, written to disk
+- Follow-up conversation (Phase 6, optional) — answer further questions grounded in the collected data
 
-需要火焰图时自动调用 `cpu-flamegraph`。
+`cpu-flamegraph` is invoked automatically when a flamegraph is needed.
 
-终端输出示例：
+Sample terminal output:
 
 ```text
 > /perf-kp-sql host=10.0.0.1 user=root engine=mongo
 
-━ ohsql perf-kp-sql · 性能诊断 ━
-本次按 5 步执行: 1.环境信息采集 / 2.诊断案例匹配 /
-                3.诊断指标采集 / 4.多源综合诊断 / 5.报告生成
+━ ohsql perf-kp-sql · perf diagnosis ━
+5-step pipeline: 1.env probe / 2.case match /
+                3.metric collection / 4.multi-source diagnosis / 5.report
 
-[1. 环境信息采集 : 系统/数据库版本/硬件信息]
-[环境上下文]
+[1. Env probe : OS / DB version / hardware]
+[Context]
   OS     : Linux 4.19 aarch64 (Kunpeng 920)
   Mongo  : 6.0.5 (replSet primary, 96C / 256G / NVMe)
   sysctl : vm.swappiness=10 / transparent_hugepage=[always]
   ulimit : nofile=65535
 
-> 凌晨 2 点起 CPU 持续 100%, 集中在 mongod
+> CPU has been at 100% on mongod since 2 AM
 
-[2. 诊断案例匹配 : 202 条案例库索引]
-  匹配 5 条 → 收敛到 3 条候选 :
-    • Flame-007 $where JavaScript 解释执行
-    • DF-042    WT cache eviction 压力
-    • DF-001    慢查询时间分布异常
+[2. Case match : 202-case library index]
+  5 candidates → narrowed to 3 :
+    • Flame-007 $where JavaScript interpretation
+    • DF-042    WT cache eviction pressure
+    • DF-001    slow query latency distribution
 
-[3. 诊断指标采集]
-  ✔ 操作系统层 : CPU / 内存 / 磁盘 / 网络
-  ✔ MongoDB 层 : 连接池 / 慢查询 / 锁竞争 / WiredTiger
-  ✔ mongod CPU 火焰图 (perf 3s)
+[3. Metric collection]
+  ✔ OS layer : CPU / memory / disk / network
+  ✔ MongoDB layer : connection pool / slow query / locks / WiredTiger
+  ✔ mongod CPU flamegraph (perf 3s)
 
-[4. 多源综合诊断 : 案例库 + NotebookLM 在线知识库]
-  ✔ 案例库阈值直判 (3 条触发)
-  ✔ NotebookLM 知识库查询 (2/2)
-  ✔ 综合判定
+[4. Multi-source diagnosis : case library + NotebookLM online KB]
+  ✔ Threshold judgment from case library (3 hits)
+  ✔ NotebookLM KB query (2/2)
+  ✔ Final assessment
 
-[5. 报告生成]
+[5. Report]
 
-## 诊断结果
-┌────┬───────────────────────┬──────┬─────────────────┬───────────┬─────────────────────┬────────┬─────────┐
-│ #  │ 根因                  │ 等级 │ 判断依据        │ 命中案例  │ 建议措施            │ 置信度 │ 参考    │
-├────┼───────────────────────┼──────┼─────────────────┼───────────┼─────────────────────┼────────┼─────────┤
-│ 1  │ $where JS 烧 CPU      │ HIGH │ flame self 47%  │ Flame-007 │ 改用 $expr/$function│ 高     │ [参考1] │
-│ 2  │ WT cache 压力         │ HIGH │ dirty 18% > 5%  │ DF-042    │ 调 eviction_*_target│ 中-高  │ [参考2] │
-│ 3  │ 全表扫慢查询占比偏高  │ MED  │ COLLSCAN 23%    │ DF-001    │ 加索引 / 拆 batch   │ 中     │ [参考3] │
-└────┴───────────────────────┴──────┴─────────────────┴───────────┴─────────────────────┴────────┴─────────┘
+## Diagnosis
+┌────┬───────────────────────────┬──────┬─────────────────┬───────────┬────────────────────────┬─────────┬─────────┐
+│ #  │ Root cause                │ Sev  │ Evidence        │ Case      │ Action                 │ Conf    │ Ref     │
+├────┼───────────────────────────┼──────┼─────────────────┼───────────┼────────────────────────┼─────────┼─────────┤
+│ 1  │ $where JS burns CPU       │ HIGH │ flame self 47%  │ Flame-007 │ use $expr/$function    │ high    │ [ref 1] │
+│ 2  │ WT cache pressure         │ HIGH │ dirty 18% > 5%  │ DF-042    │ tune eviction_*_target │ med-hi  │ [ref 2] │
+│ 3  │ COLLSCAN-heavy queries    │ MED  │ COLLSCAN 23%    │ DF-001    │ add index / batch      │ medium  │ [ref 3] │
+└────┴───────────────────────────┴──────┴─────────────────┴───────────┴────────────────────────┴─────────┴─────────┘
 
-报告已落盘 : ~/.perf-kp-sql/runs/20260510-143022/report.md
+Report : ~/.perf-kp-sql/runs/20260510-143022/report.md
 ```
 
-`## 诊断结果` 主表之后还有 `## 综合描述` / `## 辅助信息 · 现场观测` / `## 参考链接` 三段，受篇幅所限不在示例中展示。表中 `[参考N]` 链接在 `## 参考链接` 段展开为具体 URL，全部来自案例库 `source_url` 字段或 NotebookLM 返回的 `references`，不基于模型自身知识推断生成。
+The main `## Diagnosis` table is followed by `## Summary` / `## Auxiliary info · Field observations` / `## References` sections (omitted from this sample for brevity). Each `[ref N]` link in the table is expanded under `## References` to a concrete URL — every URL comes from a case library `source_url` field or a NotebookLM `references` payload, never inferred from the model's own knowledge.
 
 ---
 
-## 输出产物
+## Output artifacts
 
-**`cpu-flamegraph`**（独立运行）
+**`cpu-flamegraph`** (standalone)
 
-- 远端 `/tmp/cpu-flamegraph_<YYYYMMDD-HHMMSS>/flamegraph.svg` — SVG 火焰图，不自动下载；skill 输出 `scp` 命令供手动拉取
-- 同目录下保留 `perf script` 原始输出，文件名为被采集进程名
-- Top-N 热点函数表渲染至对话通道，不落盘
+- Remote `/tmp/cpu-flamegraph_<YYYYMMDD-HHMMSS>/flamegraph.svg` — SVG flamegraph, not auto-downloaded; the skill prints the `scp` command for manual retrieval
+- The same directory keeps the raw `perf script` output, named after the captured process
+- The top-N hotspot table is rendered in the chat channel only, never written to disk
 
-**`perf-kp-sql`**（本地单目录归档 `~/.perf-kp-sql/runs/<YYYYMMDD-HHMMSS>/`）
+**`perf-kp-sql`** (single-directory archive at `~/.perf-kp-sql/runs/<YYYYMMDD-HHMMSS>/`)
 
-| 文件 | 内容 |
+| File | Contents |
 |---|---|
-| `report.md` | 主报告（按 impact 排序的诊断表 + 建议措施） |
-| `env.txt` | Phase 0 环境画像原始输出 |
-| `collect-os.txt` | OS 层采集（vmstat / iostat 等） |
-| `collect-mongo.txt` | MongoDB 层采集（serverStatus 等） |
-| `flame.svg` | 火焰图（本轮采集时生成） |
+| `report.md` | Main report (impact-ordered diagnosis table + remediation) |
+| `env.txt` | Raw output of the Phase 0 environment probe |
+| `collect-os.txt` | OS-layer collection (vmstat / iostat / etc.) |
+| `collect-mongo.txt` | MongoDB-layer collection (serverStatus / etc.) |
+| `flame.svg` | Flamegraph (present only when this run captured one) |
 
-另有两个跨 run 复用的配置文件：`~/.perf-kp-sql/notebooklm.json`（NLM 配置）、`~/.perf-kp-sql/hosts.json`（SSH/DB 连接历史，mode 0600，凭据仅在用户 opt-in 后写入）。
+Two more configuration files are reused across runs: `~/.perf-kp-sql/notebooklm.json` (NLM configuration) and `~/.perf-kp-sql/hosts.json` (SSH/DB connection history, mode 0600 — credentials are written only when the user explicitly opts in).
 
 ---
 
-## 目录结构
+## Architecture
 
-仓库由 `marketplace.json` 索引文件与两个自包含 plugin 构成。布局：
+The repository is a `marketplace.json` index plus two self-contained plugins. Directory layout:
 
 ```text
 ohsql-plugin/
-├── marketplace.json                       # 可安装 plugin 列表
+├── marketplace.json                       # installable plugin index
 └── plugins/
     ├── cpu-flamegraph/
-    │   ├── .claude-plugin/plugin.json     # 版本 / 元数据
+    │   ├── .claude-plugin/plugin.json     # version / metadata
     │   ├── skills/cpu-flamegraph/
-    │   │   ├── SKILL.md                   # 自然语言意图描述，指挥 LLM
-    │   │   └── scripts/capture.mjs        # SSH + perf + flamegraph.pl 生成 SVG
-    │   └── data/kb-seeds/                 # 函数级热点解读字典
+    │   │   ├── SKILL.md                   # prose intent guiding the LLM
+    │   │   └── scripts/capture.mjs        # SSH + perf + flamegraph.pl → SVG
+    │   └── data/kb-seeds/                 # function-level hotspot interpretation dictionary
     └── perf-kp-sql/
-        ├── .claude-plugin/plugin.json     # 版本 + 依赖 cpu-flamegraph ^0.4.0
+        ├── .claude-plugin/plugin.json     # version + depends on cpu-flamegraph ^0.4.0
         ├── skills/
-        │   ├── perf-kp-sql/SKILL.md       # 主诊断流水线 (7 阶段)
-        │   └── perf-kp-sql-setup/SKILL.md # 首次安装运行时校验 + NLM 注册
+        │   ├── perf-kp-sql/SKILL.md       # main diagnosis pipeline (7 phases)
+        │   └── perf-kp-sql-setup/SKILL.md # first-install runtime check + NLM registration
         ├── scripts/
-        │   ├── ssh.mjs                    # SSH_ASKPASS 封装 + ControlMaster 长连接
-        │   ├── notebooklm.mjs             # 通过 nlm CLI 调用 Google NotebookLM
-        │   ├── capture-flamegraph.mjs     # 调用 cpu-flamegraph 子 skill
-        │   ├── format-chat.mjs            # 终端 box-drawing 报告渲染
-        │   └── history.mjs                # ~/.perf-kp-sql/hosts.json 读写
+        │   ├── ssh.mjs                    # SSH_ASKPASS wrapper + ControlMaster persistent connection
+        │   ├── notebooklm.mjs             # calls the nlm CLI to query Google NotebookLM
+        │   ├── capture-flamegraph.mjs     # invokes the cpu-flamegraph sub-skill
+        │   ├── format-chat.mjs            # box-drawing terminal report renderer
+        │   └── history.mjs                # read/write for ~/.perf-kp-sql/hosts.json
         └── data/
-            ├── cases/{INDEX,CASES}.md     # 109 条诊断案例 (诊断流 96 + 火焰图 13)
-            └── best-practice/{INDEX,CASES}.md  # 93 条最佳实践巡检
+            ├── cases/{INDEX,CASES}.md     # 109 diagnostic cases (diagnostic-flow 96 + flame 13)
+            └── best-practice/{INDEX,CASES}.md  # 93 best-practice audit cases
 ```
 
 ---
 
-## 许可证
+## License
 
 MIT
