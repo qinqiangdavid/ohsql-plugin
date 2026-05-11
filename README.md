@@ -230,8 +230,8 @@ ohsql-plugin/
         │   ├── format-chat.mjs            # 终端 box-drawing 报告渲染
         │   └── history.mjs                # ~/.perf-kp-sql/hosts.json 读写
         └── data/
-            ├── cases/{INDEX,CASES}.md     # 109 条 (DF 96 + Flame 13)
-            └── best-practice/{INDEX,CASES}.md  # 93 条 BP 巡检
+            ├── cases/{INDEX,CASES}.md     # 109 条诊断案例 (诊断流 96 + 火焰图签名 13)
+            └── best-practice/{INDEX,CASES}.md  # 93 条最佳实践巡检
 ```
 
 ---
