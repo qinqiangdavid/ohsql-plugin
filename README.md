@@ -2,31 +2,33 @@
 
 [![validate](https://github.com/zlxtqbdgdgd/ohsql-plugin/actions/workflows/validate.yml/badge.svg)](https://github.com/zlxtqbdgdgd/ohsql-plugin/actions/workflows/validate.yml)
 
-Official plugin marketplace for [OpenHarness-SQL](https://github.com/zlxtqbdgdgd/OpenHarness-SQL) — performance diagnosis, CPU flamegraphs, and database tooling.
+> 中文 · [English](README.en.md)
 
-All skills follow the [Anthropic Agent Skills open standard](https://github.com/anthropics/skills), so the same skill source runs natively on Claude Code, OpenAI Codex CLI, and ohsql ≥ 0.38.0 — no per-platform tool mapping or build-time conversion required.
+[OpenHarness-SQL](https://github.com/zlxtqbdgdgd/OpenHarness-SQL) 官方插件 marketplace——性能诊断、CPU 火焰图、数据库工具集。
 
-## Plugins
+所有 skill 遵循 [Anthropic Agent Skills 开放标准](https://github.com/anthropics/skills)，同一份 skill 源码可在 Claude Code、OpenAI Codex CLI、ohsql ≥ 0.38.0 上原生运行，无需为不同 agent 做工具映射或构建期转换。
 
-| Plugin | Version | Hosts | What it does |
+## 插件列表
+
+| 插件 | 版本 | 支持的 agent | 功能 |
 |---|---|---|---|
-| [`cpu-flamegraph`](./plugins/cpu-flamegraph/) | 0.4.0 | Claude Code · Codex CLI · ohsql · any agent with shell + read/write | Remote `perf` over SSH → on-CPU / off-CPU flamegraph SVG → top-N hotspot extraction. Pure local `ssh` + Perl `flamegraph.pl`, zero kernel-tool dependency. |
-| [`perf-kp-sql`](./plugins/perf-kp-sql/) | 0.54.0 | Claude Code · Codex CLI · ohsql · any standard-compliant agent | Kunpeng ARM64 + MongoDB joint perf diagnosis. SSH-based collection → 7-phase LLM-orchestrated pipeline against 202-case markdown case library → NotebookLM authoritative refresh → impact-ranked markdown report. |
+| [`cpu-flamegraph`](./plugins/cpu-flamegraph/) | 0.4.0 | Claude Code · Codex CLI · ohsql · 任何提供 shell + read/write 能力的 agent | 通过 SSH 远程执行 `perf` → 生成 on-CPU / off-CPU 火焰图 SVG → 提取 Top-N 热点函数。纯本地 `ssh` + Perl `flamegraph.pl` 实现，零内核工具依赖。 |
+| [`perf-kp-sql`](./plugins/perf-kp-sql/) | 0.54.0 | Claude Code · Codex CLI · ohsql · 任何符合开放标准的 agent | 鲲鹏 ARM64 + MongoDB 联合性能诊断。基于 SSH 的远程数据采集 → LLM 编排的 7 阶段流水线 → 匹配 202 案例的 markdown 案例库 → NotebookLM 在线知识库补充 → 生成按 impact 排序的 markdown 报告。 |
 
 ---
 
-## Install
+## 安装
 
 ### OpenHarness-SQL (ohsql ≥ 0.38.0)
 
 ```text
 /plugin marketplace add zlxtqbdgdgd/ohsql-plugin
-/plugin install cpu-flamegraph                  # ready immediately
-/plugin install perf-kp-sql                     # auto-installs cpu-flamegraph dep
-/perf-kp-sql-setup                              # verify runtime + register NotebookLM
+/plugin install cpu-flamegraph                  # 安装即可用
+/plugin install perf-kp-sql                     # 自动安装依赖 cpu-flamegraph
+/perf-kp-sql-setup                              # 校验运行时环境 + 注册 NotebookLM
 ```
 
-After `perf-kp-sql-setup` completes:
+`perf-kp-sql-setup` 完成后：
 
 ```text
 /perf-kp-sql host=10.0.0.1 user=root password=xxx engine=mongo
@@ -38,20 +40,20 @@ After `perf-kp-sql-setup` completes:
 /plugin marketplace add zlxtqbdgdgd/ohsql-plugin
 /plugin install cpu-flamegraph
 /plugin install perf-kp-sql
-/perf-kp-sql-setup                              # verify runtime + register NotebookLM
+/perf-kp-sql-setup                              # 校验运行时环境 + 注册 NotebookLM
 ```
 
 ### OpenAI Codex CLI
 
 ```text
 codex plugin marketplace add zlxtqbdgdgd/ohsql-plugin
-# Codex auto-discovers skills from the plugin's skills/ directory
-# For perf-kp-sql, also run: /perf-kp-sql-setup (verifies runtime + registers NotebookLM)
+# Codex 自动从 plugin 的 skills/ 目录发现 skill
+# 对于 perf-kp-sql，还需运行: /perf-kp-sql-setup (校验运行时 + 注册 NotebookLM)
 ```
 
 ---
 
-## Usage
+## 用法
 
 两个 plugin 的执行模型不同——`cpu-flamegraph` 是 single-shot 程序化采集与解读，`perf-kp-sql` 是 LLM 编排的 7 阶段流水线。每个子节包含调用方式、行为说明、终端输出示例（数据为示意）。
 
@@ -182,7 +184,7 @@ LLM 编排的 7 阶段流水线：
 
 ---
 
-## Output artifacts
+## 输出产物
 
 **`cpu-flamegraph`**（独立运行）
 
@@ -204,9 +206,9 @@ LLM 编排的 7 阶段流水线：
 
 ---
 
-## Architecture
+## 目录结构
 
-仓库由 `marketplace.json` 索引文件与两个自包含 plugin 构成。目录布局：
+仓库由 `marketplace.json` 索引文件与两个自包含 plugin 构成。布局：
 
 ```text
 ohsql-plugin/
@@ -215,7 +217,7 @@ ohsql-plugin/
     ├── cpu-flamegraph/
     │   ├── .claude-plugin/plugin.json     # 版本 / 元数据
     │   ├── skills/cpu-flamegraph/
-    │   │   ├── SKILL.md                   # 自然语言意图描述,指挥 LLM
+    │   │   ├── SKILL.md                   # 自然语言意图描述，指挥 LLM
     │   │   └── scripts/capture.mjs        # SSH + perf + flamegraph.pl 生成 SVG
     │   └── data/kb-seeds/                 # 函数级热点解读字典
     └── perf-kp-sql/
@@ -230,12 +232,12 @@ ohsql-plugin/
         │   ├── format-chat.mjs            # 终端 box-drawing 报告渲染
         │   └── history.mjs                # ~/.perf-kp-sql/hosts.json 读写
         └── data/
-            ├── cases/{INDEX,CASES}.md     # 109 条诊断案例 (诊断流 96 + 火焰图签名 13)
+            ├── cases/{INDEX,CASES}.md     # 109 条诊断案例 (诊断流 96 + 火焰图 13)
             └── best-practice/{INDEX,CASES}.md  # 93 条最佳实践巡检
 ```
 
 ---
 
-## License
+## 许可证
 
 MIT
