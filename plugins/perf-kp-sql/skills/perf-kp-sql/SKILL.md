@@ -15,11 +15,13 @@ compatibility: |
   NotebookLM 增强(可选 · 由 setup skill 注册):uv tool install
   notebooklm-mcp-cli(jacob-bd 上游 4.2K star · CDP 标准做法)+ Chromium
   系浏览器(Chrome / Edge / Brave 任一 · 登录用)+ Google 账号。NLM 不可用
-  时 Phase 4B (best-practice 巡检) 退化为 仅案例 判定 · 报告标记 NLM 缺失。
+  时 Phase 4B (指标集合巡检) 退化为 仅案例 判定 · 报告标记 NLM 缺失。
   Supported database engine: mongo (MongoDB 3.6-7.x).
-  Case library: 202 cases (best-practice 93 + diagnostic-flow 96 +
-  flame-signature 13)· canonical 形态即 `data/cases/CASES.md` +
-  `data/best-practice/CASES.md`(plugin 内随版本发布)。
+  Case library: 99 DF cases (含火焰图 signature · 部分以 step.flame_pattern
+  内嵌, 部分以独立 case 形态过渡) + 279 check-items (指标集合 · 派生于
+  case 的 metric/parameter_causes · 含 64 个 standalone 孤儿)· canonical
+  形态即 `data/cases/CASES.md` + `data/check-items/CASES.md`(plugin 内随
+  版本发布)。
 metadata:
   generator: "manual"
   generated_at: "2026-04-29"
@@ -126,10 +128,11 @@ perf-kp-sql 是一个鲲鹏场景下泛数据库性能诊断 skill，基于全�
 
 | 文件 | 用途 | 加载时机 |
 |---|---|---|
-| `data/cases/INDEX.md` | DF + Flame 路由表 (~6.4K tokens) | Phase 2 启动加载 |
-| `data/cases/CASES.md` | DF + Flame 完整字段 | Phase 2.3 用 Read offset+limit 拿单 case · Phase 6 同 |
-| `data/best-practice/INDEX.md` | BP 巡检表 (~6.0K tokens) | Phase 3 nothing 模式才加载 |
-| `data/best-practice/CASES.md` | BP 完整字段 | Phase 3 巡检 / Phase 6 同 |
+| `data/cases/INDEX.md` | DF case 路由表(火焰图嵌入 step) (~6.4K tokens) | Phase 2 启动加载 |
+| `data/cases/CASES.md` | DF case 完整字段 | Phase 2.3 用 Read offset+limit 拿单 case · Phase 6 同 |
+| `data/check-items/INDEX.md` | 指标集合路由表 · 派生于 cases 的 metric + parameter 推荐值 (~6.5K tokens) | Phase 3 nothing 模式才加载 |
+| `data/check-items/CASES.md` | 指标集合完整字段(type=metric / parameter-current-value) | Phase 3 巡检 / Phase 6 同 |
+| `data/notebooklm-urls.json` | NLM 喂料(由 build-runtime-cases-from-md.mjs 从 case source_url 派生) | NLM 注册 / Phase 4 |
 
 **工具**:
 
@@ -138,7 +141,7 @@ perf-kp-sql 是一个鲲鹏场景下泛数据库性能诊断 skill，基于全�
 | `scripts/ssh.mjs --op exec` | SSH wrapper (ControlMaster + SSH_ASKPASS) · 一切 SSH 走它 |
 | `scripts/ssh.mjs --op session-close` | 流程末尾收 master |
 | `scripts/notebooklm.mjs --op query` | NLM 单条查询 |
-| `scripts/notebooklm.mjs --op query-batch --from-bp-list <path>` | NLM 全量 BP 巡检 batch (M4 实装 · per-notebook merged ask) |
+| `scripts/notebooklm.mjs --op query-batch --from-check-list <path>` | NLM 全量指标集合巡检 batch (per-notebook merged ask) |
 | `scripts/format-chat.mjs --chat <report.md> [--cols N]` | 读 .md 报告 · 提取 `## 诊断结果` 8 列 markdown 表 · 按终端列宽 box-drawing 渲染(`┌─┬─┐ │ ├─┼─┤ └─┴─┘`)包进 \`\`\` 代码块 · 综合描述/辅助信息段原样透传 |
 | `scripts/history.mjs --op load|save` | 历史连接 |
 | `scripts/capture-flamegraph.mjs` | 火焰图采集 wrapper(透传到姐妹 skill `cpu-flamegraph` · 详见下方"外部依赖"段)|
@@ -883,7 +886,7 @@ INDEX 含两段:
 | **2-3** | **直接停止收敛 · 全部确认 → 并行进 2.3 拿这 N 个 case 完整字段** · 不再追问用户区分(多 case 一起诊断完全可行 · Phase 3 采集 metric 合并去重 · Phase 4 分别推断) |
 | 4+ | LLM 简短追问 1-2 个最有区分度的问题(例:"是单机还是副本集?" / "现象是持续性还是间歇尖峰?")· 收敛到 ≤ 3 个 → 进 2.3 |
 | 4+ 收窄追问累计 ≥ 5 轮仍 > 3 个 | 强制收口 · 取 LLM 当前认为最可能的 3 个 → 进 2.3(不再纠缠) |
-| 0 | nothing 模式 → 跳过 2.3 · 进 Phase 3.B(BP 巡检) |
+| 0 | nothing 模式 → 跳过 2.3 · 进 Phase 3.B(指标集合巡检) |
 
 **Phase 2 给用户呈现什么**(对外 UX):
 
@@ -1042,7 +1045,7 @@ Read(file_path="/Users/<yourlogin>/.perf-kp-sql/runs/<TS>/collect-mongo.txt")
 3.B.1 · 加载 BP 索引:
 
 ```
-Read(file_path="<PLUGIN_ROOT>/data/best-practice/INDEX.md")
+Read(file_path="<PLUGIN_ROOT>/data/check-items/INDEX.md")
 ```
 
 (~6.0K tokens · 含 case_id + scope + title + 案例 line)。
@@ -1233,46 +1236,46 @@ Bash(command="node <PLUGIN_ROOT>/scripts/notebooklm.mjs --op query \
 
 Flame case 同 DF · 用 `mechanism_quote` 替代 `likely_causes` 描述。
 
-**性能预期**:阶段 2 每个候选根因发 1 条 NLM query · 单 query timeout 60s · 平均 RTT 30-60s。**多个 query 必须同 message 并行**(见阶段 2 标题下硬约束)· 并行后 Phase 4 累计 NLM 时长 ≈ 单 query 最坏耗时 60-120s · 不随候选根因数量线性增长。比 4.B 巡检模式(7 min / 93 BP)短得多 · 是合理代价。
+**性能预期**:阶段 2 每个候选根因发 1 条 NLM query · 单 query timeout 60s · 平均 RTT 30-60s。**多个 query 必须同 message 并行**(见阶段 2 标题下硬约束)· 并行后 Phase 4 累计 NLM 时长 ≈ 单 query 最坏耗时 60-120s · 不随候选根因数量线性增长。比 4.B 巡检模式(7 min / 全量指标集合)短得多 · 是合理代价。
 
-### 4.B · best-practice 巡检(全量经 NLM)
+### 4.B · 指标集合巡检(全量经 NLM · 用户体检模式)
 
-**设计书强制**: 对每个 BP 一律喂 NLM 刷新最新推荐(决策 2 d')。NLM 不可用时退化为 仅案例(报告标记 NLM 缺失)。
+**设计书强制**: 对每条 type=parameter-current-value 的 check-item 一律喂 NLM 刷新最新推荐。NLM 不可用时退化为 仅案例(报告标记 NLM 缺失)。
 
-4.B.1 · 构造 BP 待查列表:
+4.B.1 · 构造 check-item 待查列表:
 
 ```
-Write(file_path="/tmp/perf-kp-sql-bp-list-<TS>.json", content="<JSON 数组>")
+Write(file_path="/tmp/perf-kp-sql-check-list-<TS>.json", content="<JSON 数组>")
 ```
 
 JSON 格式:
 ```json
 [
   {
-    "case_id": "bp-os-mm-vm-swappiness-1",
+    "check_id": "chk-vm-swappiness",
     "param_name": "vm.swappiness",
     "scope": "linux-mm",
     "current_value": "60",
-    "case_recommendation": "1",
-    "scenario_quote": "..."
+    "case_recommendation": "0 or 1",
+    "rationales": ["avoid aggressive swap on dedicated mongod"]
   }
 ]
 ```
 
-`scope` 用 BP 在 best-practice/INDEX.md 里的字段值 · notebooklm.mjs 按 scope 路由到对应 notebook(linux-* → os · storage-engine-/mongodb- → mongo · arch/bios-firmware → kunpeng if hwArch=kunpeng)。
+`scope` 用 check-item 在 check-items/INDEX.md 里的字段值 · notebooklm.mjs 按 scope 路由到对应 notebook(linux-* → os · storage-engine-/mongodb- → mongo · arch/bios-firmware → kunpeng if hwArch=kunpeng)。
 
 4.B.2 · batch 调:
 
 ```
 Bash(command="node <PLUGIN_ROOT>/scripts/notebooklm.mjs --op query-batch \
-       --from-bp-list /tmp/perf-kp-sql-bp-list-<TS>.json \
+       --from-check-list /tmp/perf-kp-sql-bp-list-<TS>.json \
        --hw-arch <kunpeng|x86_64> \
        --json", timeout=600000)
 ```
 
-内部按 BP scope 路由到 notebook(linux-* → os · storage-engine-/mongodb- → mongo · arch/bios → kunpeng)· chunk size 5 控制单 ask prompt 长度 · chunk 间 + notebook 间各 2s 节流。
+内部按 check-item scope 路由到 notebook(linux-* → os · storage-engine-/mongodb- → mongo · arch/bios → kunpeng)· chunk size 5 控制单 ask prompt 长度 · chunk 间 + notebook 间各 2s 节流。
 
-实测 93 BP / 3 notebook ≈ 7 min。
+实测 ~140 个 parameter-current-value check-item / 3 notebook ≈ 10 min。
 
 4.B.3 · LLM 解析返回 → 每个 BP 综合判定(设计书 §4):
 
@@ -1701,7 +1704,7 @@ NLM 不可用时只走 案例 · 回答末尾附:
 - **不向用户输出内部实现术语**(详见下方独立一节《用户可见消息 · 禁用元词清单》)
 - 工具失败 → 静默重试 1 次,第 2 次仍失败 → 一行 diagnostic 跳过,cap=2
 - 不道歉 / 不反省 / 不自述内部出错
-- NLM 不可用 → Phase 4.B 退化为 仅案例 · 报告里标"NLM 缺失,best-practice 巡检使用 案例 当前推荐(可能落后官方最新)"
+- NLM 不可用 → Phase 4.B 退化为 仅案例 · 报告里标"NLM 缺失,指标集合巡检使用案例当前推荐(可能落后官方最新)"
 
 ---
 
@@ -1722,9 +1725,9 @@ NLM 不可用时只走 案例 · 回答末尾附:
 | **`case_id` 字面值**(全部场景 · 包括 Phase 2 候选 / Phase 5 报告 / Phase 6 追问)| 内部数据 ID · 给用户讲就说"对应规则" / "我查到的一个匹配项" |
 | **内部 metric 名清单**(`db.serverStatus().wiredTiger.cache` / `top -H` / `numastat -m` 等准备拉的命令)| Phase 3 LLM 自己 SSH 执行 · 用户给凭据后我自己拉 · 不需要列给用户看 |
 | **内部分类名**(`symptom_category` / `case_pattern` / `scope` / `bucket` 等 INDEX 列名)| 案例 内部数据 schema · 用户不关心 · 用人话替代("查询慢" / "内存压力" / 等) |
-| **内部统计数字**(`93 条 best-practice` / `109 case` / `11 个 symptom_category` / `45% 概率`)| 内部 案例 规模 / LLM 估算 · 给用户看反而困惑 · 直接给追问问题或开始 SSH |
+| **内部统计数字**(`279 条 check-items` / `99 case` / `11 个 symptom_category` / `45% 概率`)| 内部 案例 规模 / LLM 估算 · 给用户看反而困惑 · 直接给追问问题或开始 SSH |
 | **case 候选概率 / 置信度**(`45% / 35% / 20%` / "置信度 45/35/20")| Phase 4 报告才标置信度 · Phase 2 不标 |
-| `--op query-batch` / `--from-bp-list` 等命令行参数 | 程序参数 |
+| `--op query-batch` / `--from-check-list` 等命令行参数 | 程序参数 |
 | **软件工程黑话中译**:`反模式` (anti-pattern) / `后置` / `前置` (post-/pre-) / `笛卡尔积效应` / `coalescence` / `合并优化` (compiler/optimizer 术语) | 直接用大白话:"写法不对" / "顺序反了" / "放在后面" vs "提到前面" / "文档数膨胀" 等 · 用户不需要懂工程英文中译就能 follow |
 
 **判断规则**:看输出时把每个英文坐标词圈出来 — 如果用户得在脑里翻译成"哦,这是第几阶段哪一步",**就违规**。直接说做什么。
@@ -1737,7 +1740,7 @@ NLM 不可用时只走 案例 · 回答末尾附:
 | `task 1 ✔ · task 2 in_progress` | `环境信息采集完成,开始匹配诊断案例。` |
 | `Phase 4.B 跑 query-batch` | `开始批量刷新最佳实践推荐。` |
 | `case_id=bp-os-mm-vm-swappiness-1 命中` | `匹配到一条规则:vm.swappiness 设置不当。` |
-| `nothing 模式触发,加载 best-practice/INDEX.md` | `用户描述模糊,转入巡检模式。` |
+| `nothing 模式触发,加载 check-items/INDEX.md` | `用户描述模糊,转入巡检模式。` |
 | `Gate 4 自检触发` | (静默重试,不公开)|
 | Phase 2 列 `· kunpeng-nohz-clock-tick-overhead-03 · 周期时钟中断` | `根据描述 · 我大致定位到几个方向 · 接下来需要在你的机器上拉一些指标做验证 · 请提供 SSH 凭据。` |
 | Phase 2 列 `查询/聚合: 45% · WiredTiger: 35% · 鲲鹏: 20%` | (整段不要 · 直接问"是单机还是副本集?"或者"请给 SSH 凭据") |
@@ -1758,14 +1761,15 @@ NLM 不可用时只走 案例 · 回答末尾附:
 
 | 文件 | 用途 |
 |---|---|
-| `data/cases/INDEX.md` | DF + Flame 路由表(Phase 2 加载) |
-| `data/cases/CASES.md` | DF + Flame 完整字段(Phase 2.3 / Phase 6 用 Read offset+limit) |
-| `data/best-practice/INDEX.md` | BP 巡检表(Phase 3.B nothing 模式加载) |
-| `data/best-practice/CASES.md` | BP 完整字段(Phase 6 追问) |
+| `data/cases/INDEX.md` | DF case 路由表(火焰图嵌入 step.flame_pattern · Phase 2 加载) |
+| `data/cases/CASES.md` | DF case 完整字段(Phase 2.3 / Phase 6 用 Read offset+limit) |
+| `data/check-items/INDEX.md` | 指标集合路由表(Phase 3.B nothing 模式加载) |
+| `data/check-items/CASES.md` | 指标集合完整字段(type=metric/parameter-current-value · Phase 6 追问) |
+| `data/notebooklm-urls.json` | NLM 喂料(从 case source_url 派生) |
 | `scripts/ssh.mjs --op exec` | SSH 远端执行 |
 | `scripts/ssh.mjs --op session-close` | 流程末尾收 master |
 | `scripts/notebooklm.mjs --op query` | NLM 单条查询 |
-| `scripts/notebooklm.mjs --op query-batch` | NLM 全量 BP 巡检 batch |
+| `scripts/notebooklm.mjs --op query-batch` | NLM 全量指标集合巡检 batch |
 | `scripts/format-chat.mjs --chat <report.md> [--cols N]` | 读 .md 报告 · 8 列 markdown 表 box-drawing 渲染包进 \`\`\` 代码块(Phase 5.4 调用) |
 | `scripts/history.mjs --op load|save` | 历史连接 |
 | `scripts/capture-flamegraph.mjs` | 火焰图采集 wrapper(透传到姐妹 skill `cpu-flamegraph` · 详见 Architecture「外部依赖」段)|

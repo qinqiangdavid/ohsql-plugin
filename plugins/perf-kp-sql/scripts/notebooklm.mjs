@@ -923,9 +923,9 @@ function routeBpToNotebooks(bp, hwArch, cfg) {
   return notebooks;
 }
 
-function opQueryBatch({ fromDiagnose, fromBpList, hwArch }) {
-  if (!fromDiagnose && !fromBpList) fatal("--from-diagnose 或 --from-bp-list 必须提供其一");
-  if (fromDiagnose && fromBpList) fatal("--from-diagnose 和 --from-bp-list 不能同时给");
+function opQueryBatch({ fromDiagnose, fromCheckList, hwArch }) {
+  if (!fromDiagnose && !fromCheckList) fatal("--from-diagnose 或 --from-check-list 必须提供其一");
+  if (fromDiagnose && fromCheckList) fatal("--from-diagnose 和 --from-check-list 不能同时给");
   if (!isCliInstalled()) fatal("nlm 未安装，请先跑 /perf-kp-sql-setup");
 
   const cfg = loadConfig();
@@ -946,9 +946,9 @@ function opQueryBatch({ fromDiagnose, fromBpList, hwArch }) {
       route: routeToNotebooks(cr, hwArch, cfg),
     }));
   } else {
-    const bpList = JSON.parse(readFileSync(resolve(fromBpList), "utf8"));
-    if (!Array.isArray(bpList)) fatal("--from-bp-list 文件须是 JSON 数组");
-    items = bpList.map((bp) => ({
+    const checkList = JSON.parse(readFileSync(resolve(fromCheckList), "utf8"));
+    if (!Array.isArray(checkList)) fatal("--from-check-list 文件须是 JSON 数组");
+    items = checkList.map((bp) => ({
       case_id: bp.case_id,
       prompt: buildBpPrompt(bp),
       route: routeBpToNotebooks(bp, hwArch, cfg),
@@ -1218,7 +1218,7 @@ if (process.argv.slice(2).some((a) => a === "--help" || a === "-h")) {
       "  urls-summary [--urls-file <p>] 输出各域 URL 数（让 SKILL agent 不用自己 parse JSON）",
       "  disable [--reason <text>]      跳过 NLM，仅走案例",
       "  query --domain <d> --query <q> [--json]      单条查询（d=os/mongo/kunpeng/auto）",
-      "  query-batch --from-diagnose <p> | --from-bp-list <p> [--hw-arch <a>] [--json]",
+      "  query-batch --from-diagnose <p> | --from-check-list <p> [--hw-arch <a>] [--json]",
       "                                  批量查询",
       "  add-domain --domain <d> --urls-file <path>   注册新 domain",
       "",
@@ -1227,7 +1227,7 @@ if (process.argv.slice(2).some((a) => a === "--help" || a === "-h")) {
       "  --domain <d>                   os | mongo | kunpeng | auto",
       "  --query <q>                    查询字面值",
       "  --from-diagnose <path>         诊断 batch JSON",
-      "  --from-bp-list <path>          BP 巡检 JSON 数组",
+      "  --from-check-list <path>          BP 巡检 JSON 数组",
       "  --hw-arch <arch>               kunpeng | x86_64",
       "  --urls-file <path>             URL 列表",
       "  --reason <text>                disable 时的原因",
@@ -1245,7 +1245,7 @@ const { values } = parseArgs({
     domain: { type: "string" },
     query: { type: "string" },
     "from-diagnose": { type: "string" },
-    "from-bp-list": { type: "string" },
+    "from-check-list": { type: "string" },
     "hw-arch": { type: "string" },
     "urls-file": { type: "string" },
     reason: { type: "string" },
@@ -1279,7 +1279,7 @@ const { values } = parseArgs({
       case "query-batch":
         opQueryBatch({
           fromDiagnose: values["from-diagnose"],
-          fromBpList: values["from-bp-list"],
+          fromCheckList: values["from-check-list"],
           hwArch: values["hw-arch"],
         });
         break;

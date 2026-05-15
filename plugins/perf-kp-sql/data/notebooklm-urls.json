@@ -1,200 +1,518 @@
 {
-  "domains": [
+  "generated_at": "2026-05-15T06:44:14.548Z",
+  "total_urls": 69,
+  "urls": [
     {
-      "domain": "mongo",
-      "notebook_name": "ohsql-mongo-kb",
-      "language": "en",
-      "urls": [
-        {
-          "url": "https://www.mongodb.com/docs/manual/reference/operator/aggregation/lookup/",
-          "title": "$lookup (aggregation stage) - Database Manual - MongoDB Docs"
-        },
-        {
-          "url": "https://www.mongodb.com/docs/manual/core/aggregation-pipeline-optimization/",
-          "title": "Aggregation Pipeline Optimization - Database Manual - MongoDB Docs"
-        },
-        {
-          "url": "https://www.mongodb.com/docs/atlas/analyze-slow-queries/",
-          "title": "Analyze Slow Queries - Atlas - MongoDB Docs"
-        },
-        {
-          "url": "https://www.mongodb.com/docs/manual/data-modeling/best-practices/",
-          "title": "Best Practices for Data Modeling in MongoDB - Database Manual - MongoDB Docs"
-        },
-        {
-          "url": "https://www.mongodb.com/community/forums/t/build-advice-for-arm64-aarch64/16736",
-          "title": "Build advice for arm64/aarch64? - MongoDB Server Development - MongoDB Community Hub"
-        },
-        {
-          "url": "https://www.mongodb.com/docs/manual/core/bulk-write-operations/",
-          "title": "Bulk Write Operations - Database Manual - MongoDB Docs"
-        },
-        {
-          "url": "https://www.mongodb.com/docs/manual/core/capped-collections/",
-          "title": "Capped Collections - Database Manual - MongoDB Docs"
-        },
-        {
-          "url": "https://www.mongodb.com/docs/manual/core/sharding-choose-a-shard-key/",
-          "title": "Choose a Shard Key - Database Manual - MongoDB Docs"
-        },
-        {
-          "url": "https://www.mongodb.com/docs/manual/core/index-compound/",
-          "title": "Compound Indexes - Database Manual - MongoDB Docs"
-        },
-        {
-          "url": "https://www.mongodb.com/docs/manual/tutorial/manage-the-database-profiler/",
-          "title": "Database Profiler - Database Manual - MongoDB Docs"
-        },
-        {
-          "url": "https://www.mongodb.com/docs/manual/core/index-hashed/",
-          "title": "Hashed Indexes - Database Manual - MongoDB Docs"
-        },
-        {
-          "url": "https://www.mongodb.com/resources/products/capabilities/how-to-monitor-mongodb-and-what-metrics-to-monitor",
-          "title": "How To Monitor MongoDB And What Metrics To Monitor | MongoDB"
-        },
-        {
-          "url": "https://www.mongodb.com/docs/manual/core/journaling/",
-          "title": "Journaling - Database Manual - MongoDB Docs"
-        },
-        {
-          "url": "https://www.mongodb.com/docs/manual/reference/log-messages/",
-          "title": "Log Messages - Database Manual - MongoDB Docs"
-        },
-        {
-          "url": "https://www.mongodb.com/docs/manual/reference/limits/",
-          "title": "MongoDB Limits and Thresholds - Database Manual - MongoDB Docs"
-        },
-        {
-          "url": "https://www.mongodb.com/docs/manual/reference/parameters/",
-          "title": "MongoDB Server Parameters for a Self-Managed Deployment - Database Manual - MongoDB Docs"
-        },
-        {
-          "url": "https://www.mongodb.com/blog/post/performance-best-practices-series-sharding-cn",
-          "title": "MongoDB性能系列最佳实践-分片\n\n| MongoDB"
-        },
-        {
-          "url": "https://www.mongodb.com/docs/atlas/tutorial/query-profiler/",
-          "title": "Monitor Query Performance with the Query Profiler - Atlas - MongoDB Docs"
-        },
-        {
-          "url": "https://www.mongodb.com/docs/manual/core/index-multikey/",
-          "title": "Multikey Indexes - Database Manual - MongoDB Docs"
-        },
-        {
-          "url": "https://www.mongodb.com/company/blog/performance-best-practices-hardware-and-os-configuration",
-          "title": "Performance Best Practices: Hardware and OS Configuration | MongoDB"
-        },
-        {
-          "url": "https://www.mongodb.com/company/blog/mongodb/performance-best-practices-sharding",
-          "title": "Performance Best Practices: Sharding | MongoDB"
-        },
-        {
-          "url": "https://www.mongodb.com/company/blog/technical/performance-best-practices-transactions-and-read-write-concerns",
-          "title": "Performance Best Practices: Transactions And Read / Write Concerns | MongoDB"
-        },
-        {
-          "url": "https://www.mongodb.com/docs/manual/administration/performance-tuning/",
-          "title": "Performance Tuning - Database Manual - MongoDB Docs"
-        },
-        {
-          "url": "https://www.mongodb.com/docs/manual/administration/production-notes/",
-          "title": "Production Notes for Self-Managed Deployments - Database Manual - MongoDB Docs"
-        },
-        {
-          "url": "https://www.mongodb.com/docs/manual/core/query-optimization/",
-          "title": "Query Optimization - Database Manual - MongoDB Docs"
-        },
-        {
-          "url": "https://www.mongodb.com/docs/manual/core/read-isolation-consistency-recency/",
-          "title": "Read Isolation, Consistency, and Recency - Database Manual - MongoDB Docs"
-        },
-        {
-          "url": "https://www.mongodb.com/docs/manual/core/read-preference/",
-          "title": "Read Preference - Database Manual - MongoDB Docs"
-        },
-        {
-          "url": "https://www.mongodb.com/docs/manual/core/replica-set-oplog/",
-          "title": "Replica Set Oplog - Database Manual - MongoDB Docs"
-        },
-        {
-          "url": "https://www.mongodb.com/docs/manual/reference/configuration-options/",
-          "title": "Self-Managed Configuration File Options - Database Manual - MongoDB Docs"
-        },
-        {
-          "url": "https://www.mongodb.com/docs/manual/sharding/",
-          "title": "Sharding - Database Manual - MongoDB Docs"
-        },
-        {
-          "url": "https://www.mongodb.com/docs/manual/core/index-text/",
-          "title": "Text Indexes on Self-Managed Deployments - Database Manual - MongoDB Docs"
-        },
-        {
-          "url": "https://www.mongodb.com/docs/manual/core/transactions/",
-          "title": "Transactions - Database Manual - MongoDB Docs"
-        },
-        {
-          "url": "https://www.mongodb.com/docs/manual/reference/command/balancerStart/",
-          "title": "balancerStart (database command) - Database Manual - MongoDB Docs"
-        }
+      "source_url": "https://www.cnblogs.com/huaweicloud/p/11861191.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "kunpeng-nohz-clock-tick-overhead-03",
+        "kunpeng-tlb-miss-page-size-04",
+        "kunpeng-thread-concurrency-overload-05"
       ]
     },
     {
-      "domain": "kunpeng",
-      "notebook_name": "ohsql-kunpeng-kb",
-      "language": "zh",
-      "urls": [
-        {
-          "url": "https://www.hikunpeng.com/document/detail/en/perftuning/progtuneg/kunpengprogramming_05_0005.html",
-          "title": "Affinity and Core Binding-Multi-core and NUMA-Kunpeng Programming and Tuning Guide-Kunpeng Performance Tuning开发文档-鲲鹏社区"
-        },
-        {
-          "url": "https://www.hikunpeng.com/document/detail/zh/kunpengdbs/ecosystemEnable/MongoDB/kunpengdbstune_05_0011.html",
-          "title": "IO参数调优-操作系统调优-调优指南-MongoDB-开源使能-鲲鹏BoostKit数据库场景开发文档-鲲鹏社区"
-        },
-        {
-          "url": "https://www.hikunpeng.com/document/detail/en/perftuning/progtuneg/kunpengprogramming_05_0001.html",
-          "title": "Overview-Kunpeng Programming and Tuning Guide-Kunpeng Performance Tuning开发文档-鲲鹏社区"
-        },
-        {
-          "url": "https://www.hikunpeng.com/document/detail/zh/kunpengfaq/productfaq/boostkitfaq/boostkit_faq_0001.html",
-          "title": "基本概念-鲲鹏BoostKit-产品与技术常见问题-鲲鹏常见问题开发文档-鲲鹏社区"
-        }
+      "source_url": "https://www.hikunpeng.com/document/detail/zh/kunpengdbs/ecosystemEnable/MongoDB/kunpengdbstune_05_0006.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "mongo-fs-mount-noatime-nobarrier-missing-01"
       ]
     },
     {
-      "domain": "os",
-      "notebook_name": "ohsql-os-kb",
-      "language": "en",
-      "urls": [
-        {
-          "url": "https://www.kernel.org/doc/Documentation/admin-guide/cgroup-v2.rst",
-          "title": "https://www.kernel.org/doc/Documentation/admin-guide/cgroup-v2.rst"
-        },
-        {
-          "url": "https://www.kernel.org/doc/Documentation/admin-guide/mm/hugetlbpage.rst",
-          "title": "https://www.kernel.org/doc/Documentation/admin-guide/mm/hugetlbpage.rst"
-        },
-        {
-          "url": "https://www.kernel.org/doc/Documentation/admin-guide/mm/transhuge.rst",
-          "title": "https://www.kernel.org/doc/Documentation/admin-guide/mm/transhuge.rst"
-        },
-        {
-          "url": "https://www.kernel.org/doc/Documentation/admin-guide/sysctl/kernel.rst",
-          "title": "https://www.kernel.org/doc/Documentation/admin-guide/sysctl/kernel.rst"
-        },
-        {
-          "url": "https://www.kernel.org/doc/Documentation/admin-guide/sysctl/net.rst",
-          "title": "https://www.kernel.org/doc/Documentation/admin-guide/sysctl/net.rst"
-        },
-        {
-          "url": "https://www.kernel.org/doc/Documentation/admin-guide/sysctl/vm.rst",
-          "title": "https://www.kernel.org/doc/Documentation/admin-guide/sysctl/vm.rst"
-        },
-        {
-          "url": "https://www.kernel.org/doc/Documentation/block/queue-sysfs.rst",
-          "title": "https://www.kernel.org/doc/Documentation/block/queue-sysfs.rst"
-        }
+      "source_url": "https://www.hikunpeng.com/document/detail/zh/kunpengdbs/ecosystemEnable/MongoDB/kunpengdbstune_05_0010.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "mongo-os-tcp-stack-tuning-01"
+      ]
+    },
+    {
+      "source_url": "https://www.hikunpeng.com/document/detail/zh/kunpengdbs/ecosystemEnable/MongoDB/kunpengdbstune_05_0031.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "mongo-client-os-tcp-tuning-01"
+      ]
+    },
+    {
+      "source_url": "https://www.hikunpeng.com/document/detail/zh/kunpengdbs/systuningguide/tngg/kunpengdbs_tuningguide_05_0007.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "kunpeng-bios-smmu-enabled-non-virt-01",
+        "kunpeng-bios-cpu-prefetch-enabled-01"
+      ]
+    },
+    {
+      "source_url": "https://www.hikunpeng.com/document/detail/zh/kunpengdbs/systuningguide/tngg/kunpengdbs_tuningguide_05_0013.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "kunpeng-net-irq-not-bound-irqbalance-on-01"
+      ]
+    },
+    {
+      "source_url": "https://www.hikunpeng.com/document/detail/zh/kunpengdbs/systuningguide/tngg/kunpengdbs_tuningguide_05_0018.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "linux-blockdev-nr-requests-too-low-01"
+      ]
+    },
+    {
+      "source_url": "https://www.hikunpeng.com/document/detail/zh/kunpengdbs/systuningguide/tngg/kunpengdbs_tuningguide_05_0019.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "kvm-vcpupin-not-bound-numa-cross-01"
+      ]
+    },
+    {
+      "source_url": "https://www.hikunpeng.com/document/detail/zh/kunpengdbs/systuningguide/tngg/kunpengdbs_tuningguide_05_0021.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "kvm-host-hugepages-not-allocated-tlb-miss-01"
+      ]
+    },
+    {
+      "source_url": "https://www.hikunpeng.com/document/detail/zh/perftuning/tuningtip/kunpengtuning_12_0014.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "kunpeng-numa-cross-node-memory-access-01"
+      ]
+    },
+    {
+      "source_url": "https://www.hikunpeng.com/document/detail/zh/perftuning/tuningtip/kunpengtuning_12_0026.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "kunpeng-network-irq-cross-numa-01"
+      ]
+    },
+    {
+      "source_url": "https://www.hikunpeng.com/document/detail/zh/perftuning/tuningtip/kunpengtuning_12_0027.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "linux-nic-interrupt-coalescing-audit-01"
+      ]
+    },
+    {
+      "source_url": "https://www.hikunpeng.com/document/detail/zh/perftuning/tuningtip/kunpengtuning_12_0030.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "linux-rps-single-queue-nic-softirq-bottleneck-01"
+      ]
+    },
+    {
+      "source_url": "https://www.hikunpeng.com/document/detail/zh/perftuning/tuningtip/kunpengtuning_12_0037.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "linux-vm-dirty-flush-burst-io-wait-01"
+      ]
+    },
+    {
+      "source_url": "https://www.hikunpeng.com/document/detail/zh/perftuning/tuningtip/kunpengtuning_12_0040.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "linux-block-scheduler-mismatch-01"
+      ]
+    },
+    {
+      "source_url": "https://www.hikunpeng.com/document/detail/zh/perftuning/tuningtip/kunpengtuning_12_0041.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "linux-fs-mount-nobarrier-audit-01",
+        "linux-fs-xfs-blocksize-audit-01"
+      ]
+    },
+    {
+      "source_url": "https://www.hikunpeng.com/document/detail/zh/perftuning/tuningtip/kunpengtuning_12_0050.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "kunpeng-arm64-spinlock-cas-cpu-waste-01"
+      ]
+    },
+    {
+      "source_url": "https://www.hikunpeng.com/document/detail/zh/perftuning/tuningtip/kunpengtuning_12_0052.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "kunpeng-cacheline-false-sharing-arm64-128b-01"
+      ]
+    },
+    {
+      "source_url": "https://www.percona.com/blog/tuning-linux-for-mongodb/",
+      "lang": "en",
+      "linked_case_ids": [
+        "linux-vm-dirty-ratio-pause-on-large-memory-01",
+        "linux-thp-mongodb-sparse-memory-access-02",
+        "linux-readahead-default-128kb-wastes-fs-cache-04"
+      ]
+    },
+    {
+      "source_url": "https://alexbevi.com/blog/2018/05/28/troubleshooting-a-mongodb-performance-issue/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-cache-spike-replication-lag-cascade-01"
+      ]
+    },
+    {
+      "source_url": "https://finisky.github.io/en/mongodb-chunk-migration-failed/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-shard-chunk-migration-x-lock-timeout-balancer-stuck-01"
+      ]
+    },
+    {
+      "source_url": "https://jira.mongodb.org/browse/SERVER-16479",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-wt-large-page-eviction-fetch-pause-server-16479"
+      ]
+    },
+    {
+      "source_url": "https://jira.mongodb.org/browse/SERVER-17907",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-wt-btree-sweep-eviction-collection-blocked-server-17907"
+      ]
+    },
+    {
+      "source_url": "https://jira.mongodb.org/browse/SERVER-31417",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-tcmalloc-decommit-madvise-lock-stall-server-31417"
+      ]
+    },
+    {
+      "source_url": "https://jira.mongodb.org/browse/SERVER-33296",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-tcmalloc-heap-fragmentation-pageheap-free-server-33296"
+      ]
+    },
+    {
+      "source_url": "https://jira.mongodb.org/browse/WT-6175",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-wt-tcmalloc-fragmentation-durable-history-wt-6175"
+      ]
+    },
+    {
+      "source_url": "https://mongoing.com/archives/39593",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "mongo-globallock-current-queue-high-lock-contention-01"
+      ]
+    },
+    {
+      "source_url": "https://mongoing.com/archives/74118",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "mongo-pagination-skip-deep-page-rewrite-02"
+      ]
+    },
+    {
+      "source_url": "https://mongoing.com/archives/77972",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "mongo-wt-checkpoint-period-tuning-disk-io-spike-02",
+        "mongo-system-sessions-update-storm-primary-shard-degradation-03"
+      ]
+    },
+    {
+      "source_url": "https://mongoing.com/archives/78150",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "mongo-slow-log-currentop-long-query-kill-02"
+      ]
+    },
+    {
+      "source_url": "https://source.wiredtiger.com/mongodb-6.0/tune_cache.html",
+      "lang": "en",
+      "linked_case_ids": [
+        "wt-eviction-trigger-app-thread-throttle-01"
+      ]
+    },
+    {
+      "source_url": "https://www.hikunpeng.com/document/detail/zh/kunpengdbs/ecosystemEnable/MongoDB/kunpengdbstune_05_0030.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "mongo-snappy-hotspot-cpu-high-arm64-01"
+      ]
+    },
+    {
+      "source_url": "https://www.hikunpeng.com/document/detail/zh/perftuning/tuningtip/kunpengtuning_12_0013.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "app-thread-concurrency-mismatch-01"
+      ]
+    },
+    {
+      "source_url": "https://www.hikunpeng.com/document/detail/zh/perftuning/tuningtip/kunpengtuning_12_0051.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "app-malloc-jemalloc-multithread-audit-01"
+      ]
+    },
+    {
+      "source_url": "https://www.mafiree.com/blog/mongodb-query-optimization-ecommerce-case-study",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-aggregation-unbounded-pipeline-no-early-match-01"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/atlas/performance-advisor/schema-suggestions/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-schema-too-many-lookups-should-embed-01",
+        "mongo-schema-unused-indexes-bloat-03",
+        "mongo-schema-document-too-large-04"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/atlas/reference/alert-resolutions/query-targeting/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-query-targeting-high-scan-ratio-01"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/atlas/tutorial/query-profiler/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-slow-query-profiler-metric-01"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/manual/administration/analyzing-mongodb-performance/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-locking-queue-buildup-01",
+        "mongo-connection-storm-driver-error-02"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/manual/administration/performance-tuning/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-wt-tickets-exhausted-01",
+        "mongo-replication-lag-multi-cause-02",
+        "mongo-open-cursor-rising-no-traffic-03",
+        "mongo-scan-and-order-high-04",
+        "mongo-unbound-array-rewrite-pressure-05"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/manual/administration/production-checklist-development/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-driver-pool-size-too-small-vs-concurrent-requests-02"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/manual/administration/production-checklist-operations/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-fs-nfs-dbpath-degraded-unstable-perf-01",
+        "mongo-fs-ext4-wiredtiger-perf-issue-should-use-xfs-02",
+        "mongo-tuned-profile-default-rhel-perf-impact-05"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/manual/administration/production-notes/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-network-tcp-keepalive-too-long-cloud-lb-drops-02",
+        "mongo-numa-cross-node-memory-degradation-04",
+        "mongo-os-vm-swappiness-default-60-aggressive-swap-05",
+        "mongo-aws-ec2-storage-network-tuning-06"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/manual/administration/tcmalloc-performance/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-tcmalloc-percpu-caches-not-enabled-01"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/manual/core/replica-set-arbiter/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-psa-majority-writeconcern-perf-degradation-01"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/manual/core/wiredtiger/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-wt-cache-size-misconfigured-01"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/manual/reference/explain-results/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-explain-sort-stage-disk-spill-01"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/manual/tutorial/connection-pool-performance-tuning/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-pool-connect-timeout-too-large-01",
+        "mongo-pool-socket-timeout-firewall-half-close-02",
+        "mongo-pool-minpoolsize-too-low-startup-creating-conns-03",
+        "mongo-pool-maxpoolsize-too-low-underutilized-04",
+        "mongo-pool-maxpoolsize-too-high-cpu-pressure-05"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/manual/tutorial/explain-slow-queries/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-slow-query-explain-multi-stage-01"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/manual/tutorial/manage-the-database-profiler/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-profiler-threshold-sampling-audit-01"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/manual/tutorial/transparent-huge-pages/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-8x-thp-disabled-tcmalloc-suboptimal-01"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/manual/tutorial/troubleshoot-replica-sets/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-replica-set-replication-lag-01"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/ops-manager/current/reference/alerts/replication-lag/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-replica-lag-secondary-behind-primary-01"
+      ]
+    },
+    {
+      "source_url": "https://www.mydbops.com/blog/mongodb-8-slow-query-analysis-working-time-vs-duration-metrics",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-slow-log-queue-wait-vs-working-time-mongodb8-01"
+      ]
+    },
+    {
+      "source_url": "https://www.mydbops.com/blog/mongodb-plancache-memory-issue-sbe-fix",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-plancache-bloat-sbe-7-0-oom-kills-01"
+      ]
+    },
+    {
+      "source_url": "https://www.percona.com/blog/2018/04/09/mongodb-sharding-are-chunks-balanced-part-1/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-sharding-jumbo-chunk-uneven-write-load-01",
+        "mongo-sharding-equal-chunks-skewed-data-getshard-distribution-02"
+      ]
+    },
+    {
+      "source_url": "https://www.percona.com/blog/configure-wiredtiger-cachesize-inside-percona-distribution-for-mongodb-kubernetes-operator/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-k8s-container-wt-cache-fallback-256mb-01",
+        "mongo-k8s-operator-cachesize-bug-cpu-limit-required-02"
+      ]
+    },
+    {
+      "source_url": "https://www.percona.com/blog/memory-management-in-mongodb-8-0-testing-the-new-tcmalloc/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-8-0-tcmalloc-percpu-prerequisite-not-met-01"
+      ]
+    },
+    {
+      "source_url": "https://www.percona.com/blog/mongodb-investigate-queries-with-explain-index-usage-part-2/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-query-ixscan-poor-selectivity-extra-sort-02"
+      ]
+    },
+    {
+      "source_url": "https://www.percona.com/blog/mongodb-performance-regression-benchmarking-and-the-truth-behind-journaling/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-write-regression-default-writeconcern-majority-journal-01"
+      ]
+    },
+    {
+      "source_url": "https://www.percona.com/blog/tuning-mongodb-for-bulk-loads/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-wt-checkpoint-time-grows-bulk-load-stall-01"
+      ]
+    },
+    {
+      "source_url": "https://www.brendangregg.com/FlameGraphs/cpuflamegraphs.html",
+      "lang": "en",
+      "linked_case_ids": [
+        "linux-fs-mmap-metadata-archiver-01"
+      ]
+    },
+    {
+      "source_url": "https://www.brendangregg.com/FlameGraphs/memoryflamegraphs.html",
+      "lang": "en",
+      "linked_case_ids": [
+        "glibc-malloc-allocator-hot-stack-01",
+        "linux-mm-brk-heap-expansion-01",
+        "linux-mm-mmap-vm-growth-01",
+        "linux-mm-page-fault-physical-population-01"
+      ]
+    },
+    {
+      "source_url": "https://www.brendangregg.com/FlameGraphs/offcpuflamegraphs.html",
+      "lang": "en",
+      "linked_case_ids": [
+        "linux-block-offwake-disk-io-block-completion-01"
+      ]
+    },
+    {
+      "source_url": "https://github.com/y123456yz/reading-and-annotate-wiredtiger-11.3.1/blob/main/%E7%A3%81%E7%9B%98%E7%A9%BA%E9%97%B4%E6%B3%84%E6%BC%8F%E5%AE%9E%E9%AA%8C%E7%BB%93%E6%9E%9C%E5%88%86%E6%9E%90.md",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "wt-evict-cold-page-compact-cure-01"
+      ]
+    },
+    {
+      "source_url": "https://raw.githubusercontent.com/y123456yz/reading-and-annotate-wiredtiger-11.3.1/main/MongoDB%E5%9C%A8%E7%BA%BF%E8%B0%83%E6%95%B4cache_size%E6%85%A2%E7%9A%84%E6%B7%B1%E5%BA%A6%E5%88%86%E6%9E%90.md",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "wt-app-thread-evict-assist-pressure-01",
+        "wt-evict-reconcile-blocked-ebusy-01"
+      ]
+    },
+    {
+      "source_url": "https://raw.githubusercontent.com/y123456yz/reading-and-annotate-wiredtiger-11.3.1/main/MongoDB_io_capacity_crash%E5%AE%8C%E6%95%B4%E4%BF%AE%E5%A4%8D%E6%96%B9%E6%A1%88.md",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "wt-capacity-throttle-cond-signal-crash-01"
+      ]
+    },
+    {
+      "source_url": "https://raw.githubusercontent.com/y123456yz/reading-and-annotate-wiredtiger-11.3.1/main/%E7%A3%81%E7%9B%98%E5%B7%B2%E6%8C%81%E4%B9%85%E5%8C%96%E6%95%B0%E6%8D%AE%E7%9A%84%E6%B8%85%E7%90%86%E4%BB%A3%E7%A0%81%E8%B7%AF%E5%BE%84.md",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "wt-reconcile-row-tombstone-skip-01",
+        "wt-reconcile-write-wrapup-block-free-01"
+      ]
+    },
+    {
+      "source_url": "https://raw.githubusercontent.com/y123456yz/reading-and-annotate-wiredtiger-11.3.1/main/%E4%B8%BA%E4%BB%80%E4%B9%88%E5%B7%B2%E5%88%A0%E9%99%A4%E6%95%B0%E6%8D%AE%E4%BB%8D%E5%9C%A8%E6%96%87%E4%BB%B6%E4%B8%AD_%E6%B7%B1%E5%BA%A6%E5%88%86%E6%9E%90.md",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "wt-reconcile-row-leaf-tombstone-not-globally-visible-01"
       ]
     }
   ]
