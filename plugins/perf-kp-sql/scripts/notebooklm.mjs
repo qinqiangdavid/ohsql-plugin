@@ -35,7 +35,7 @@ const __dirname = dirname(__filename);
 const PLUGIN_ROOT = resolve(__dirname, "..");
 const CONFIG_DIR = join(homedir(), ".perf-kp-sql");
 const CONFIG_PATH = join(CONFIG_DIR, "notebooklm.json");
-const URLS_PATH = join(PLUGIN_ROOT, "data", "notebooklm-urls.json");
+const URLS_PATH = join(PLUGIN_ROOT, "data", "cases", "indices", "by-source-url.json");
 
 // 防 nlm rich Console ANSI 颜色 — 装好后 spawn env 拿 NLM_SPAWN_ENV(动态扩展 PATH 见 augmentPathForUv)
 let NLM_SPAWN_ENV = { ...process.env, NO_COLOR: "1", TERM: "dumb" };
@@ -142,7 +142,7 @@ function saveConfig(cfg) {
 
 function loadUrlsJson(urlsFile) {
   const p = urlsFile ?? URLS_PATH;
-  if (!existsSync(p)) fatal(`notebooklm-urls.json not found: ${p}`);
+  if (!existsSync(p)) fatal(`by-source-url.json not found: ${p}`);
   return JSON.parse(readFileSync(p, "utf8"));
 }
 

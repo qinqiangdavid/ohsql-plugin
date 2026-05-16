@@ -20,7 +20,7 @@ compatibility: |
   Case library: 99 DF cases (含火焰图 signature · 部分以 step.flame_pattern
   内嵌, 部分以独立 case 形态过渡) + 279 check-items (指标集合 · 派生于
   case 的 metric/parameter_causes · 含 64 个 standalone 孤儿)· canonical
-  形态即 `data/cases/CASES.md` + `data/check-items/CASES.md`(plugin 内随
+  形态即 `data/cases/CASES.md` + `data/cases/indices/by-check-item/CASES.md`(plugin 内随
   版本发布)。
 metadata:
   generator: "manual"
@@ -130,9 +130,9 @@ perf-kp-sql 是一个鲲鹏场景下泛数据库性能诊断 skill，基于全�
 |---|---|---|
 | `data/cases/INDEX.md` | DF case 路由表(火焰图嵌入 step) (~6.4K tokens) | Phase 2 启动加载 |
 | `data/cases/CASES.md` | DF case 完整字段 | Phase 2.3 用 Read offset+limit 拿单 case · Phase 6 同 |
-| `data/check-items/INDEX.md` | 指标集合路由表 · 派生于 cases 的 metric + parameter 推荐值 (~6.5K tokens) | Phase 3 nothing 模式才加载 |
-| `data/check-items/CASES.md` | 指标集合完整字段(type=metric / parameter-current-value) | Phase 3 巡检 / Phase 6 同 |
-| `data/notebooklm-urls.json` | NLM 喂料(由 build-runtime-cases-from-md.mjs 从 case source_url 派生) | NLM 注册 / Phase 4 |
+| `data/cases/indices/by-check-item/INDEX.md` | 指标集合路由表 · 派生于 cases 的 metric + parameter 推荐值 (~6.5K tokens) | Phase 3 nothing 模式才加载 |
+| `data/cases/indices/by-check-item/CASES.md` | 指标集合完整字段(type=metric / parameter-current-value) | Phase 3 巡检 / Phase 6 同 |
+| `data/cases/indices/by-source-url.json` | NLM 喂料(由 build-runtime-cases-from-md.mjs 从 case source_url 派生) | NLM 注册 / Phase 4 |
 
 **工具**:
 
@@ -1045,7 +1045,7 @@ Read(file_path="/Users/<yourlogin>/.perf-kp-sql/runs/<TS>/collect-mongo.txt")
 3.B.1 · 加载 BP 索引:
 
 ```
-Read(file_path="<PLUGIN_ROOT>/data/check-items/INDEX.md")
+Read(file_path="<PLUGIN_ROOT>/data/cases/indices/by-check-item/INDEX.md")
 ```
 
 (~6.0K tokens · 含 case_id + scope + title + 案例 line)。
@@ -1262,7 +1262,7 @@ JSON 格式:
 ]
 ```
 
-`scope` 用 check-item 在 check-items/INDEX.md 里的字段值 · notebooklm.mjs 按 scope 路由到对应 notebook(linux-* → os · storage-engine-/mongodb- → mongo · arch/bios-firmware → kunpeng if hwArch=kunpeng)。
+`scope` 用 check-item 在 cases/indices/by-check-item/INDEX.md 里的字段值 · notebooklm.mjs 按 scope 路由到对应 notebook(linux-* → os · storage-engine-/mongodb- → mongo · arch/bios-firmware → kunpeng if hwArch=kunpeng)。
 
 4.B.2 · batch 调:
 
@@ -1740,7 +1740,7 @@ NLM 不可用时只走 案例 · 回答末尾附:
 | `task 1 ✔ · task 2 in_progress` | `环境信息采集完成,开始匹配诊断案例。` |
 | `Phase 4.B 跑 query-batch` | `开始批量刷新最佳实践推荐。` |
 | `case_id=bp-os-mm-vm-swappiness-1 命中` | `匹配到一条规则:vm.swappiness 设置不当。` |
-| `nothing 模式触发,加载 check-items/INDEX.md` | `用户描述模糊,转入巡检模式。` |
+| `nothing 模式触发,加载 cases/indices/by-check-item/INDEX.md` | `用户描述模糊,转入巡检模式。` |
 | `Gate 4 自检触发` | (静默重试,不公开)|
 | Phase 2 列 `· kunpeng-nohz-clock-tick-overhead-03 · 周期时钟中断` | `根据描述 · 我大致定位到几个方向 · 接下来需要在你的机器上拉一些指标做验证 · 请提供 SSH 凭据。` |
 | Phase 2 列 `查询/聚合: 45% · WiredTiger: 35% · 鲲鹏: 20%` | (整段不要 · 直接问"是单机还是副本集?"或者"请给 SSH 凭据") |
@@ -1763,9 +1763,9 @@ NLM 不可用时只走 案例 · 回答末尾附:
 |---|---|
 | `data/cases/INDEX.md` | DF case 路由表(火焰图嵌入 step.flame_pattern · Phase 2 加载) |
 | `data/cases/CASES.md` | DF case 完整字段(Phase 2.3 / Phase 6 用 Read offset+limit) |
-| `data/check-items/INDEX.md` | 指标集合路由表(Phase 3.B nothing 模式加载) |
-| `data/check-items/CASES.md` | 指标集合完整字段(type=metric/parameter-current-value · Phase 6 追问) |
-| `data/notebooklm-urls.json` | NLM 喂料(从 case source_url 派生) |
+| `data/cases/indices/by-check-item/INDEX.md` | 指标集合路由表(Phase 3.B nothing 模式加载) |
+| `data/cases/indices/by-check-item/CASES.md` | 指标集合完整字段(type=metric/parameter-current-value · Phase 6 追问) |
+| `data/cases/indices/by-source-url.json` | NLM 喂料(从 case source_url 派生) |
 | `scripts/ssh.mjs --op exec` | SSH 远端执行 |
 | `scripts/ssh.mjs --op session-close` | 流程末尾收 master |
 | `scripts/notebooklm.mjs --op query` | NLM 单条查询 |

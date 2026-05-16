@@ -1,6 +1,6 @@
 # Cases Index
 
-> 生成时间: 2026-05-15T06:44:14.547Z
+> 生成时间: 2026-05-16T12:08:50.648Z
 > 数据源: distill-v2/cases/<db>/diagnostic-flow/*.md + runtime baseline 合并
 > 总计: 99 cases
 > 配套: cases/CASES.md
