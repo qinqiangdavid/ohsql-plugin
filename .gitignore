@@ -7,3 +7,15 @@ dist/
 
 # rules.json 备份 (audit 修复时手动产生 · 不入仓)
 *.json.bak-*
+
+# 本地状态目录 / 构建产物（CLAUDE.md 工程纪律：~/.<app>/ 不入库）
+.claude/
+.gitnexus/
+graphify-out/
+plugins/**/.claude/
+plugins/**/.gitnexus/
+plugins/**/graphify-out/
+plugins/**/data/quality-reports/
+
+# macOS resource fork
+._*
