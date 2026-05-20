@@ -1,37 +1,12 @@
 # Cases Index
 
-> 生成时间: 2026-05-16T12:08:50.648Z
+> 生成时间: 2026-05-20T07:48:43.492Z
 > 数据源: distill-v2/cases/<db>/diagnostic-flow/*.md + runtime baseline 合并
-> 总计: 99 cases
+> 总计: 61 cases (db=mongodb)
 > 配套: cases/CASES.md
 
 | case_id | symptom_category | title | 行号 |
 |---|---|---|---:|
-| kunpeng-nohz-clock-tick-overhead-03 | cpu-high | 周期时钟中断浪费 CPU 资源(nohz 未启用) | 3 |
-| kunpeng-tlb-miss-page-size-04 | cpu-high | 4K 页大小导致 TLB 命中率低 | 56 |
-| kunpeng-thread-concurrency-overload-05 | cpu-high | 线程并发数超过最佳点导致性能下降 | 100 |
-| mongo-fs-mount-noatime-nobarrier-missing-01 | disk-io-saturation | XFS mount 未加 noatime/nobarrier 导致文件系统冗余开销 | 144 |
-| mongo-os-tcp-stack-tuning-01 | network-latency | OS 层 TCP 协议栈参数审计 (7 条 sysctl) | 194 |
-| mongo-client-os-tcp-tuning-01 | network-latency | MongoDB 客户端侧 OS 层 TCP 参数审计 (8 条 sysctl) | 274 |
-| kunpeng-bios-smmu-enabled-non-virt-01 | disk-io-saturation | 鲲鹏 BIOS 中 SMMU 在非虚拟化场景未关闭(影响数据库 IO 性能) | 360 |
-| kunpeng-bios-cpu-prefetch-enabled-01 | cpu-high | 鲲鹏 BIOS 中硬件预取(CPU Prefetching)未关闭(影响数据库随机访问性能) | 404 |
-| kunpeng-net-irq-not-bound-irqbalance-on-01 | network-latency | 鲲鹏服务器网卡中断未绑核(irqbalance 在线/中断分散到非本地 CPU) | 448 |
-| linux-blockdev-nr-requests-too-low-01 | disk-io-saturation | 块设备 nr_requests 队列长度偏小(限制磁盘吞吐) | 507 |
-| kvm-vcpupin-not-bound-numa-cross-01 | cpu-high | KVM 虚拟机 vCPU 未绑核(跨 NUMA / 跨 DIE 切换) | 551 |
-| kvm-host-hugepages-not-allocated-tlb-miss-01 | memory-pressure | KVM Host 未分配大页(虚拟机 TLB Miss / 内存访问密集业务下降) | 595 |
-| kunpeng-numa-cross-node-memory-access-01 | cpu-high | 跨 NUMA 节点访问内存导致应用性能下降 | 644 |
-| kunpeng-network-irq-cross-numa-01 | network-latency | 网卡中断与网卡不在同一 NUMA 节点导致跨 NUMA 访问内存 | 688 |
-| linux-nic-interrupt-coalescing-audit-01 | network-latency | 网卡中断聚合参数（ethtool -C）未按业务调优 | 737 |
-| linux-rps-single-queue-nic-softirq-bottleneck-01 | network-latency | 单队列网卡软中断集中单 core 形成性能瓶颈（未启用 RPS） | 787 |
-| linux-vm-dirty-flush-burst-io-wait-01 | disk-io-saturation | 脏页刷盘策略不当导致突发 I/O 等待与文件读写阻塞 | 843 |
-| linux-block-scheduler-mismatch-01 | disk-io-saturation | I/O 调度器与磁盘类型/业务模式不匹配（HDD 数据库使用 CFQ；SSD 未用 NOOP） | 905 |
-| linux-fs-mount-nobarrier-audit-01 | disk-io-saturation | 带电池 RAID 卡环境未使用 nobarrier 挂载选项 | 955 |
-| linux-fs-xfs-blocksize-audit-01 | disk-io-saturation | 大文件场景未选用 XFS 文件系统或 blocksize 仍为默认 4KB | 999 |
-| kunpeng-arm64-spinlock-cas-cpu-waste-01 | cpu-high | 自旋锁/CAS 失败循环导致 CPU 资源浪费（perf top 锁函数占比 ≥ 5%） | 1049 |
-| kunpeng-cacheline-false-sharing-arm64-128b-01 | cpu-high | x86 上对齐良好的代码迁移到鲲鹏 920（CacheLine 128B）出现伪共享 | 1111 |
-| linux-vm-dirty-ratio-pause-on-large-memory-01 | disk-io-saturation | dirty_ratio 默认 20-30% 在大内存机上累积巨量脏页,触发同步 flush 卡顿 | 1161 |
-| linux-thp-mongodb-sparse-memory-access-02 | memory-pressure | Transparent HugePages 在 MongoDB 稀疏内存访问场景下产生开销 | 1210 |
-| linux-readahead-default-128kb-wastes-fs-cache-04 | memory-pressure | 块设备 read-ahead 默认 128KB 浪费 MongoDB 文件系统缓存 | 1260 |
 | mongo-cache-spike-replication-lag-cascade-01 | replica-lag | WiredTiger Cache 峰值与复制延迟级联失败 (MongoDB 3.0 → 3.4 升级修复) | 1309 |
 | mongo-shard-chunk-migration-x-lock-timeout-balancer-stuck-01 | lock-contention | shard chunk migration 卡死 LockTimeout · balancer 一直 abort | 1389 |
 | mongo-wt-large-page-eviction-fetch-pause-server-16479 | query-slow | WiredTiger 大页驱逐导致 fetch 期间多次显著停顿 | 1481 |
@@ -93,16 +68,3 @@
 | mongo-query-ixscan-poor-selectivity-extra-sort-02 | query-slow | 索引存在但 totalDocsExamined ≫ nReturned + 出现独立 SORT stage | 4686 |
 | mongo-write-regression-default-writeconcern-majority-journal-01 | query-slow | MongoDB 5.0+ 默认 writeConcern=majority 致 JournalFlusher 写盘成为热点 | 4745 |
 | mongo-wt-checkpoint-time-grows-bulk-load-stall-01 | disk-io-saturation | bulk-load 期间 WiredTiger checkpoint 时间从几秒增至数分钟,期间业务停滞 | 4819 |
-| linux-fs-mmap-metadata-archiver-01 | other | Linux FS metadata syscall hotspot in mmap-based archiver workload | 4890 |
-| glibc-malloc-allocator-hot-stack-01 | other | glibc malloc allocator tracing hot stack — application allocation code path | 4904 |
-| linux-mm-brk-heap-expansion-01 | other | brk() syscall hot frame — heap expansion code path | 4918 |
-| linux-mm-mmap-vm-growth-01 | other | mmap() syscall hot frame — VM mapping growth code path | 4932 |
-| linux-mm-page-fault-physical-population-01 | other | page fault hot frame — physical memory population code path | 4946 |
-| linux-block-offwake-disk-io-block-completion-01 | other | Off-Wake flame graph stack chain: disk I/O block completion interrupt waking blocked vfs_read() | 4960 |
-| wt-evict-cold-page-compact-cure-01 | other | WiredTiger 冷数据 evict 后 checkpoint 不再处理 · compact 触发 reconciliation 强制回收 | 4974 |
-| wt-app-thread-evict-assist-pressure-01 | other | WiredTiger 应用线程被迫参与 eviction 助手(cache 使用率超阈值压力 signature) | 4988 |
-| wt-evict-reconcile-blocked-ebusy-01 | other | WiredTiger eviction reconcile 被多重 EBUSY 阻碍(__evict_review → __evict_reconcile 链路热点) | 5002 |
-| wt-capacity-throttle-cond-signal-crash-01 | other | WiredTiger io_capacity 配置语法错误后,后台 eviction 线程经 capacity_throttle 调用 __wt_cond_signal 解引用 NULL capacity_cond 触发 SIGSEGV | 5016 |
-| wt-reconcile-row-tombstone-skip-01 | other | WiredTiger reconcile 在 row leaf 上跳过全局可见 stop_ts 的 key(磁盘清理读-判-跳路径 signature) | 5030 |
-| wt-reconcile-write-wrapup-block-free-01 | other | WiredTiger reconcile 写入 wrapup 阶段释放旧页面磁盘块(block manager free-list 入队 signature) | 5044 |
-| wt-reconcile-row-leaf-tombstone-not-globally-visible-01 | other | WiredTiger 行叶页 reconcile 路径下 tombstone 非全局可见 → 已删除数据被整页保留(oldest_timestamp 推进不足 signature) | 5058 |

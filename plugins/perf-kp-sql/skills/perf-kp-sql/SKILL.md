@@ -1,6 +1,6 @@
 ---
 name: perf-kp-sql
-description: Kunpeng ARM64 + MongoDB joint performance diagnosis. SSH-based remote collection (8 项环境画像 + per-case 命令拉指标), LLM-orchestrated 6-phase pipeline routing user symptoms against a 202-case case library (CASES.md / INDEX.md) with NotebookLM as authoritative refresh source, and emits an impact-ranked markdown report (0 npm 运行时依赖,报告仅 markdown). Use when users report MongoDB slowness, CPU spikes, latency jitter, or are doing Kunpeng migration / config audit. Triggers include '数据库慢' / 'CPU 高' / '抖动' / 'mongo perf' / 'Kunpeng 性能' / similar phrases. First-time use:run `/perf-kp-sql-setup` to verify runtime + register NotebookLM(可选).
+description: Kunpeng ARM64 + multi-DB (MongoDB / GaussDB / GaussDB-DWS) joint performance diagnosis. SSH-based remote collection (8 项环境画像 + per-case 命令拉指标), LLM-orchestrated 6-phase pipeline (含 Phase 2.0 db 推断) routing user symptoms against a 189-case multi-engine library (按 db 拆 `cases/<db>/{INDEX,CASES}.md`: mongodb 61 / gaussdb 38 / gaussdb-dws 65 / _common 25) with NotebookLM as authoritative refresh source, and emits an impact-ranked markdown report (0 npm 运行时依赖,报告仅 markdown). Use when users report MongoDB / GaussDB / DWS slowness, CPU spikes, latency jitter, or are doing Kunpeng migration / config audit. Triggers include '数据库慢' / 'CPU 高' / '抖动' / 'mongo perf' / 'GaussDB 慢' / 'DWS 调优' / 'Kunpeng 性能' / similar phrases. First-time use:run `/perf-kp-sql-setup` to verify runtime + register NotebookLM(可选).
 compatibility: |
   Requires SSH access to the target host + local OpenSSH `ssh` CLI (Linux/macOS
   自带 · Windows 走 WSL 或 OpenSSH-Win)。两种认证方式都通过 `node ssh.mjs`
@@ -16,12 +16,14 @@ compatibility: |
   notebooklm-mcp-cli(jacob-bd 上游 4.2K star · CDP 标准做法)+ Chromium
   系浏览器(Chrome / Edge / Brave 任一 · 登录用)+ Google 账号。NLM 不可用
   时 Phase 4B (指标集合巡检) 退化为 仅案例 判定 · 报告标记 NLM 缺失。
-  Supported database engine: mongo (MongoDB 3.6-7.x).
-  Case library: 99 DF cases (含火焰图 signature · 部分以 step.flame_pattern
-  内嵌, 部分以独立 case 形态过渡) + 279 check-items (指标集合 · 派生于
-  case 的 metric/parameter_causes · 含 64 个 standalone 孤儿)· canonical
-  形态即 `data/cases/CASES.md` + `data/cases/indices/by-check-item/CASES.md`(plugin 内随
-  版本发布)。
+  Supported database engines: mongo (MongoDB 3.6-7.x) · gaussdb (GaussDB 主线
+  集中式/分布式) · gaussdb-dws (GaussDB(DWS) MPP 数据仓库)。
+  Case library: 189 DF cases 按 db 拆 4 桶 (mongodb 61 + gaussdb 38 + gaussdb-dws 65
+  + _common 25 跨 db 通用,含 Kunpeng/Linux 层) + 388 check-items (指标集合 ·
+  全局反向索引 · 派生于 case 的 metric/parameter_causes)· canonical 形态即
+  `data/cases/<db>/{INDEX,CASES}.md` (按 db 路由) +
+  `data/cases/indices/by-check-item/CASES.md` (全局反向索引 · 跨 db 共享)
+  (plugin 内随版本发布)。
 metadata:
   generator: "manual"
   generated_at: "2026-04-29"
@@ -45,8 +47,9 @@ argument-hint: "host=<ip> user=<user> (privateKeyPath=<path>|password=<pw>) [eng
 
 4. **不要"先收最小必要信息然后我直接开始"这种笼统话术** · 严格按 Phase 0 子步号(0.1-0.9)推进。
 
-5. **Phase 1 用户给完问题现象后 · 下一个动作必须是 Phase 2.1 Read `cases/INDEX.md`**。**绝对不许**:
+5. **Phase 1 用户给完问题现象后 · 下一个动作必须是 Phase 2.0 db 推断 → Phase 2.1 Read `cases/<db>/INDEX.md` + `cases/_common/INDEX.md`**。**绝对不许**:
    - 跳过 Phase 2 直接进 Phase 3 写采集命令(LLM "我直接写更快" 偏见 · 严重 bug)
+   - 跳过 Phase 2.0 db 推断 · 凭直觉去 Read 任意 cases/<db>/INDEX.md
    - "先采当下快照看看 CPU 是不是真的在烧" 这种话术 — 这是跳过 案例 · 用自己拍的 `top -H` 命令 · 失去 case 引用
    - Phase 3 的 SSH 命令必须来自 Phase 2.3 Read 拿到的 case 字段 `collection_method_quote` · 不许 LLM 用通用 ops 知识 ad-hoc 写
 
@@ -116,7 +119,7 @@ perf-kp-sql 是一个鲲鹏场景下泛数据库性能诊断 skill，基于全�
 |---|---|---|---|
 | **0** | **环境信息采集**(凭据 + 连通性探测 + 环境画像)| 收 SSH 凭据 → SSH 一次拉 OS/DB 版本/硬件/部署形态 → 记 `[环境上下文]` · **不通则阻断 · 不进 Phase 1** | slash args → 参数 + banner + `[环境上下文]` |
 | **1** | **对话引导**(问题现象采集) | 在 Phase 0 连通性 OK 后 · 用 `[环境上下文]` 上下文化提问 → 收用户问题现象 / 巡检意图 | `[环境上下文]` + 对话 → 问题现象 |
-| 2 | 诊断案例匹配 | LLM 加载 `cases/INDEX.md` 匹配问题现象 → 命中 case_id(≤3 · 内部不暴露) | 问题现象 → 内部 case 列表 |
+| 2 | 诊断案例匹配 | LLM **推 db** (mongodb/gaussdb/gaussdb-dws) + 加载 `cases/<db>/INDEX.md` + `cases/_common/INDEX.md` 匹配问题现象 → 命中 case_id(≤3 · 内部不暴露) | 问题现象 + db → 内部 case 列表 |
 | 3 | 诊断指标采集 | 从命中 case 提 `collection_method_quote` · SSH 批量采集指标(操作系统层 + MongoDB 层) | case → 采集结果 (txt) |
 | 4 | 多源综合诊断 | 案例 阈值直判 / NotebookLM 兜底 | 采集结果 → 确认根因 |
 | 5 | 报告生成 | LLM 写 markdown 8 列表落盘 .md · `format-chat.mjs` 按终端宽度 box-drawing 渲染 · LLM 字面复制 stdout | 根因 → 报告文件 (md) + chat |
@@ -128,11 +131,11 @@ perf-kp-sql 是一个鲲鹏场景下泛数据库性能诊断 skill，基于全�
 
 | 文件 | 用途 | 加载时机 |
 |---|---|---|
-| `data/cases/INDEX.md` | DF case 路由表(火焰图嵌入 step) (~6.4K tokens) | Phase 2 启动加载 |
-| `data/cases/CASES.md` | DF case 完整字段 | Phase 2.3 用 Read offset+limit 拿单 case · Phase 6 同 |
-| `data/cases/indices/by-check-item/INDEX.md` | 指标集合路由表 · 派生于 cases 的 metric + parameter 推荐值 (~6.5K tokens) | Phase 3 nothing 模式才加载 |
-| `data/cases/indices/by-check-item/CASES.md` | 指标集合完整字段(type=metric / parameter-current-value) | Phase 3 巡检 / Phase 6 同 |
-| `data/cases/indices/by-source-url.json` | NLM 喂料(由 build-runtime-cases-from-md.mjs 从 case source_url 派生) | NLM 注册 / Phase 4 |
+| `data/cases/<db>/INDEX.md` | DF case 路由表 · `<db>` ∈ {mongodb / gaussdb / gaussdb-dws / _common} · 按 Phase 2.0 推断的 db Read **db-specific + `_common`** 两份(_common 含 Kunpeng/Linux 跨 db 通用 case · 一律 Read) | Phase 2 启动加载 |
+| `data/cases/<db>/CASES.md` | DF case 完整字段 · 同上路由 | Phase 2.3 用 Read offset+limit 拿单 case · Phase 6 同 |
+| `data/cases/indices/by-check-item/INDEX.md` | 指标集合路由表 · **全局反向索引** · 跨 db 共享 · 派生于所有 cases 的 metric + parameter 推荐值 (~7K tokens) | Phase 3 nothing 模式才加载 |
+| `data/cases/indices/by-check-item/CASES.md` | 指标集合完整字段(type=metric / parameter-current-value) · 跨 db 共享 | Phase 3 巡检 / Phase 6 同 |
+| `data/cases/indices/by-source-url.json` | NLM 喂料(由 build-runtime-cases-from-md.mjs 从 case source_url 派生)· 跨 db 合并 | NLM 注册 / Phase 4 |
 
 **工具**:
 
@@ -178,7 +181,7 @@ wrapper 内部按 `cpu-flamegraph` 名字在 `~/.ohsql/plugins/cache/` · `~/.cl
 3. 验证:
 
 ```
-Bash(command="ls <候选路径>/scripts/ssh.mjs <候选路径>/data/cases/INDEX.md >/dev/null 2>&1 && echo '<候选路径>'")
+Bash(command="ls <候选路径>/scripts/ssh.mjs <候选路径>/data/cases/mongodb/INDEX.md >/dev/null 2>&1 && echo '<候选路径>'")
 ```
 
 stdout 非空 = 验证通过 · 记为 `PLUGIN_ROOT`。
@@ -850,25 +853,49 @@ mark task 2 (诊断案例匹配) in_progress(或巡检模式时直接跳到 task
 
 ## Phase 2 · 诊断案例匹配
 
-**目标**: 把用户描述的现象 / 日志 / 火焰图 → 命中 cases/INDEX.md 里的 case_id 列表。
+**目标**: 把用户描述的现象 / 日志 / 火焰图 → 命中 `cases/<db>/INDEX.md` + `cases/_common/INDEX.md` 里的 case_id 列表。
 
-⚠️ **强制约束**:Phase 1 收完用户问题现象后 · LLM 的**下一个动作必须是 2.1 Read cases/INDEX.md**。**绝对不许**:
+⚠️ **强制约束**:Phase 1 收完用户问题现象后 · LLM 的**下一个动作必须是 2.0 推 db → 2.1 Read `cases/<db>/INDEX.md` + `cases/_common/INDEX.md`**。**绝对不许**:
+- 跳过 2.0 db 推断 · 直接 Read 任意 cases/<db>/INDEX.md
 - 跳过 Phase 2 直接进 Phase 3 写采集命令(LLM "我直接写更快 · 何必查 案例" 偏见 · 严重 bug)
 - 跳过 2.1 Read 索引 · 凭记忆猜 case_id
 - 跳过 2.3 Read 单 case 完整字段 · 凭印象写 collection_method
-- 卡在"先采当下快照"这种话头上不进任何动作 — 必须立即 Read INDEX
+- 卡在"先采当下快照"这种话头上不进任何动作 — 必须立即 Read 两份 INDEX
 
-### 2.1 · 加载索引(Phase 1 完成后立即执行 · 不许跳)
+### 2.0 · db 推断(Phase 1 完成后第一步 · 多 engine 路由 · 不许跳)
+
+根据 Phase 0 拿到的 `[环境上下文]`(`db_engine` 字段) + Phase 1 用户描述的现象关键词 · 推断本轮诊断的 db ∈ `{mongodb, gaussdb, gaussdb-dws}`(`_common` 不作为单独 db 推断 · 任何 db 都 Read 它):
+
+| 信号 | 判定 db |
+|---|---|
+| Phase 0 `db_engine=mongo` / `mongod` 进程 / 端口 27017 | **mongodb** |
+| Phase 0 `db_engine=gaussdb` / DWS 集群 (`gs_om` / `pgxc_node`) / DN/CN 进程 | **gaussdb-dws** (MPP) |
+| Phase 0 `db_engine=gaussdb` / 单机集中式 / 没 DN/CN | **gaussdb** (主线) |
+| 用户提"WiredTiger" / "oplog" / "replica set" / "shard" | mongodb |
+| 用户提"DN" / "CN" / "stream" / "REDISTRIBUTE" / "comm_max_stream" / "table_skewness" / "cstore" / "DWS" | gaussdb-dws |
+| 用户提"GaussDB" / "openGauss"(没提 DN/CN/MPP/DWS 概念) | gaussdb (主线) |
+| 用户提通用现象("CPU 高" / "鲲鹏" / "NUMA" / "TLB miss" / "网卡中断")无 db 上下文 | 由 Phase 0 `db_engine` 决定; 若 Phase 0 也无信号 · AskUserQuestion 让 user 选 |
+
+**LLM 内部记 db 值 · 不暴露给用户**。
+
+### 2.1 · 加载索引(Phase 2.0 拿到 db 后立即执行 · 不许跳)
+
+按 Phase 2.0 推断的 db, 一次 Read 两份 INDEX:
 
 ```
-Read(file_path="<PLUGIN_ROOT>/data/cases/INDEX.md")
+Read(file_path="<PLUGIN_ROOT>/data/cases/<db>/INDEX.md")
+Read(file_path="<PLUGIN_ROOT>/data/cases/_common/INDEX.md")
 ```
 
-(~6.4K tokens · 一次性进 LLM context)。**这是 Phase 1 → Phase 2 之间的强制动作 · 跳了就是 bug**。
+例: db=gaussdb-dws → Read `cases/gaussdb-dws/INDEX.md` (9.3 KB) + `cases/_common/INDEX.md` (3.6 KB)。
+
+(两份合计 ~3-5K tokens · 一次性进 LLM context)。**这是 Phase 2.0 → Phase 2.1 → Phase 2.2 之间的强制动作 · 跳了就是 bug**。
+
+`_common` 必读理由:Kunpeng/Linux 底层调优 case (NUMA / TLB / cstore-not-related 通用) 对任何 db 都适用 · 跟 db-specific case 并行匹配。
 
 INDEX 含两段:
-- **diagnostic-flow (96)**: 列 case_id + symptom_category + title + 案例 line
-- **flame-signature (13)**: 列 case_id + title + pattern_regex + 案例 line
+- **diagnostic-flow**: 列 case_id + symptom_category + title + 案例 line(每 db 数量见 SKILL.md 顶部 `Case library`)
+- **flame-signature**: 列 case_id + title + pattern_regex + 案例 line
 
 ### 2.2 · LLM 匹配
 
@@ -913,13 +940,15 @@ LLM 在前期**只负责引导提问 · 范围收敛 · 不暴露内部数据**�
 
 ### 2.3 · 加载单 case 完整字段
 
-case 确认后,从 INDEX 拿到 `案例 line` 行号:
+case 确认后,从对应 INDEX 拿到 `案例 line` 行号 + 知道这条 case 来自哪个 db(2.1 Read 了哪份 INDEX 就是哪个 db):
 
 ```
-Read(file_path="<PLUGIN_ROOT>/data/cases/CASES.md", offset=<line>, limit=100)
+Read(file_path="<PLUGIN_ROOT>/data/cases/<db>/CASES.md", offset=<line>, limit=100)
 ```
 
-`limit=100` 经实测覆盖全部 109 case(最长 91 行)。若 LLM 读出来发现末尾还在 case 中部(没看到下一个 `## case_id:` 边界),用 `offset=<line+100>, limit=50` 再读一次拼接。
+例: case 来自 `cases/gaussdb-dws/INDEX.md` → Read `cases/gaussdb-dws/CASES.md`。
+
+`limit=100` 经实测覆盖全部 case(最长 91 行)。若 LLM 读出来发现末尾还在 case 中部(没看到下一个 `## case_id:` 边界),用 `offset=<line+100>, limit=50` 再读一次拼接。
 
 LLM 解析单 case 完整字段(in-memory 记 · 后续 phase 用):
 
@@ -1639,8 +1668,10 @@ skill 加载后,任何非 `/` 命令的自然语言输入(典型:用户针对报
 报告里每个根因带 `case_id` 引用(从 INDEX line 反查 case_id)。
 
 ```
-Read(file_path="<PLUGIN_ROOT>/data/cases/CASES.md", offset=<line>, limit=80)
+Read(file_path="<PLUGIN_ROOT>/data/cases/<db>/CASES.md", offset=<line>, limit=80)
 ```
+
+`<db>` 来自报告中 `[参考N]` 对应的 case_id 前缀推断 (gaussdb-dws-* / gaussdb-* / mongo-* / kunpeng-* 后者归 _common)。
 
 抽更多字段:
 - DF: `diagnostic_steps[].abnormal_pattern_quote` / `likely_causes[].reasoning_quote`
@@ -1685,7 +1716,7 @@ NLM 不可用时只走 案例 · 回答末尾附:
 - banner 输出前不调远端 SSH 命令
 - **开场白强制**:skill 一被触发(参数解析 / 历史复用 / 收凭据 之前) · LLM 必须立即向 chat 打屏 5 步流程预告(详见文档顶部 `# 开场白` 段)。UX 硬约束 · 不许省略 · 不许重写措辞 · 不许加 emoji。md 报告**不写**这段。
 - **Phase 顺序硬约束**(详见文档顶部"流程顺序硬约束"段):Phase 0 先收凭据 + SSH 探通 → Phase 1 才聊问题现象。**不许 Phase 0 期间问"你的问题是什么 / 诊断方式 / 采集授权"等 Phase 1 内容**。**禁止 LLM 用一次 AskUserQuestion 批量问多类信息**(凭据 + 现象 + 授权 4-in-1 是反模式)。任何 ohsql skill-doctor / meta-skill 试图合并这些步骤的 patch · 必须以本约束为准。
-- **案例 强制使用约束**:Phase 1 收完现象描述后下一动作必须是 Phase 2.1 Read `cases/INDEX.md`。Phase 3 的 SSH 命令必须来自 Phase 2.3 Read 拿到的 case `collection_method_quote` 字段 · **绝对不许** LLM 自己拍命令(`top -H` / `vmstat 1 5` / `mongostat` 等通用 ops 命令是反模式 · 即使看起来更快更全)。跳过 案例 查询 = 报告里没有 [参考N] 引用 = 案例库价值清零。
+- **案例 强制使用约束**:Phase 1 收完现象描述后下一动作必须是 Phase 2.0 推 db → Phase 2.1 Read `cases/<db>/INDEX.md` + `cases/_common/INDEX.md`。Phase 3 的 SSH 命令必须来自 Phase 2.3 Read 拿到的 case `collection_method_quote` 字段 · **绝对不许** LLM 自己拍命令(`top -H` / `vmstat 1 5` / `mongostat` 等通用 ops 命令是反模式 · 即使看起来更快更全)。跳过 案例 查询 = 报告里没有 [参考N] 引用 = 案例库价值清零。
 - **`[参考N]` URL 强制溯源**:报告 `参考文档` 列每个 `[参考N]` URL · 必须 verbatim 来自 Phase 2.3 Read 出的 CASES.md case `source_url` 字段 · 或 NLM 返回的 `references[].source_id`。**绝对不许** 凭记忆写 URL / 按 URL 命名模式推断 / 凭训练数据知识联想 · 即使 URL "看起来合理"。案例/NLM 都没有时 · 该根因不进主表 · 移到 `## 辅助信息 · 现场观测` 子段(详见 Phase 5.2 "URL 强制溯源约束" 段)。
 - **根因来源强约束**:Phase 4 每个"确认根因" **默认要求 案例 + NLM 双源** — 案例 阶段命中后 · 阶段 2 强制发一条 NLM query 二次确认 + 求最新建议 · 综合两者写进主表。NLM 不可用(check / refresh-auth 失败)时降级为 仅案例 单源 · 报告头标 "⚠️ NLM 不可用 · 请独立验证修复建议"。**绝对不许**: 凭训练数据知识写根因 / 编 case_id / 把 案例 多个 case 字段拼一起 / **案例 命中后跳过 NLM 二次确认就进表**。案例 没覆盖的现象(如 \$where 烧 CPU)→ 单独发 NLM query 兜底拿 references → 单 NLM 源进表(置信度中)。NLM 是 Google 检索系统 · references 是真实文档链接 · 跟 案例 双源互为交叉验证。详见 Phase 4 "根因来源强约束" + Phase 4.A 阶段 1/2/3 流程。
 - **诊断表权威性约束**:`## 诊断结果` 主表里所有 row 必须有 案例/NLM 背书(`参考文档` 列必须是 `[参考N]` · 不是 `(无案例引用)` · 不是空)。**案例/NLM 都没有的根因不许混进主表** — 即使加 "(无案例引用)" 标记也不许。这种根因必须移到 `## 辅助信息 · 现场观测` 子段 · 标"凭经验,非权威"。详见 Phase 5.2 "URL 强制溯源约束" 段。
@@ -1761,11 +1792,11 @@ NLM 不可用时只走 案例 · 回答末尾附:
 
 | 文件 | 用途 |
 |---|---|
-| `data/cases/INDEX.md` | DF case 路由表(火焰图嵌入 step.flame_pattern · Phase 2 加载) |
-| `data/cases/CASES.md` | DF case 完整字段(Phase 2.3 / Phase 6 用 Read offset+limit) |
-| `data/cases/indices/by-check-item/INDEX.md` | 指标集合路由表(Phase 3.B nothing 模式加载) |
+| `data/cases/<db>/INDEX.md` | DF case 路由表 · `<db>` ∈ {mongodb / gaussdb / gaussdb-dws / _common} · Phase 2.1 加载 db-specific + _common 两份 |
+| `data/cases/<db>/CASES.md` | DF case 完整字段(Phase 2.3 / Phase 6 用 Read offset+limit · `<db>` 同上推断) |
+| `data/cases/indices/by-check-item/INDEX.md` | 指标集合路由表 · **全局反向索引** · 跨 db 共享(Phase 3.B nothing 模式加载) |
 | `data/cases/indices/by-check-item/CASES.md` | 指标集合完整字段(type=metric/parameter-current-value · Phase 6 追问) |
-| `data/cases/indices/by-source-url.json` | NLM 喂料(从 case source_url 派生) |
+| `data/cases/indices/by-source-url.json` | NLM 喂料(从 case source_url 派生 · 跨 db 合并) |
 | `scripts/ssh.mjs --op exec` | SSH 远端执行 |
 | `scripts/ssh.mjs --op session-close` | 流程末尾收 master |
 | `scripts/notebooklm.mjs --op query` | NLM 单条查询 |

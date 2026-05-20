@@ -32,7 +32,7 @@ Harness 加载 skill 时一定会提供 base directory（Claude Code 显示 `Bas
 3. 验证:
 
 ```
-Bash(command="ls <候选路径>/scripts/ssh.mjs <候选路径>/data/cases/INDEX.md >/dev/null 2>&1 && echo '<候选路径>'")
+Bash(command="ls <候选路径>/scripts/ssh.mjs <候选路径>/data/cases/mongodb/INDEX.md <候选路径>/data/cases/_common/INDEX.md >/dev/null 2>&1 && echo '<候选路径>'")
 ```
 
 stdout 非空 = 验证通过 · 记为 `PLUGIN_ROOT`。
@@ -62,7 +62,7 @@ Bash(command="bash <PLUGIN_ROOT>/skills/perf-kp-sql-setup/scripts/check-health")
 The script outputs a colored report covering:
 
 - Node.js version
-- `data/cases/{CASES.md,INDEX.md}` 与 `data/best-practice/{CASES.md,INDEX.md}` 存在性
+- `data/cases/<db>/{CASES.md,INDEX.md}` 多 db 拆分目录 (`<db>` ∈ {mongodb, gaussdb, gaussdb-dws, _common}) 与 `data/best-practice/{CASES.md,INDEX.md}` 存在性
 
 Display the script's output verbatim.
 
@@ -75,14 +75,14 @@ Parse the script output. If every item is 🟢, display the success banner and s
 
 Phase 1 — 必装项
    node <version>                          🟢
-   data/cases/ + data/best-practice/       🟢
+   data/cases/<db>/ + data/best-practice/  🟢
 
 Phase 2 — NotebookLM 增强：跳过
 
 随时可重跑 /perf-kp-sql-setup 重新校验或切换为启用。
 ```
 
-If `data/cases/` / `data/best-practice/` 文件缺失，recommend `/plugin reinstall perf-kp-sql`（案例文件随 plugin install 发布）。
+If `data/cases/<db>/` / `data/best-practice/` 文件缺失，recommend `/plugin reinstall perf-kp-sql`（案例文件随 plugin install 发布; multi-db 拆分要求至少 mongodb/ + _common/ 子目录在）。
 
 Otherwise proceed to Phase 2 (NotebookLM).
 
@@ -315,7 +315,7 @@ agent 把 Step 7.1/7.2/7.3 收到的三次 `add-domain` 结果汇总,渲染:
 
 Phase 1 — 必装项
    node <version>                          🟢
-   data/cases/ + data/best-practice/       🟢
+   data/cases/<db>/ + data/best-practice/  🟢
 
 Phase 2 — NotebookLM 增强
 已经基于 <total> 篇官方文档帮你创建 mongodb/kunpeng/os 三个领域 notebook 知识库用于后续诊断。

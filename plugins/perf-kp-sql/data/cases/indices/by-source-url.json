@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-05-16T12:08:50.649Z",
-  "total_urls": 69,
+  "generated_at": "2026-05-20T07:48:43.493Z",
+  "total_urls": 117,
   "urls": [
     {
       "source_url": "https://www.cnblogs.com/huaweicloud/p/11861191.html",
@@ -455,64 +455,442 @@
       ]
     },
     {
-      "source_url": "https://www.brendangregg.com/FlameGraphs/cpuflamegraphs.html",
-      "lang": "en",
-      "linked_case_ids": [
-        "linux-fs-mmap-metadata-archiver-01"
-      ]
-    },
-    {
-      "source_url": "https://www.brendangregg.com/FlameGraphs/memoryflamegraphs.html",
-      "lang": "en",
-      "linked_case_ids": [
-        "glibc-malloc-allocator-hot-stack-01",
-        "linux-mm-brk-heap-expansion-01",
-        "linux-mm-mmap-vm-growth-01",
-        "linux-mm-page-fault-physical-population-01"
-      ]
-    },
-    {
-      "source_url": "https://www.brendangregg.com/FlameGraphs/offcpuflamegraphs.html",
-      "lang": "en",
-      "linked_case_ids": [
-        "linux-block-offwake-disk-io-block-completion-01"
-      ]
-    },
-    {
-      "source_url": "https://github.com/y123456yz/reading-and-annotate-wiredtiger-11.3.1/blob/main/%E7%A3%81%E7%9B%98%E7%A9%BA%E9%97%B4%E6%B3%84%E6%BC%8F%E5%AE%9E%E9%AA%8C%E7%BB%93%E6%9E%9C%E5%88%86%E6%9E%90.md",
+      "source_url": "https://blog.csdn.net/GaussDB/article/details/143844792/",
       "lang": "zh-cn",
       "linked_case_ids": [
-        "wt-evict-cold-page-compact-cure-01"
+        "gaussdb-cpu-high-topsql-01",
+        "gaussdb-cpu-high-connection-timezone-01",
+        "gaussdb-memory-shared-buffer-miss-01",
+        "gaussdb-memory-work-mem-spill-01"
       ]
     },
     {
-      "source_url": "https://raw.githubusercontent.com/y123456yz/reading-and-annotate-wiredtiger-11.3.1/main/MongoDB%E5%9C%A8%E7%BA%BF%E8%B0%83%E6%95%B4cache_size%E6%85%A2%E7%9A%84%E6%B7%B1%E5%BA%A6%E5%88%86%E6%9E%90.md",
+      "source_url": "https://www.modb.pro/db/1881247803599499264/",
       "lang": "zh-cn",
       "linked_case_ids": [
-        "wt-app-thread-evict-assist-pressure-01",
-        "wt-evict-reconcile-blocked-ebusy-01"
+        "gaussdb-cpu-high-statement-view-01",
+        "gaussdb-disk-io-high-statement-view-01",
+        "gaussdb-memory-pressure-node-detail-01",
+        "gaussdb-perf-jitter-asp-analysis-01"
       ]
     },
     {
-      "source_url": "https://raw.githubusercontent.com/y123456yz/reading-and-annotate-wiredtiger-11.3.1/main/MongoDB_io_capacity_crash%E5%AE%8C%E6%95%B4%E4%BF%AE%E5%A4%8D%E6%96%B9%E6%A1%88.md",
+      "source_url": "https://support.huaweicloud.com/distributed-devg-v2-gaussdb/gaussdb-12-0186.html",
       "lang": "zh-cn",
       "linked_case_ids": [
-        "wt-capacity-throttle-cond-signal-crash-01"
+        "gaussdb-dist-volatile-func-not-pushed-slow-01"
       ]
     },
     {
-      "source_url": "https://raw.githubusercontent.com/y123456yz/reading-and-annotate-wiredtiger-11.3.1/main/%E7%A3%81%E7%9B%98%E5%B7%B2%E6%8C%81%E4%B9%85%E5%8C%96%E6%95%B0%E6%8D%AE%E7%9A%84%E6%B8%85%E7%90%86%E4%BB%A3%E7%A0%81%E8%B7%AF%E5%BE%84.md",
+      "source_url": "https://support.huaweicloud.com/distributed-devg-v2-gaussdb/gaussdb-12-0224.html",
       "lang": "zh-cn",
       "linked_case_ids": [
-        "wt-reconcile-row-tombstone-skip-01",
-        "wt-reconcile-write-wrapup-block-free-01"
+        "gaussdb-plan-suboptimal-rewrite-rule-partialpush-01",
+        "gaussdb-plan-suboptimal-rewrite-rule-intargetlist-01"
       ]
     },
     {
-      "source_url": "https://raw.githubusercontent.com/y123456yz/reading-and-annotate-wiredtiger-11.3.1/main/%E4%B8%BA%E4%BB%80%E4%B9%88%E5%B7%B2%E5%88%A0%E9%99%A4%E6%95%B0%E6%8D%AE%E4%BB%8D%E5%9C%A8%E6%96%87%E4%BB%B6%E4%B8%AD_%E6%B7%B1%E5%BA%A6%E5%88%86%E6%9E%90.md",
+      "source_url": "https://support.huaweicloud.com/distributed-devg-v3-gaussdb/gaussdb-12-0265.html",
       "lang": "zh-cn",
       "linked_case_ids": [
-        "wt-reconcile-row-leaf-tombstone-not-globally-visible-01"
+        "gaussdb-dist-v3-volatile-func-not-pushed-slow-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/distributed-devg-v8-gaussdb/gaussdb-12-0266.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-plan-suboptimal-missing-analyze-dist-v8-01",
+        "gaussdb-plan-suboptimal-nestloop-large-table-unlogged-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/distributed-devg-v3-gaussdb/gaussdb-12-0267.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-query-slow-missing-analyze-01",
+        "gaussdb-query-slow-complex-join-intermediate-rows-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/distributed-devg-v3-gaussdb/gaussdb-12-0268.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-plan-suboptimal-seqscan-vs-indexscan-01",
+        "gaussdb-plan-suboptimal-nestloop-large-outer-01",
+        "gaussdb-plan-suboptimal-sort-groupagg-vs-hashagg-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/distributed-devg-v8-gaussdb/gaussdb-12-0284.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-plan-suboptimal-planhint-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/distributed-devg-v8-gaussdb/gaussdb-12-0318.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-query-slow-no-partial-pushdown-01",
+        "gaussdb-query-slow-correlated-subquery-target-list-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/bestpractice-gaussdb/gaussdb-22-0016.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dist-disk-full-storage-skew-01",
+        "gaussdb-dist-routine-skew-inspection-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/centralized-devg-v3-gaussdb/gaussdb-42-0288.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-query-slow-missing-statistics-explain-verbose-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/centralized-devg-v3-gaussdb/gaussdb-42-0289.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-query-slow-seqscan-index-missing-01",
+        "gaussdb-query-slow-nestloop-hashjoin-02",
+        "gaussdb-query-slow-groupagg-sort-03"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/centralized-devg-v8-gaussdb/gaussdb-42-0290.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-query-slow-seqscan-no-index-01",
+        "gaussdb-query-slow-nestloop-large-rowset-01",
+        "gaussdb-query-slow-sort-groupagg-large-result-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/centralized-devg-v3-gaussdb/gaussdb-42-0318.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-rewrite-lazyagg-double-aggregate-slow-01",
+        "gaussdb-rewrite-magicset-correlated-subquery-slow-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/centralized-devg-v8-gaussdb/gaussdb-42-0321.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-rewrite-v8-intargetlist-subplan-slow-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/gaussdb_faq/gaussdb_01_401.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-replica-lag-redo-workers-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/centralized-devg-v2-gaussdb/gaussdb_42_0238.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-plan-suboptimal-missing-analyze-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/centralized-devg-v2-gaussdb/gaussdb_42_0258.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-rewrite-intargetlist-subplan-slow-01",
+        "gaussdb-rewrite-uniquecheck-subquery-join-01"
+      ]
+    },
+    {
+      "source_url": "https://www.modb.pro/db/41146/",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-plan-suboptimal-broadcast-skew-redistribute-01",
+        "gaussdb-dws-plan-suboptimal-nestloop-seqscan-cost-02"
+      ]
+    },
+    {
+      "source_url": "https://bbs.huaweicloud.com/blogs/409217",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-plan-suboptimal-nestloop-perf-jump-hint-01"
+      ]
+    },
+    {
+      "source_url": "https://bbs.huaweicloud.com/blogs/214157",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-query-slow-topsql-queue-wait-01",
+        "gaussdb-dws-query-slow-data-skew-dn-time-01",
+        "gaussdb-dws-query-slow-dn-io-contention-01"
+      ]
+    },
+    {
+      "source_url": "https://bbs.huaweicloud.com/blogs/416344",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-query-slow-windowagg-single-dn-01"
+      ]
+    },
+    {
+      "source_url": "https://bbs.huaweicloud.com/blogs/407523",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-data-skew-row-number-partition-null-01"
+      ]
+    },
+    {
+      "source_url": "https://xie.infoq.cn/article/c3e71e83ba437213fb4584e40/",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-plan-suboptimal-data-skew-01",
+        "gaussdb-dws-plan-suboptimal-large-table-broadcast-02",
+        "gaussdb-dws-plan-suboptimal-spill-overflow-03",
+        "gaussdb-dws-plan-suboptimal-nestloop-large-table-04"
+      ]
+    },
+    {
+      "source_url": "https://www.modb.pro/db/48531",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-data-skew-query-slow-01",
+        "gaussdb-dws-statistics-not-collected-plan-poor-01",
+        "gaussdb-dws-statement-not-pushed-down-slow-01",
+        "gaussdb-dws-notin-nestloop-slow-01",
+        "gaussdb-dws-no-partition-pruning-slow-01",
+        "gaussdb-dws-row-estimate-small-nestloop-slow-01",
+        "gaussdb-dws-table-bloat-vacuum-slow-01",
+        "gaussdb-dws-in-constant-no-join-slow-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/dws_faq/dws_03_0103.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-table-bloat-autovacuum-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/dws_faq/dws_03_2105.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-plan-suboptimal-index-large-result-01",
+        "gaussdb-dws-plan-suboptimal-index-no-analyze-02",
+        "gaussdb-dws-plan-suboptimal-index-func-03"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/dws_faq/dws_03_2112.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-query-slow-max-active-statements-01",
+        "gaussdb-dws-query-slow-permission-or-filter-02"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/dws_faq/dws_03_2126.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-data-skew-bad-dist-key-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/devg-911-dws/dws_04_0447.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-statement-not-pushed-down-volatile-func-01",
+        "gaussdb-dws-with-recursive-not-pushed-slow-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/devg-dws/dws_04_0449.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-plan-suboptimal-missing-analyze-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/bestpractice-dws/dws_05_0029.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-query-slow-hstore-delta-bloat-01",
+        "gaussdb-dws-query-slow-realtime-numa-codegen-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/bestpractice-dws/dws_05_0033.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-cpu-high-stream-count-01",
+        "gaussdb-dws-query-slow-plan-jump-stale-stats-01",
+        "gaussdb-dws-query-slow-long-running-operator-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/bestpractice-dws/dws_05_0057.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-lock-contention-pgxc-stat-activity-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0015.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-query-slow-flink-connection-timeout-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0018.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-lock-contention-wait-timeout-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0040.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-write-slow-single-insert-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0041.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-query-slow-blocked-or-stale-stats-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0051.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-memory-pressure-oom-query-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0052.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-disk-space-column-table-bloat-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0072.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-data-skew-hash-dist-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0073.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-query-slow-missing-statistics-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0074.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-query-slow-function-not-shipped-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0076.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-nestloop-not-in-query-slow-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0077.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-query-slow-partition-pruning-miss-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0078.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-plan-nestloop-row-underestimate-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0079.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-query-slow-table-bloat-01",
+        "gaussdb-dws-query-slow-concurrent-index-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0082.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-point-query-cstore-scan-slow-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0106.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-query-slow-ccn-queue-memory-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0110.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-cstore-small-cu-io-slow-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0111.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-disk-io-saturation-column-cu-bloat-01",
+        "gaussdb-dws-disk-io-saturation-dirty-data-bloat-01",
+        "gaussdb-dws-disk-io-saturation-data-skew-01",
+        "gaussdb-dws-query-slow-no-index-or-index-miss-01",
+        "gaussdb-dws-disk-io-saturation-no-partition-pruning-01",
+        "gaussdb-dws-disk-io-saturation-large-index-import-01",
+        "gaussdb-dws-disk-io-saturation-small-files-iops-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0113.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-memory-pressure-high-mem-query-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0124.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-query-slow-vacuum-lock-wait-01",
+        "gaussdb-dws-query-slow-vacuum-pck-sort-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0125.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-disk-space-columnar-table-bloat-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0206.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-lock-contention-concurrent-update-01"
       ]
     }
   ]
