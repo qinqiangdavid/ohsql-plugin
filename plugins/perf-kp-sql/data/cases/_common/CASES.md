@@ -1,4 +1,4 @@
-<!-- ============ Diagnostic-Flow (_common, 25 cases) ============ -->
+<!-- ============ Diagnostic-Flow (_common, 31 cases) ============ -->
 
 ## case_id: kunpeng-nohz-clock-tick-overhead-03
 
@@ -1303,6 +1303,168 @@
   cause_type: application-design
   description_quote: "MongoDB tends to have very random disk patterns and often does not benefit from the default read-ahead setting, wasting memory that could be used for more hot data."
   linked_diagnostic_step_no: 1
+
+```
+
+## case_id: linux-fs-mmap-metadata-archiver-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: _common
+- **platform**: bare
+- **engine**: os-or-allocator
+- **symptom_category**: other
+- **case_pattern**: core-perf-diagnosis
+- **title**: Linux FS metadata syscall hotspot in mmap-based archiver workload
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 0
+- **source_url**: https://www.brendangregg.com/FlameGraphs/cpuflamegraphs.html
+- **source_url_lang**: en
+
+### diagnostic_steps
+
+```
+[step 1] 采火焰图识别栈帧
+  collection_layer: flamegraph
+  collection_method_quote: perf record -g + flamegraph.pl
+  flame_pattern:
+    pattern_regex: undefined
+    scope: linux-fs
+    signature_type: stack-pattern
+
+```
+
+## case_id: glibc-malloc-allocator-hot-stack-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: _common
+- **platform**: bare
+- **engine**: os-or-allocator
+- **symptom_category**: other
+- **case_pattern**: core-perf-diagnosis
+- **title**: glibc malloc allocator tracing hot stack — application allocation code path
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 0
+- **source_url**: https://www.brendangregg.com/FlameGraphs/memoryflamegraphs.html
+- **source_url_lang**: en
+
+### diagnostic_steps
+
+```
+[step 1] 采火焰图识别栈帧
+  collection_layer: flamegraph
+  collection_method_quote: perf record -g + flamegraph.pl
+  flame_pattern:
+    pattern_regex: undefined
+    scope: mem-allocator-glibc
+    signature_type: stack-pattern
+
+```
+
+## case_id: linux-mm-brk-heap-expansion-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: _common
+- **platform**: bare
+- **engine**: os-or-allocator
+- **symptom_category**: other
+- **case_pattern**: core-perf-diagnosis
+- **title**: brk() syscall hot frame — heap expansion code path
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 0
+- **source_url**: https://www.brendangregg.com/FlameGraphs/memoryflamegraphs.html
+- **source_url_lang**: en
+
+### diagnostic_steps
+
+```
+[step 1] 采火焰图识别栈帧
+  collection_layer: flamegraph
+  collection_method_quote: perf record -g + flamegraph.pl
+  flame_pattern:
+    pattern_regex: undefined
+    scope: linux-mm
+    signature_type: function-prefix
+
+```
+
+## case_id: linux-mm-mmap-vm-growth-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: _common
+- **platform**: bare
+- **engine**: os-or-allocator
+- **symptom_category**: other
+- **case_pattern**: core-perf-diagnosis
+- **title**: mmap() syscall hot frame — VM mapping growth code path
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 0
+- **source_url**: https://www.brendangregg.com/FlameGraphs/memoryflamegraphs.html
+- **source_url_lang**: en
+
+### diagnostic_steps
+
+```
+[step 1] 采火焰图识别栈帧
+  collection_layer: flamegraph
+  collection_method_quote: perf record -g + flamegraph.pl
+  flame_pattern:
+    pattern_regex: undefined
+    scope: linux-mm
+    signature_type: function-prefix
+
+```
+
+## case_id: linux-mm-page-fault-physical-population-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: _common
+- **platform**: bare
+- **engine**: os-or-allocator
+- **symptom_category**: other
+- **case_pattern**: core-perf-diagnosis
+- **title**: page fault hot frame — physical memory population code path
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 0
+- **source_url**: https://www.brendangregg.com/FlameGraphs/memoryflamegraphs.html
+- **source_url_lang**: en
+
+### diagnostic_steps
+
+```
+[step 1] 采火焰图识别栈帧
+  collection_layer: flamegraph
+  collection_method_quote: perf record -g + flamegraph.pl
+  flame_pattern:
+    pattern_regex: undefined
+    scope: linux-mm
+    signature_type: function-prefix
+
+```
+
+## case_id: linux-block-offwake-disk-io-block-completion-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: _common
+- **platform**: bare
+- **engine**: os-or-allocator
+- **symptom_category**: other
+- **case_pattern**: core-perf-diagnosis
+- **title**: Off-Wake flame graph stack chain: disk I/O block completion interrupt waking blocked vfs_read()
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 0
+- **source_url**: https://www.brendangregg.com/FlameGraphs/offcpuflamegraphs.html
+- **source_url_lang**: en
+
+### diagnostic_steps
+
+```
+[step 1] 采火焰图识别栈帧
+  collection_layer: flamegraph
+  collection_method_quote: perf record -g + flamegraph.pl
+  flame_pattern:
+    pattern_regex: undefined
+    scope: linux-block
+    signature_type: stack-pattern
 
 ```
 

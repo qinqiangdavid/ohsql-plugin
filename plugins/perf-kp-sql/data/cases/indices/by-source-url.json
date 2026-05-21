@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-05-20T07:48:43.493Z",
-  "total_urls": 117,
+  "generated_at": "2026-05-21T02:55:21.896Z",
+  "total_urls": 199,
   "urls": [
     {
       "source_url": "https://www.cnblogs.com/huaweicloud/p/11861191.html",
@@ -142,319 +142,6 @@
       ]
     },
     {
-      "source_url": "https://alexbevi.com/blog/2018/05/28/troubleshooting-a-mongodb-performance-issue/",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-cache-spike-replication-lag-cascade-01"
-      ]
-    },
-    {
-      "source_url": "https://finisky.github.io/en/mongodb-chunk-migration-failed/",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-shard-chunk-migration-x-lock-timeout-balancer-stuck-01"
-      ]
-    },
-    {
-      "source_url": "https://jira.mongodb.org/browse/SERVER-16479",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-wt-large-page-eviction-fetch-pause-server-16479"
-      ]
-    },
-    {
-      "source_url": "https://jira.mongodb.org/browse/SERVER-17907",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-wt-btree-sweep-eviction-collection-blocked-server-17907"
-      ]
-    },
-    {
-      "source_url": "https://jira.mongodb.org/browse/SERVER-31417",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-tcmalloc-decommit-madvise-lock-stall-server-31417"
-      ]
-    },
-    {
-      "source_url": "https://jira.mongodb.org/browse/SERVER-33296",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-tcmalloc-heap-fragmentation-pageheap-free-server-33296"
-      ]
-    },
-    {
-      "source_url": "https://jira.mongodb.org/browse/WT-6175",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-wt-tcmalloc-fragmentation-durable-history-wt-6175"
-      ]
-    },
-    {
-      "source_url": "https://mongoing.com/archives/39593",
-      "lang": "zh-cn",
-      "linked_case_ids": [
-        "mongo-globallock-current-queue-high-lock-contention-01"
-      ]
-    },
-    {
-      "source_url": "https://mongoing.com/archives/74118",
-      "lang": "zh-cn",
-      "linked_case_ids": [
-        "mongo-pagination-skip-deep-page-rewrite-02"
-      ]
-    },
-    {
-      "source_url": "https://mongoing.com/archives/77972",
-      "lang": "zh-cn",
-      "linked_case_ids": [
-        "mongo-wt-checkpoint-period-tuning-disk-io-spike-02",
-        "mongo-system-sessions-update-storm-primary-shard-degradation-03"
-      ]
-    },
-    {
-      "source_url": "https://mongoing.com/archives/78150",
-      "lang": "zh-cn",
-      "linked_case_ids": [
-        "mongo-slow-log-currentop-long-query-kill-02"
-      ]
-    },
-    {
-      "source_url": "https://source.wiredtiger.com/mongodb-6.0/tune_cache.html",
-      "lang": "en",
-      "linked_case_ids": [
-        "wt-eviction-trigger-app-thread-throttle-01"
-      ]
-    },
-    {
-      "source_url": "https://www.hikunpeng.com/document/detail/zh/kunpengdbs/ecosystemEnable/MongoDB/kunpengdbstune_05_0030.html",
-      "lang": "zh-cn",
-      "linked_case_ids": [
-        "mongo-snappy-hotspot-cpu-high-arm64-01"
-      ]
-    },
-    {
-      "source_url": "https://www.hikunpeng.com/document/detail/zh/perftuning/tuningtip/kunpengtuning_12_0013.html",
-      "lang": "zh-cn",
-      "linked_case_ids": [
-        "app-thread-concurrency-mismatch-01"
-      ]
-    },
-    {
-      "source_url": "https://www.hikunpeng.com/document/detail/zh/perftuning/tuningtip/kunpengtuning_12_0051.html",
-      "lang": "zh-cn",
-      "linked_case_ids": [
-        "app-malloc-jemalloc-multithread-audit-01"
-      ]
-    },
-    {
-      "source_url": "https://www.mafiree.com/blog/mongodb-query-optimization-ecommerce-case-study",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-aggregation-unbounded-pipeline-no-early-match-01"
-      ]
-    },
-    {
-      "source_url": "https://www.mongodb.com/docs/atlas/performance-advisor/schema-suggestions/",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-schema-too-many-lookups-should-embed-01",
-        "mongo-schema-unused-indexes-bloat-03",
-        "mongo-schema-document-too-large-04"
-      ]
-    },
-    {
-      "source_url": "https://www.mongodb.com/docs/atlas/reference/alert-resolutions/query-targeting/",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-query-targeting-high-scan-ratio-01"
-      ]
-    },
-    {
-      "source_url": "https://www.mongodb.com/docs/atlas/tutorial/query-profiler/",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-slow-query-profiler-metric-01"
-      ]
-    },
-    {
-      "source_url": "https://www.mongodb.com/docs/manual/administration/analyzing-mongodb-performance/",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-locking-queue-buildup-01",
-        "mongo-connection-storm-driver-error-02"
-      ]
-    },
-    {
-      "source_url": "https://www.mongodb.com/docs/manual/administration/performance-tuning/",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-wt-tickets-exhausted-01",
-        "mongo-replication-lag-multi-cause-02",
-        "mongo-open-cursor-rising-no-traffic-03",
-        "mongo-scan-and-order-high-04",
-        "mongo-unbound-array-rewrite-pressure-05"
-      ]
-    },
-    {
-      "source_url": "https://www.mongodb.com/docs/manual/administration/production-checklist-development/",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-driver-pool-size-too-small-vs-concurrent-requests-02"
-      ]
-    },
-    {
-      "source_url": "https://www.mongodb.com/docs/manual/administration/production-checklist-operations/",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-fs-nfs-dbpath-degraded-unstable-perf-01",
-        "mongo-fs-ext4-wiredtiger-perf-issue-should-use-xfs-02",
-        "mongo-tuned-profile-default-rhel-perf-impact-05"
-      ]
-    },
-    {
-      "source_url": "https://www.mongodb.com/docs/manual/administration/production-notes/",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-network-tcp-keepalive-too-long-cloud-lb-drops-02",
-        "mongo-numa-cross-node-memory-degradation-04",
-        "mongo-os-vm-swappiness-default-60-aggressive-swap-05",
-        "mongo-aws-ec2-storage-network-tuning-06"
-      ]
-    },
-    {
-      "source_url": "https://www.mongodb.com/docs/manual/administration/tcmalloc-performance/",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-tcmalloc-percpu-caches-not-enabled-01"
-      ]
-    },
-    {
-      "source_url": "https://www.mongodb.com/docs/manual/core/replica-set-arbiter/",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-psa-majority-writeconcern-perf-degradation-01"
-      ]
-    },
-    {
-      "source_url": "https://www.mongodb.com/docs/manual/core/wiredtiger/",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-wt-cache-size-misconfigured-01"
-      ]
-    },
-    {
-      "source_url": "https://www.mongodb.com/docs/manual/reference/explain-results/",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-explain-sort-stage-disk-spill-01"
-      ]
-    },
-    {
-      "source_url": "https://www.mongodb.com/docs/manual/tutorial/connection-pool-performance-tuning/",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-pool-connect-timeout-too-large-01",
-        "mongo-pool-socket-timeout-firewall-half-close-02",
-        "mongo-pool-minpoolsize-too-low-startup-creating-conns-03",
-        "mongo-pool-maxpoolsize-too-low-underutilized-04",
-        "mongo-pool-maxpoolsize-too-high-cpu-pressure-05"
-      ]
-    },
-    {
-      "source_url": "https://www.mongodb.com/docs/manual/tutorial/explain-slow-queries/",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-slow-query-explain-multi-stage-01"
-      ]
-    },
-    {
-      "source_url": "https://www.mongodb.com/docs/manual/tutorial/manage-the-database-profiler/",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-profiler-threshold-sampling-audit-01"
-      ]
-    },
-    {
-      "source_url": "https://www.mongodb.com/docs/manual/tutorial/transparent-huge-pages/",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-8x-thp-disabled-tcmalloc-suboptimal-01"
-      ]
-    },
-    {
-      "source_url": "https://www.mongodb.com/docs/manual/tutorial/troubleshoot-replica-sets/",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-replica-set-replication-lag-01"
-      ]
-    },
-    {
-      "source_url": "https://www.mongodb.com/docs/ops-manager/current/reference/alerts/replication-lag/",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-replica-lag-secondary-behind-primary-01"
-      ]
-    },
-    {
-      "source_url": "https://www.mydbops.com/blog/mongodb-8-slow-query-analysis-working-time-vs-duration-metrics",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-slow-log-queue-wait-vs-working-time-mongodb8-01"
-      ]
-    },
-    {
-      "source_url": "https://www.mydbops.com/blog/mongodb-plancache-memory-issue-sbe-fix",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-plancache-bloat-sbe-7-0-oom-kills-01"
-      ]
-    },
-    {
-      "source_url": "https://www.percona.com/blog/2018/04/09/mongodb-sharding-are-chunks-balanced-part-1/",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-sharding-jumbo-chunk-uneven-write-load-01",
-        "mongo-sharding-equal-chunks-skewed-data-getshard-distribution-02"
-      ]
-    },
-    {
-      "source_url": "https://www.percona.com/blog/configure-wiredtiger-cachesize-inside-percona-distribution-for-mongodb-kubernetes-operator/",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-k8s-container-wt-cache-fallback-256mb-01",
-        "mongo-k8s-operator-cachesize-bug-cpu-limit-required-02"
-      ]
-    },
-    {
-      "source_url": "https://www.percona.com/blog/memory-management-in-mongodb-8-0-testing-the-new-tcmalloc/",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-8-0-tcmalloc-percpu-prerequisite-not-met-01"
-      ]
-    },
-    {
-      "source_url": "https://www.percona.com/blog/mongodb-investigate-queries-with-explain-index-usage-part-2/",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-query-ixscan-poor-selectivity-extra-sort-02"
-      ]
-    },
-    {
-      "source_url": "https://www.percona.com/blog/mongodb-performance-regression-benchmarking-and-the-truth-behind-journaling/",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-write-regression-default-writeconcern-majority-journal-01"
-      ]
-    },
-    {
-      "source_url": "https://www.percona.com/blog/tuning-mongodb-for-bulk-loads/",
-      "lang": "en",
-      "linked_case_ids": [
-        "mongo-wt-checkpoint-time-grows-bulk-load-stall-01"
-      ]
-    },
-    {
       "source_url": "https://blog.csdn.net/GaussDB/article/details/143844792/",
       "lang": "zh-cn",
       "linked_case_ids": [
@@ -545,6 +232,20 @@
       ]
     },
     {
+      "source_url": "https://support.huaweicloud.com/bestpractice-gaussdb/gaussdb-23-0058.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-savepoint-in-loop-resource-leak-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/bestpractice-gaussdb/gaussdb-23-0150.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-seqscan-without-index-slow-01"
+      ]
+    },
+    {
       "source_url": "https://support.huaweicloud.com/centralized-devg-v3-gaussdb/gaussdb-42-0288.html",
       "lang": "zh-cn",
       "linked_case_ids": [
@@ -582,6 +283,211 @@
       "lang": "zh-cn",
       "linked_case_ids": [
         "gaussdb-rewrite-v8-intargetlist-subplan-slow-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/fg-gaussdb-cent-v8/gaussdb-48-0084.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-partition-maxmin-fullscan-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/bestpractice-gaussdb/gaussdb_practice_0071.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-alert-thresholds-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/distributed-devg-v2-gaussdb/gaussdb-12-0220.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-query-slow-agg-plan-mode-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/bestpractice-gaussdb/gaussdb-23-0074.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-copy-constraint-violation-tolerance-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/distributed-devg-v2-gaussdb/gaussdb-12-0216.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-plan-suboptimal-anti-join-row-estimate-01",
+        "gaussdb-plan-suboptimal-correlated-filter-selectivity-01"
+      ]
+    },
+    {
+      "source_url": "https://blog.csdn.net/GaussDB/article/details/146009597",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-cpu-saturated-by-slowsql-06"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/distributed-devg-v2-gaussdb/gaussdb-12-0190.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-data-skew-storage-distribution-01",
+        "gaussdb-data-skew-compute-redistribute-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/distributed-devg-v2-gaussdb/gaussdb-12-0470.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-disk-space-pressure-storage-skew-locate-01"
+      ]
+    },
+    {
+      "source_url": "https://xie.infoq.cn/article/86d06ac0a01fbd403397523b7",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-distribution-key-skew-xc-node-id-25"
+      ]
+    },
+    {
+      "source_url": "https://blog.csdn.net/GaussDB/article/details/134704421",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-distkey-choice-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/bestpractice-gaussdb/gaussdb-22-0013.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-groupagg-sort-vs-hashagg-08",
+        "gaussdb-stale-stats-hint-fix-09"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/distributed-devg-v2-gaussdb/gaussdb-12-0217.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-data-skew-hashjoin-dn-compute-skew-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/distributed-devg-v2-gaussdb/gaussdb-12-0214.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-query-slow-join-null-values-01"
+      ]
+    },
+    {
+      "source_url": "https://blog.csdn.net/GaussDB/article/details/136251205",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-missing-index-multi-join-05"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/distributed-devg-v2-gaussdb/gaussdb-12-0223.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-query-slow-nestloop-any-clause-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/distributed-devg-v2-gaussdb/gaussdb-12-0189.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-plan-suboptimal-seqscan-no-index-01",
+        "gaussdb-plan-suboptimal-nestloop-large-table-01",
+        "gaussdb-plan-suboptimal-groupagg-sort-01"
+      ]
+    },
+    {
+      "source_url": "https://blog.csdn.net/GaussDB/article/details/131321486",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-overall-slow-io-await-high-01",
+        "gaussdb-overall-slow-cpu-high-01",
+        "gaussdb-overall-slow-config-shared-buffers-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/bestpractice-gaussdb/gaussdb-23-0053.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-package-variable-session-memory-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/distributed-devg-v2-gaussdb/gaussdb-12-0222.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-query-slow-partition-pruning-disabled-function-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/distributed-devg-v2-gaussdb/gaussdb-12-0204.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-plan-suboptimal-row-estimate-broadcast-01",
+        "gaussdb-plan-suboptimal-statistics-change-plan-regression-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/bestpractice-gaussdb/gaussdb-22-0058.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-procedure-exception-frequent-perf-degrade-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/bestpractice-gaussdb/gaussdb-22-0051.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-procedure-security-definer-permission-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/distributed-devg-v3-gaussdb/gaussdb-12-0315.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-rewrite-rule-partialpush-13"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/distributed-devg-v2-gaussdb/gaussdb-12-0218.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-query-slow-scan-no-local-cluster-key-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/distributed-devg-v2-gaussdb/gaussdb-12-0215.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-query-slow-windowagg-sort-on-cn-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/bestpractice-gaussdb/gaussdb-23-0013.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-group-by-sort-perf-work-mem-01",
+        "gaussdb-not-in-to-not-exists-rewrite-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/distributed-devg-v8-gaussdb/gaussdb-12-0264.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-statement-not-shippable-cn-bottleneck-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/distributed-devg-v2-gaussdb/gaussdb-12-0221.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-query-slow-subplan-correlated-subquery-01"
       ]
     },
     {
@@ -666,6 +572,72 @@
         "gaussdb-dws-row-estimate-small-nestloop-slow-01",
         "gaussdb-dws-table-bloat-vacuum-slow-01",
         "gaussdb-dws-in-constant-no-join-slow-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/dws_faq/dws_03_2116.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "dws-case-when-redundant-rewrite-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0629.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "dws-data-bloat-disk-shortage-perf-low-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/bestpractice-dws/dws_05_0014.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "dws-data-skew-distribute-column-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/dws_faq/dws_03_2143.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "dws-dirty-page-high-vacuum-full-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0007.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "dws-gds-failed-disk-not-released-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0204.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "dws-jdbc-processresult-slow-01",
+        "dws-jdbc-modifyjdbccall-slow-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/bestpractice-dws/dws_05_0120.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "dws-partition-auto-period-ttl-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0014.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "dws-query-efficiency-degraded-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/bestpractice-dws/dws_05_0027.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "dws-3-0-disk-cache-size-low-hit-01",
+        "dws-3-0-disk-usage-readonly-01",
+        "dws-3-0-batching-import-memory-01"
       ]
     },
     {
@@ -891,6 +863,636 @@
       "lang": "zh-cn",
       "linked_case_ids": [
         "gaussdb-dws-lock-contention-concurrent-update-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/migration-dws/dws_15_0093.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "dws-distkey-skew-10pct-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0031.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-disk-high-dirty-pages-15",
+        "gaussdb-dws-disk-skew-16"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/devg-911-dws/dws_04_0485.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-agg-plan-tuning-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/devg-911-dws/dws_04_0479.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-cost-param-anti-join-01",
+        "gaussdb-dws-cost-param-filter-selectivity-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/devg-911-dws/dws_04_0451.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-data-skew-storage-01",
+        "gaussdb-dws-data-skew-compute-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/devg-911-dws/dws_04_0475.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-distribution-key-redistribution-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0112.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-high-cpu-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/dws_faq/dws_03_2109.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-idle-in-transaction-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/devg-911-dws/dws_04_0489.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-in-clause-nestloop-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/devg-911-dws/dws_04_0476.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-index-missing-slow-query-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0080.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-inlist2join-large-constants-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/devg-911-dws/dws_04_0477.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-join-null-values-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/devg-911-dws/dws_04_1000.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-not-in-nestloop-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/dws_faq/dws_03_2103.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-operator-spill-23"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/devg-911-dws/dws_04_0450.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-seqscan-vs-indexscan-01",
+        "gaussdb-dws-nestloop-to-hashjoin-01",
+        "gaussdb-dws-groupagg-to-hashagg-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/devg-911-dws/dws_04_0488.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-partition-pruning-failure-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/devg-911-dws/dws_04_0484.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-partition-table-scan-optimization-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/devg-911-dws/dws_04_0481.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-pck-point-query-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/devg-911-dws/dws_04_0490.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-pck-scan-acceleration-01"
+      ]
+    },
+    {
+      "source_url": "https://segmentfault.com/a/1190000038975701",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-plan-hint-leading-01",
+        "gaussdb-dws-plan-hint-nojoin-method-02",
+        "gaussdb-dws-plan-hint-rows-03",
+        "gaussdb-dws-plan-hint-skew-04"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/devg-911-dws/dws_04_0465.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-planhint-rows-estimate-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/devg-dws/dws_04_0447.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-pushdown-data-node-scan-12"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/devg-911-dws/dws_04_0482.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-row-vs-column-store-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/bestpractice-dws/dws_05_0113.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-copy-cdm-sequence-cache-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/devg-911-dws/dws_04_0130.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-sort-pushdown-cn-bottleneck-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/devg-911-dws/dws_04_0446.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-hashjoin-large-inner-table-01",
+        "gaussdb-dws-large-table-broadcast-01",
+        "gaussdb-dws-stats-not-collected-slow-01"
+      ]
+    },
+    {
+      "source_url": "https://www.modb.pro/db/40297",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-system-level-tuning-24"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0033.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-vacuum-full-long-tx-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0047.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-vacuum-defer-cleanup-age-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0102.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-dws-cant-fit-xid-old-tx-01"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/bestpractice-dws/dws_05_0004.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-import-skew-warning-07"
+      ]
+    },
+    {
+      "source_url": "https://support.huaweicloud.com/trouble-dws/dws_09_0038.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-too-many-clients-21"
+      ]
+    },
+    {
+      "source_url": "https://bbs.huaweicloud.com/blogs/906ef9eaf32e4254a9eefb2babdbd53a",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "gaussdb-windowagg-single-dn-04"
+      ]
+    },
+    {
+      "source_url": "https://alexbevi.com/blog/2018/05/28/troubleshooting-a-mongodb-performance-issue/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-cache-spike-replication-lag-cascade-01"
+      ]
+    },
+    {
+      "source_url": "https://amperecomputing.com/tuning-guides/mongoDB-tuning-guide",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-ulimit-low-defaults-mongod-issues-03"
+      ]
+    },
+    {
+      "source_url": "https://finisky.github.io/en/mongodb-chunk-migration-failed/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-shard-chunk-migration-x-lock-timeout-balancer-stuck-01"
+      ]
+    },
+    {
+      "source_url": "https://jira.mongodb.org/browse/SERVER-16479",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-wt-large-page-eviction-fetch-pause-server-16479"
+      ]
+    },
+    {
+      "source_url": "https://jira.mongodb.org/browse/SERVER-17907",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-wt-btree-sweep-eviction-collection-blocked-server-17907"
+      ]
+    },
+    {
+      "source_url": "https://jira.mongodb.org/browse/SERVER-31417",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-tcmalloc-decommit-madvise-lock-stall-server-31417"
+      ]
+    },
+    {
+      "source_url": "https://jira.mongodb.org/browse/SERVER-33296",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-tcmalloc-heap-fragmentation-pageheap-free-server-33296"
+      ]
+    },
+    {
+      "source_url": "https://jira.mongodb.org/browse/WT-6175",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-wt-tcmalloc-fragmentation-durable-history-wt-6175"
+      ]
+    },
+    {
+      "source_url": "https://mongoing.com/archives/39593",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "mongo-globallock-current-queue-high-lock-contention-01"
+      ]
+    },
+    {
+      "source_url": "https://mongoing.com/archives/74118",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "mongo-pagination-skip-deep-page-rewrite-02"
+      ]
+    },
+    {
+      "source_url": "https://mongoing.com/archives/77972",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "mongo-wt-checkpoint-period-tuning-disk-io-spike-02",
+        "mongo-system-sessions-update-storm-primary-shard-degradation-03"
+      ]
+    },
+    {
+      "source_url": "https://mongoing.com/archives/78150",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "mongo-slow-log-currentop-long-query-kill-02"
+      ]
+    },
+    {
+      "source_url": "https://source.wiredtiger.com/mongodb-6.0/tune_cache.html",
+      "lang": "en",
+      "linked_case_ids": [
+        "wt-eviction-trigger-app-thread-throttle-01"
+      ]
+    },
+    {
+      "source_url": "https://www.hikunpeng.com/document/detail/zh/kunpengdbs/ecosystemEnable/MongoDB/kunpengdbstune_05_0030.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "mongo-snappy-hotspot-cpu-high-arm64-01"
+      ]
+    },
+    {
+      "source_url": "https://www.hikunpeng.com/document/detail/zh/perftuning/tuningtip/kunpengtuning_12_0013.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "app-thread-concurrency-mismatch-01"
+      ]
+    },
+    {
+      "source_url": "https://www.hikunpeng.com/document/detail/zh/perftuning/tuningtip/kunpengtuning_12_0051.html",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "app-malloc-jemalloc-multithread-audit-01"
+      ]
+    },
+    {
+      "source_url": "https://www.mafiree.com/blog/mongodb-query-optimization-ecommerce-case-study",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-aggregation-unbounded-pipeline-no-early-match-01"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/atlas/performance-advisor/schema-suggestions/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-schema-too-many-lookups-should-embed-01",
+        "mongo-schema-unused-indexes-bloat-03",
+        "mongo-schema-document-too-large-04"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/atlas/reference/alert-resolutions/query-targeting/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-query-targeting-high-scan-ratio-01"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/atlas/tutorial/query-profiler/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-slow-query-profiler-metric-01"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/manual/administration/analyzing-mongodb-performance/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-locking-queue-buildup-01",
+        "mongo-connection-storm-driver-error-02"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/manual/administration/performance-tuning/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-wt-tickets-exhausted-01",
+        "mongo-replication-lag-multi-cause-02",
+        "mongo-open-cursor-rising-no-traffic-03",
+        "mongo-scan-and-order-high-04",
+        "mongo-unbound-array-rewrite-pressure-05"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/manual/administration/production-checklist-development/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-driver-pool-size-too-small-vs-concurrent-requests-02"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/manual/administration/production-checklist-operations/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-fs-nfs-dbpath-degraded-unstable-perf-01",
+        "mongo-fs-ext4-wiredtiger-perf-issue-should-use-xfs-02",
+        "mongo-tuned-profile-default-rhel-perf-impact-05"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/manual/administration/production-notes/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-startup-kernel-6-19-tcmalloc-incompat-01",
+        "mongo-network-tcp-keepalive-too-long-cloud-lb-drops-02",
+        "mongo-numa-cross-node-memory-degradation-04",
+        "mongo-os-vm-swappiness-default-60-aggressive-swap-05",
+        "mongo-aws-ec2-storage-network-tuning-06"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/manual/administration/tcmalloc-performance/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-tcmalloc-percpu-caches-not-enabled-01"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/manual/core/inmemory/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-inmemory-cache-full-overflow-01"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/manual/core/replica-set-arbiter/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-psa-majority-writeconcern-perf-degradation-01"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/manual/core/wiredtiger/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-wt-cache-size-misconfigured-01"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/manual/reference/explain-results/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-explain-sort-stage-disk-spill-01"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/manual/tutorial/connection-pool-performance-tuning/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-pool-connect-timeout-too-large-01",
+        "mongo-pool-socket-timeout-firewall-half-close-02",
+        "mongo-pool-minpoolsize-too-low-startup-creating-conns-03",
+        "mongo-pool-maxpoolsize-too-low-underutilized-04",
+        "mongo-pool-maxpoolsize-too-high-cpu-pressure-05"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/manual/tutorial/explain-slow-queries/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-slow-query-explain-multi-stage-01"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/manual/tutorial/manage-the-database-profiler/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-profiler-threshold-sampling-audit-01"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/manual/tutorial/transparent-huge-pages/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-8x-thp-disabled-tcmalloc-suboptimal-01"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/manual/tutorial/troubleshoot-replica-sets/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-replica-set-replication-lag-01"
+      ]
+    },
+    {
+      "source_url": "https://www.mongodb.com/docs/ops-manager/current/reference/alerts/replication-lag/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-replica-lag-secondary-behind-primary-01"
+      ]
+    },
+    {
+      "source_url": "https://www.mydbops.com/blog/mongodb-8-slow-query-analysis-working-time-vs-duration-metrics",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-slow-log-queue-wait-vs-working-time-mongodb8-01"
+      ]
+    },
+    {
+      "source_url": "https://www.mydbops.com/blog/mongodb-plancache-memory-issue-sbe-fix",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-plancache-bloat-sbe-7-0-oom-kills-01"
+      ]
+    },
+    {
+      "source_url": "https://www.percona.com/blog/2018/04/09/mongodb-sharding-are-chunks-balanced-part-1/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-sharding-jumbo-chunk-uneven-write-load-01",
+        "mongo-sharding-equal-chunks-skewed-data-getshard-distribution-02"
+      ]
+    },
+    {
+      "source_url": "https://www.percona.com/blog/configure-wiredtiger-cachesize-inside-percona-distribution-for-mongodb-kubernetes-operator/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-k8s-container-wt-cache-fallback-256mb-01",
+        "mongo-k8s-operator-cachesize-bug-cpu-limit-required-02"
+      ]
+    },
+    {
+      "source_url": "https://www.percona.com/blog/memory-management-in-mongodb-8-0-testing-the-new-tcmalloc/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-8-0-tcmalloc-percpu-prerequisite-not-met-01"
+      ]
+    },
+    {
+      "source_url": "https://www.percona.com/blog/mongodb-investigate-queries-with-explain-index-usage-part-2/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-query-ixscan-poor-selectivity-extra-sort-02"
+      ]
+    },
+    {
+      "source_url": "https://www.percona.com/blog/mongodb-performance-regression-benchmarking-and-the-truth-behind-journaling/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-write-regression-default-writeconcern-majority-journal-01"
+      ]
+    },
+    {
+      "source_url": "https://www.percona.com/blog/tuning-mongodb-for-bulk-loads/",
+      "lang": "en",
+      "linked_case_ids": [
+        "mongo-wt-checkpoint-time-grows-bulk-load-stall-01"
+      ]
+    },
+    {
+      "source_url": "https://www.brendangregg.com/FlameGraphs/cpuflamegraphs.html",
+      "lang": "en",
+      "linked_case_ids": [
+        "linux-fs-mmap-metadata-archiver-01"
+      ]
+    },
+    {
+      "source_url": "https://www.brendangregg.com/FlameGraphs/memoryflamegraphs.html",
+      "lang": "en",
+      "linked_case_ids": [
+        "glibc-malloc-allocator-hot-stack-01",
+        "linux-mm-brk-heap-expansion-01",
+        "linux-mm-mmap-vm-growth-01",
+        "linux-mm-page-fault-physical-population-01"
+      ]
+    },
+    {
+      "source_url": "https://www.brendangregg.com/FlameGraphs/offcpuflamegraphs.html",
+      "lang": "en",
+      "linked_case_ids": [
+        "linux-block-offwake-disk-io-block-completion-01"
+      ]
+    },
+    {
+      "source_url": "https://github.com/y123456yz/reading-and-annotate-wiredtiger-11.3.1/blob/main/%E7%A3%81%E7%9B%98%E7%A9%BA%E9%97%B4%E6%B3%84%E6%BC%8F%E5%AE%9E%E9%AA%8C%E7%BB%93%E6%9E%9C%E5%88%86%E6%9E%90.md",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "wt-evict-cold-page-compact-cure-01"
+      ]
+    },
+    {
+      "source_url": "https://raw.githubusercontent.com/y123456yz/reading-and-annotate-wiredtiger-11.3.1/main/MongoDB%E5%9C%A8%E7%BA%BF%E8%B0%83%E6%95%B4cache_size%E6%85%A2%E7%9A%84%E6%B7%B1%E5%BA%A6%E5%88%86%E6%9E%90.md",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "wt-app-thread-evict-assist-pressure-01",
+        "wt-evict-reconcile-blocked-ebusy-01"
+      ]
+    },
+    {
+      "source_url": "https://raw.githubusercontent.com/y123456yz/reading-and-annotate-wiredtiger-11.3.1/main/MongoDB_io_capacity_crash%E5%AE%8C%E6%95%B4%E4%BF%AE%E5%A4%8D%E6%96%B9%E6%A1%88.md",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "wt-capacity-throttle-cond-signal-crash-01"
+      ]
+    },
+    {
+      "source_url": "https://raw.githubusercontent.com/y123456yz/reading-and-annotate-wiredtiger-11.3.1/main/%E7%A3%81%E7%9B%98%E5%B7%B2%E6%8C%81%E4%B9%85%E5%8C%96%E6%95%B0%E6%8D%AE%E7%9A%84%E6%B8%85%E7%90%86%E4%BB%A3%E7%A0%81%E8%B7%AF%E5%BE%84.md",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "wt-reconcile-row-tombstone-skip-01",
+        "wt-reconcile-write-wrapup-block-free-01"
+      ]
+    },
+    {
+      "source_url": "https://raw.githubusercontent.com/y123456yz/reading-and-annotate-wiredtiger-11.3.1/main/%E4%B8%BA%E4%BB%80%E4%B9%88%E5%B7%B2%E5%88%A0%E9%99%A4%E6%95%B0%E6%8D%AE%E4%BB%8D%E5%9C%A8%E6%96%87%E4%BB%B6%E4%B8%AD_%E6%B7%B1%E5%BA%A6%E5%88%86%E6%9E%90.md",
+      "lang": "zh-cn",
+      "linked_case_ids": [
+        "wt-reconcile-row-leaf-tombstone-not-globally-visible-01"
       ]
     }
   ]

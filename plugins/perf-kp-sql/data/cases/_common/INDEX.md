@@ -1,8 +1,8 @@
 # Cases Index
 
-> 生成时间: 2026-05-20T07:48:43.492Z
+> 生成时间: 2026-05-21T02:55:21.894Z
 > 数据源: distill-v2/cases/<db>/diagnostic-flow/*.md + runtime baseline 合并
-> 总计: 25 cases (db=_common)
+> 总计: 299 cases
 > 配套: cases/CASES.md
 
 | case_id | symptom_category | title | 行号 |
@@ -32,3 +32,9 @@
 | linux-vm-dirty-ratio-pause-on-large-memory-01 | disk-io-saturation | dirty_ratio 默认 20-30% 在大内存机上累积巨量脏页,触发同步 flush 卡顿 | 1161 |
 | linux-thp-mongodb-sparse-memory-access-02 | memory-pressure | Transparent HugePages 在 MongoDB 稀疏内存访问场景下产生开销 | 1210 |
 | linux-readahead-default-128kb-wastes-fs-cache-04 | memory-pressure | 块设备 read-ahead 默认 128KB 浪费 MongoDB 文件系统缓存 | 1260 |
+| linux-fs-mmap-metadata-archiver-01 | other | Linux FS metadata syscall hotspot in mmap-based archiver workload | 15280 |
+| glibc-malloc-allocator-hot-stack-01 | other | glibc malloc allocator tracing hot stack — application allocation code path | 15307 |
+| linux-mm-brk-heap-expansion-01 | other | brk() syscall hot frame — heap expansion code path | 15334 |
+| linux-mm-mmap-vm-growth-01 | other | mmap() syscall hot frame — VM mapping growth code path | 15361 |
+| linux-mm-page-fault-physical-population-01 | other | page fault hot frame — physical memory population code path | 15388 |
+| linux-block-offwake-disk-io-block-completion-01 | other | Off-Wake flame graph stack chain: disk I/O block completion interrupt waking blocked vfs_read() | 15415 |

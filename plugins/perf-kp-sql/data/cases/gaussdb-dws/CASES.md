@@ -1,4 +1,4 @@
-<!-- ============ Diagnostic-Flow (gaussdb-dws, 65 cases) ============ -->
+<!-- ============ Diagnostic-Flow (gaussdb-dws, 120 cases) ============ -->
 
 ## case_id: gaussdb-dws-plan-suboptimal-broadcast-skew-redistribute-01
 
@@ -1006,6 +1006,657 @@
   risk_if_violated_quote: "如果优化器估算不准，可能会出现需要转化的场景没有做转化，导致性能较差。"
   reasoning_quote: "qrw_inlist2join_optmode可以控制把\"in 常量\"转join的行为。默认是cost_base的。如果优化器估算不准，可能会出现需要转化的场景没有做转化，导致性能较差。"
   linked_diagnostic_step_no: 1
+
+```
+
+## case_id: dws-case-when-redundant-rewrite-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: query-slow
+- **case_pattern**: core-perf-diagnosis
+- **title**: 大量冗余 CASE WHEN 导致查询性能下降
+- **source_heading**: 如何优化包含多个CASE WHEN条件的SQL查询？
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 2
+- **source_url**: https://support.huaweicloud.com/dws_faq/dws_03_2116.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 该语句冗长，执行时每个分支的CASE WHEN均需执行，导致查询时间成倍增加，影响查询性能。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: SQL 中 CASE WHEN 分支数量与执行次数
+  collection_layer: db-interactive-cmd
+  collection_method_quote: "在业务查询中，CASE WHEN语句常用来进行条件判断，但如果在SQL查询中存在大量冗余的CASE WHEN"
+  abnormal_pattern_quote: "该语句冗长，执行时每个分支的CASE WHEN均需执行，导致查询时间成倍增加"
+  abnormal_pattern_threshold: NULL
+  metric_unit: count
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: "该语句冗长，执行时每个分支的CASE WHEN均需执行，导致查询时间成倍增加，影响查询性能。"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "将复杂的CASE WHEN计算部分提取出来，放到一个临时的结果集中或者子查询中。这样可以减少在主查询中的重复计算逻辑。"
+
+[non_parameter_causes · cause 2] application-design
+  cause_type: application-design
+  description_quote: "将CASE WHEN的逻辑封装成一个函数。这样在查询中只需要调用该函数，而不是多次编写相同的CASE WHEN逻辑。"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "再使用自定义函数count_a_gt_value进行查询。"
+
+```
+
+## case_id: dws-data-bloat-disk-shortage-perf-low-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: disk-space-pressure
+- **case_pattern**: core-perf-diagnosis
+- **title**: 数据膨胀磁盘空间不足，导致性能降低
+- **source_heading**: 数据膨胀磁盘空间不足，导致性能降低
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 3
+- **source_url**: https://support.huaweicloud.com/trouble-dws/dws_09_0629.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 用户数据膨胀严重，磁盘空间不足，性能低。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: 系统表/用户表膨胀情况
+  collection_layer: db-system-view
+  collection_method_quote: "用户可在管控面执行全库Vacuum/Vacuum Full，以定期进行空间回收"
+  abnormal_pattern_quote: "用户数据膨胀严重，磁盘空间不足，性能低。"
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: "用户频繁创建、删除表，导致系统表膨胀严重，需要对系统表执行Vacuum。"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "Vacuum目标选择系统表或用户表"
+
+[non_parameter_causes · cause 2] application-design
+  cause_type: application-design
+  description_quote: "用户频繁执行UPDATE、DELETE语句，导致用户表膨胀严重，需要对用户表执行Vacuum/Vacuum Full。"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "如果用户业务UPDATE、DELETE较多，选择用户表。"
+
+[non_parameter_causes · cause 3] other
+  cause_type: other
+  description_quote: "VACUUM FULL执行过程中，本身持有8级锁，会阻塞其他业务，导致锁冲突产生，业务本身会陷入锁等待，20分钟后超时报错。因此，在用户配置时间窗内，应尽量避开执行所有处理表的相关业务。"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "推荐选择\"周期型任务\"，DWS将自动在自定义时间窗内执行Vacuum。"
+
+```
+
+## case_id: dws-data-skew-distribute-column-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: data-skew
+- **case_pattern**: core-perf-diagnosis
+- **title**: Hash 分布列选择不当导致数据倾斜，部分 DN I/O 短板
+- **source_heading**: 步骤4：创建新表并加载数据
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/bestpractice-dws/dws_05_0014.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 对于Hash分表策略，如果分布列选择不当，可能导致数据倾斜，查询时出现部分DN的I/O短板，从而影响整体查询性能。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: 各 DN 数据量分布 (xc_node_id 分组)
+  collection_layer: db-system-view
+  collection_method_quote: "SELECT a.count,b.node_name FROM (SELECT count(*) AS count,xc_node_id FROM table_name GROUP BY xc_node_id) a, pgxc_node b WHERE a.xc_node_id=b.node_id ORDER BY a.count desc;"
+  abnormal_pattern_quote: "不同DN的数据量相差5%以上即可视为倾斜，如果相差10%以上就必须要调整分布列"
+  abnormal_pattern_threshold: "> 5% diff (视为倾斜); > 10% diff (必须调整)"
+  metric_unit: %
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] data-distribution
+  cause_type: data-distribution
+  description_quote: "对于Hash分表策略，如果分布列选择不当，可能导致数据倾斜，查询时出现部分DN的I/O短板，从而影响整体查询性能。"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "DWS支持多分布列特性，可以更好地满足数据分布的均匀性要求。"
+
+```
+
+## case_id: dws-dirty-page-high-vacuum-full-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: disk-space-pressure
+- **case_pattern**: core-perf-diagnosis
+- **title**: DWS的脏页过高导致磁盘空间膨胀
+- **source_heading**: DWS的脏页是如何产生的？
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 2
+- **source_url**: https://support.huaweicloud.com/dws_faq/dws_03_2143.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 因此当表的脏页率高时，则认为表内部被标记为已删除的数据占比高。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: 表脏页率 (PGXC_STAT_TABLE_DIRTY)
+  collection_layer: db-system-view
+  collection_method_quote: "DWS提供了查询脏页率的系统视图，具体使用请参见PGXC_STAT_TABLE_DIRTY。"
+  abnormal_pattern_quote: "建议对查询脏页率超过80%的非系统表执行VACUUM FULL"
+  abnormal_pattern_threshold: "> 80%"
+  metric_unit: %
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: "DWS采用多版本控制技术（Multi-Version Concurrency Control，简称MVCC）的并发控制机制保证多个事务访问数据库时的一致性和并发性，其优点是读写互不阻塞，缺点则是会造成磁盘膨胀的问题，而MVCC机制是产生脏页的主要原因。"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "为了解决脏页率高导致磁盘空间膨胀的问题，DWS提供了VACUUM的功能，可以有效清理delete、update操作后标记的已删除数据"
+
+[non_parameter_causes · cause 2] other
+  cause_type: other
+  description_quote: "VACUUM不会释放已经分配好的空间，如果要彻底回收已删除的空间，则需要使用VACUUM FULL。"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "为降低磁盘膨胀对数据库性能的影响，建议对查询脏页率超过80%的非系统表执行VACUUM FULL，用户也可根据业务场景自行选择是否执行VACUUM FULL。"
+
+```
+
+## case_id: dws-gds-failed-disk-not-released-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: disk-space-pressure
+- **case_pattern**: core-perf-diagnosis
+- **title**: GDS导入失败后，磁盘占用空间增大
+- **source_heading**: GDS导入失败后，磁盘占用空间增大
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/trouble-dws/dws_09_0007.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 使用GDS导入数据失败，触发作业重跑。重新开始数据导入，完成导入作业后查看磁盘空间，发现磁盘占用空间比导入数据量大很多。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: GDS导入作业日志
+  collection_layer: log-grep
+  collection_method_quote: "检测GDS导入作业的日志，查看是否有执行失败的现象。"
+  abnormal_pattern_quote: "在导入数据失败后，占用的磁盘空间没有释放。"
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: "在导入数据失败后，占用的磁盘空间没有释放。"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "对表或者分区执行清理操作。"
+
+```
+
+## case_id: dws-jdbc-processresult-slow-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: query-slow
+- **case_pattern**: core-perf-diagnosis
+- **title**: 在processResult阶段耗时
+- **source_heading**: 在processResult阶段耗时
+- **diagnostic_steps_count**: 2
+- **likely_causes_count**: 2
+- **source_url**: https://support.huaweicloud.com/trouble-dws/dws_09_0204.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 设置loglevel=3，打开JDBC日志，主要耗时在processResult阶段
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: FE=>Sync 与 <=BE ParseComplete 日志时间间隔
+  collection_layer: log-grep
+  collection_method_quote: "用户可查看FE=> Syncr日志和<=BE ParseComplete日志之间的时间间隔"
+  abnormal_pattern_quote: "如果时间间隔较久，则判断为数据库执行慢。"
+  abnormal_pattern_threshold: NULL
+  metric_unit: ms
+  prerequisite_steps: []
+
+[step 2]
+  metric_name: <=BE DataRow 日志出现次数 / SELECT count(*) 结果集大小
+  collection_layer: log-grep
+  collection_method_quote: "查看日志，如果<=BE DataRow日志出现次数过多，或直接执行SELECT count(*);"
+  abnormal_pattern_quote: "查询结果数目过大，则判断为结果集过大。"
+  abnormal_pattern_threshold: NULL
+  metric_unit: count
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[parameter_causes · cause 1] fetchSize
+  param_name: fetchSize
+  abnormal_value_pattern: 默认值导致一次性加载全部结果集
+  recommended_value: 较小的值 (如 10)
+  recommendation_quote: "设置fetchSize参数为一个较小的值，使数据按批次返回，客户端得到快速响应。"
+  risk_if_violated_quote: "结果集过大，一次性全部加载，消耗大量时间。"
+  reasoning_quote: "结果集过大，一次性全部加载，消耗大量时间。"
+  linked_diagnostic_step_no: 2
+
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: "JDBC端等待数据库返回的报文时间过长。"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "分析SQL执行慢的原因"
+
+```
+
+## case_id: dws-jdbc-modifyjdbccall-slow-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: query-slow
+- **case_pattern**: core-perf-diagnosis
+- **title**: 在modifyJdbcCall和createParameterizedQuery阶段耗时
+- **source_heading**: 在modifyJdbcCall和createParameterizedQuery阶段耗时
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/trouble-dws/dws_09_0204.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 如果主要耗时在modifyJdbcCall阶段（校验传入的SQL是否符合规范）和createParameterizedQuery阶段（将传入的SQL解析为preparedQuery，以获取由simplequery组成的subqueries），则需要确认是否传入的SQL过长导致。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: modifyJdbcCall / createParameterizedQuery 阶段耗时
+  collection_layer: log-grep
+  collection_method_quote: "如果主要耗时在modifyJdbcCall阶段（校验传入的SQL是否符合规范）和createParameterizedQuery阶段（将传入的SQL解析为preparedQuery，以获取由simplequery组成的subqueries），则需要确认是否传入的SQL过长导致。"
+  abnormal_pattern_quote: "如果主要耗时在modifyJdbcCall阶段（校验传入的SQL是否符合规范）和createParameterizedQuery阶段（将传入的SQL解析为preparedQuery，以获取由simplequery组成的subqueries），则需要确认是否传入的SQL过长导致。"
+  abnormal_pattern_threshold: NULL
+  metric_unit: ms
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: "JDBC本身没办法优化这部分耗时，可在应用端查看是否可优化传入的SQL语句"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "可在应用端查看是否可优化传入的SQL语句"
+
+```
+
+## case_id: dws-partition-auto-period-ttl-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: other
+- **case_pattern**: core-perf-diagnosis
+- **title**: 普通分区表无法自动创建/清理分区导致运维成本高
+- **source_heading**: 使用DWS分区自动管理功能降低电商和物联网行业数据分区维护成本
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 2
+- **source_url**: https://support.huaweicloud.com/bestpractice-dws/dws_05_0120.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 但普通分区表无法自动创建新分区或清理过期分区，需维护人员定期手动操作，导致运维成本居高不下。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: 分区表 period / ttl 参数设置
+  collection_layer: db-shell
+  collection_method_quote: "CREATE TABLE CPU1(...) with (TTL='7 days',PERIOD='1 day', TIME_FORMAT='YYYYMMDD')"
+  abnormal_pattern_quote: "普通分区表无法自动创建新分区或清理过期分区，需维护人员定期手动操作"
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[parameter_causes · cause 1] period
+  param_name: period
+  abnormal_value_pattern: 未设置导致无法自动创建分区
+  recommended_value: `1 day` (默认; 范围 1 hour ~ 100 years)
+  recommendation_quote: "period：设置自动创建分区的间隔时间，默认值为1 day，取值范围：1 hour ~ 100 years。例如period为1 day，则每过一天，就会创建新的分区。"
+  risk_if_violated_quote: "普通分区表无法自动创建新分区"
+  reasoning_quote: "只要成功设置了表级参数period，即开启了自动创建新分区功能"
+  linked_diagnostic_step_no: 1
+
+[parameter_causes · cause 2] ttl
+  param_name: ttl
+  abnormal_value_pattern: 未设置导致无法自动淘汰过期分区
+  recommended_value: 大于或等于 period (范围 1 hour ~ 100 years)
+  recommendation_quote: "表级参数ttl不支持单独存在，必须要提前或同时设置period，并且要大于或等于period。"
+  risk_if_violated_quote: "普通分区表无法...清理过期分区"
+  reasoning_quote: "ttl：设置自动淘汰分区的时间，取值范围：1 hour ~ 100 years。淘汰分区的策略是通过计算nowtime - 分区boundary time> ttl，满足该条件的分区将被清理掉。"
+  linked_diagnostic_step_no: 1
+
+```
+
+## case_id: dws-query-efficiency-degraded-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: query-slow
+- **case_pattern**: core-perf-diagnosis
+- **title**: 分析查询效率异常降低的问题
+- **source_heading**: 分析查询效率异常降低的问题
+- **diagnostic_steps_count**: 4
+- **likely_causes_count**: 4
+- **source_url**: https://support.huaweicloud.com/trouble-dws/dws_09_0014.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 通常在几十毫秒内完成的查询，有时会突然需要几秒的时间完成；而通常需要几秒完成的查询，有时需要半小时才能完成。如何分析这种查询效率异常降低的问题呢？
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: ANALYZE 后的查询性能
+  collection_layer: db-interactive-cmd
+  collection_method_quote: "使用ANALYZE命令分析数据库。"
+  abnormal_pattern_quote: "如果此命令执行后性能恢复或者有所提升，则表明AUTOVACUUM未能很好的完成它的工作，有待进一步分析。"
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: []
+
+[step 2]
+  metric_name: 查询返回行数
+  collection_layer: db-interactive-cmd
+  collection_method_quote: "检查查询语句是否返回了多余的数据信息。"
+  abnormal_pattern_quote: "对于包含50条记录的表，查询起来是很快的；但是，当表中包含的记录达到50000，查询效率将会有所下降。"
+  abnormal_pattern_threshold: NULL
+  metric_unit: rows
+  prerequisite_steps: []
+
+[step 3]
+  metric_name: 主机负载下查询单独运行时延
+  collection_layer: db-interactive-cmd
+  collection_method_quote: "尝试在数据库没有其他查询或查询较少的时候运行查询语句，并观察运行效率。"
+  abnormal_pattern_quote: "如果效率较高，则说明可能是由于之前运行数据库系统的主机负载过大导致查询低效。"
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: []
+
+[step 4]
+  metric_name: 重复执行同一查询语句的执行时间
+  collection_layer: db-interactive-cmd
+  collection_method_quote: "重复执行相同的查询语句，如果后续执行的查询语句效率提升，则可能是由于上述原因导致。"
+  abnormal_pattern_quote: "查询效率低的一个重要原因是查询所需信息没有缓存在内存中，这可能是由于内存资源紧张，缓存信息被其他查询处理覆盖。"
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: "若业务应用中存在只需要部分数据信息，但是查询语句却是返回所有信息的情况，建议修改查询语句，增加LIMIT子句来限制返回的记录数。"
+  linked_diagnostic_step_no: 2
+  mitigation_quote: "建议修改查询语句，增加LIMIT子句来限制返回的记录数。这样至少使数据库优化器有了一定的优化空间，一定程度上会提升查询效率。"
+
+[non_parameter_causes · cause 2] other
+  cause_type: other
+  description_quote: "如果此命令执行后性能恢复或者有所提升，则表明AUTOVACUUM未能很好的完成它的工作，有待进一步分析。"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "使用ANALYZE命令分析数据库。"
+
+[non_parameter_causes · cause 3] other
+  cause_type: other
+  description_quote: "如果效率较高，则说明可能是由于之前运行数据库系统的主机负载过大导致查询低效。"
+  linked_diagnostic_step_no: 3
+  mitigation_quote: NULL
+
+[non_parameter_causes · cause 4] other
+  cause_type: other
+  description_quote: "查询效率低的一个重要原因是查询所需信息没有缓存在内存中，这可能是由于内存资源紧张，缓存信息被其他查询处理覆盖。"
+  linked_diagnostic_step_no: 4
+  mitigation_quote: NULL
+
+```
+
+## case_id: dws-3-0-disk-cache-size-low-hit-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: disk-io-saturation
+- **case_pattern**: core-perf-diagnosis
+- **title**: 存算分离场景下 Disk Cache 命中率低导致 OBS 直读多
+- **source_heading**: 关于磁盘缓存
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 2
+- **source_url**: https://support.huaweicloud.com/bestpractice-dws/dws_05_0027.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 用户查询数据时，会优先到Disk Cache中查看数据是否已存在于本地磁盘，如果不存在则再去OBS读取数据
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: Disk Cache 命中率与磁盘使用大小 (pgxc_disk_cache_all_stats)
+  collection_layer: db-system-view
+  collection_method_quote: "通过查询视图pgxc_disk_cache_all_stats可以查看当前缓存的命中率以及各个DN磁盘的使用大小情况"
+  abnormal_pattern_quote: "用户查询数据时，会优先到Disk Cache中查看数据是否已存在于本地磁盘，如果不存在则再去OBS读取数据"
+  abnormal_pattern_threshold: NULL
+  metric_unit: %
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[parameter_causes · cause 1] disk_cache_max_size
+  param_name: disk_cache_max_size
+  abnormal_value_pattern: 配置过小导致缓存空间不足无法容纳热数据
+  recommended_value: EVS 容量的 1/2 (默认值);若列存表没有索引可适当调大
+  recommendation_quote: "集群默认的缓存大小（disk_cache_max_size，该参数需联系技术支持设置）配置为：EVS容量的1/2。"
+  risk_if_violated_quote: "缩小Disk Cache可用规模后可能带来查询性能下降。"
+  reasoning_quote: "如果列存表没有创建索引，则可适当调大缓存配置参数disk_cache_max_size。"
+  linked_diagnostic_step_no: 1
+
+[parameter_causes · cause 2] disk_cache_dual_write_option
+  param_name: disk_cache_dual_write_option
+  abnormal_value_pattern: 默认 hstore_only,首次读普通 v3 表性能差
+  recommended_value: `all` (对普通 v3 表和 HStore 表都开启缓存双写)
+  recommendation_quote: "开启缓存双写可以提升首次查询数据的性能，即用户在写数据到远端OBS的同时，将数据也写到本地Disk Cache上。当第一次读取数据时，可显著提升读取效率。"
+  risk_if_violated_quote: NULL
+  reasoning_quote: "用户可通过disk_cache_dual_write_option来设置是否开启缓存双写"
+  linked_diagnostic_step_no: 1
+
+```
+
+## case_id: dws-3-0-disk-usage-readonly-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: disk-space-pressure
+- **case_pattern**: core-perf-diagnosis
+- **title**: 存算分离场景下 EVS 磁盘空间占用过高触发集群只读
+- **source_heading**: 集群空间不足与磁盘缓存空间调整
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/bestpractice-dws/dws_05_0027.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 容量不足：磁盘空间占用或者文件描述符使用超过ThresholdReadRisk(默认90%)，触发集群只读
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: EVS 磁盘空间占用百分比
+  collection_layer: log-grep
+  collection_method_quote: "日志中会出现\"Disk usage on the node %u has reached the read-only threshold 90%\""
+  abnormal_pattern_quote: "磁盘空间占用或者文件描述符使用超过ThresholdReadRisk(默认90%)，触发集群只读"
+  abnormal_pattern_threshold: "> 90%"
+  metric_unit: %
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[parameter_causes · cause 1] disk_cache_max_size
+  param_name: disk_cache_max_size
+  abnormal_value_pattern: 设置过大占用 EVS 较多空间
+  recommended_value: 在没有可清理资源时，可缩小至 300GB 或更小
+  recommendation_quote: "在没有可清理的列存2.0表和索引资源的情况下，可将disk_cache_max_size的大小调整为300GB或者更小的数值来缓解空间不足问题"
+  risk_if_violated_quote: "缺点是缩小Disk Cache可用规模后可能带来查询性能下降。"
+  reasoning_quote: "通过调整disk_cache_max_size参数缩小Disk Cache的实际使用空间缓解集群空间不足"
+  linked_diagnostic_step_no: 1
+
+```
+
+## case_id: dws-3-0-batching-import-memory-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: memory-pressure
+- **case_pattern**: core-perf-diagnosis
+- **title**: 存算分离 3.0 表多分区入库攒批内存消耗过大
+- **source_heading**: 入库的攒批开销与建议
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 2
+- **source_url**: https://support.huaweicloud.com/bestpractice-dws/dws_05_0027.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 单并发攒批消耗： #Np * #Nb * #Nr
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: 入库分区数 / Bucket 数 / 攒批内存消耗
+  collection_layer: db-shell
+  collection_method_quote: "单并发攒批消耗： #Np * #Nb * #Nr 单并发攒批内存消耗： partition_max_cache_size， 默认2GB"
+  abnormal_pattern_quote: "假设一次copy数据，涉及1000个分区，#Nb≈10, 单条记录大小1K，攒批大小10000行 单并发攒批消耗： 1000 * 10 * 1K * 10000 * 1.2 = 120G"
+  abnormal_pattern_threshold: NULL
+  metric_unit: bytes
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[parameter_causes · cause 1] min_batch_rows
+  param_name: min_batch_rows
+  abnormal_value_pattern: 攒批大小过大
+  recommended_value: 通过 SET 调整为更小值 (session 级生效)
+  recommendation_quote: "调整攒批大小，通过修改min_batch_rows进行控制，该参数为session级别，可以通过set语句设置当前session生效，或者通过修改配置文件让所有session生效。"
+  risk_if_violated_quote: NULL
+  reasoning_quote: "数据库内核参数优化：调整攒批大小，通过修改min_batch_rows进行控制"
+  linked_diagnostic_step_no: 1
+
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: "最大的影响因素是分区数目，建议用单分区入库，单并发攒批消耗 120G->120M，就可以直接内存攒批了。"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "应用层优化：最大的影响因素是分区数目，建议用单分区入库"
 
 ```
 
@@ -3348,3 +3999,2264 @@
   mitigation_quote: "调整业务逻辑sql执行顺序，避免update/delete长时间持有锁的sql在事务前面。尽量将大事务拆分成多个小事务来处理，小事务缩短锁定资源的时间，发生冲突的几率也降低。尽可能减少并发会话的数量，以减少冲突的几率。"
 
 ```
+
+## case_id: dws-distkey-skew-10pct-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: data-skew
+- **case_pattern**: core-perf-diagnosis
+- **title**: Hash 分布列选择不当导致 DN 数据分布倾斜
+- **source_heading**: 查看数据倾斜状态
+- **diagnostic_steps_count**: 2
+- **likely_causes_count**: 2
+- **source_url**: https://support.huaweicloud.com/migration-dws/dws_15_0093.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 数据倾斜会造成查询表性能下降。对于记录数超过千万条的表，建议在执行全量数据导入前，先导入部分数据，以进行数据倾斜检查和调整分布列，避免导入大量数据后发现数据倾斜，调整成本高。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: 各 DN 数据条数分布
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `SELECT a.count,b.node_name FROM (SELECT count(*) AS count,xc_node_id FROM table_name GROUP BY xc_node_id) a, pgxc_node b WHERE a.xc_node_id=b.node_id ORDER BY a.count desc;`
+  abnormal_pattern_quote: 若各DN上数据分布差大于等于10%，表明数据分布倾斜
+  abnormal_pattern_threshold: `>= 10%`
+  metric_unit: %
+  prerequisite_steps: []
+
+[step 2]
+  metric_name: PGXC_GET_TABLE_SKEWNESS 视图
+  collection_layer: db-system-view
+  collection_method_quote: 分布差可以通过视图[PGXC_GET_TABLE_SKEWNESS]查看。
+  abnormal_pattern_quote: 此处的数据分布差表示实际查询到DN上的数据量与DN平均数据量的差异。
+  abnormal_pattern_threshold: NULL
+  metric_unit: %
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] data-distribution
+  cause_type: data-distribution
+  description_quote: 对于Hash分布策略，如果分布列选择不当，可能导致数据倾斜。因此在采用Hash分布策略之后会对用户表的数据进行数据倾斜性检查，以确保数据在各个DN上是均匀分布的。一般情况下分布列都是选择键值重复度小，数据分布比较均匀的列。
+  linked_diagnostic_step_no: 1
+  mitigation_quote: 分析数据源特征，选择若干个键值重复度小，数据分布比较均匀的备选分布列。
+
+[non_parameter_causes · cause 2] data-distribution
+  cause_type: data-distribution
+  description_quote: 如果上述步骤不能选出适合的分布列，需要从备选分布列选择多个列的组合作为分布列来完成数据迁移。
+  linked_diagnostic_step_no: 1
+  mitigation_quote: 尝试选择staff_ID、FIRST_NAME和LAST_NAME的组合作为分布列
+
+```
+
+## case_id: gaussdb-dws-disk-high-dirty-pages-15
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: disk-space-pressure
+- **case_pattern**: core-perf-diagnosis
+- **title**: 集群所有/过半磁盘使用率 ≥ 70% — 脏页率过高
+- **source_heading**: 场景一：磁盘使用率过高
+- **diagnostic_steps_count**: 2
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/trouble-dws/dws_09_0031.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 场景一：磁盘使用率过高，当前集群所有磁盘或超过半数以上的磁盘使用率>=70%。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: DMS 监控 · 节点磁盘使用率
+  collection_layer: db-system-view
+  collection_method_quote: `选择“监控 > 节点监控 > 磁盘”，单击“磁盘使用率”右侧的![](https://support.huaweicloud.com/trouble-dws/figure/zh-cn_image_0000001393399197.png)进行排序，可查看当前集群各个节点的磁盘使用率。`
+  abnormal_pattern_quote: `当前集群所有磁盘或超过半数以上的磁盘使用率>=70%`
+  abnormal_pattern_threshold: `>= 70%`
+  metric_unit: %
+  prerequisite_steps: []
+
+[step 2]
+  metric_name: PGXC_GET_STAT_ALL_TABLES.dirty_page_rate
+  collection_layer: db-system-view
+  abnormal_pattern_quote: `脏页率超过30%的较大表`
+  abnormal_pattern_threshold: `dirty_page_rate > 30`
+  metric_unit: %
+  prerequisite_steps: [1]
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: `根据数据表的查询结果，定期进行脏数据 清理`
+  linked_diagnostic_step_no: 2
+  mitigation_quote: `8.1.3及以上版本：通过管理控制台“智能运维”功能进行自动清理`
+
+```
+
+## case_id: gaussdb-dws-agg-plan-tuning-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: query-slow
+- **case_pattern**: core-perf-diagnosis
+- **title**: 优化器代价估算偏差导致 Agg 计划选择次优，通过 best_agg_plan 参数干预
+- **source_heading**: 案例：调整GUC参数best_agg_plan
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/devg-911-dws/dws_04_0485.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 通常优化器总会选择最优的执行计划，但是众所周知代价估算，尤其是中间结果集的代价估算一般会有比较大的偏差，这种比较大的偏差就可能会导致agg的计算方式出现比较大的偏差
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: EXPLAIN · Agg 计划形态（hashagg+gather vs redistribute+hashagg）
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `explain select b,count(1) from t1 group by b`
+  abnormal_pattern_quote: "通常优化器总会选择最优的执行计划，但是众所周知代价估算，尤其是中间结果集的代价估算一般会有比较大的偏差，这种比较大的偏差就可能会导致agg的计算方式出现比较大的偏差"
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[parameter_causes · cause 1] best_agg_plan
+  param_name: best_agg_plan
+  abnormal_value_pattern: 默认 0（优化器自动选择），中间结果集估算偏差大时可能选择次优计划
+  recommended_value: `2` （收敛度小时选择 redistribute+hashagg）或 `3`（hashagg+redistribute+hashagg）
+  recommendation_quote: "DWS提供了guc参数best_agg_plan来干预执行计划，强制其生成上述对应的执行计划，此参数取值范围为0，1，2，3"
+  risk_if_violated_quote: "这种比较大的偏差就可能会导致agg的计算方式出现比较大的偏差，这时候就需要通过best_agg_plan进行agg计算模型的干预"
+  reasoning_quote: "当agg汇聚的收敛度很小时，即结果集的个数在agg之后并没有明显变少时（经验上以5倍为临界点），选择redistribute+hashagg执行方式，否则选择hashagg+redistribute+hashagg执行方式"
+  linked_diagnostic_step_no: 1
+
+```
+
+## case_id: gaussdb-dws-cost-param-anti-join-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: query-slow
+- **case_pattern**: core-perf-diagnosis
+- **title**: Anti Join 行数估算不准导致执行计划差，通过 cost_param bit0 修正
+- **source_heading**: 案例：设置cost_param对查询性能优化 · 场景一
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/devg-911-dws/dws_04_0479.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 以上查询为lineitem表自连接的Anti Join，当使用cost_param的bit0为0时，估算Anti Join的行数与实际行数相差很大，导致查询性能下降。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: EXPLAIN VERBOSE · Anti Join 执行计划及行数估算
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `explain verbose select count(*) as numwait from lineitem l1, orders where o_orderkey = l1.l_orderkey and o_orderstatus = 'F' and l1.l_receiptdate > l1.l_commitdate and not exists (select * from lineitem l3 where l3.l_orderkey = l1.l_orderkey and l3.l_suppkey <> l1.l_suppkey and l3.l_receiptdate > l3.l_commitdate) order by numwait desc`
+  abnormal_pattern_quote: "估算Anti Join的行数与实际行数相差很大，导致查询性能下降"
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[parameter_causes · cause 1] cost_param
+  param_name: cost_param
+  abnormal_value_pattern: bit0 = 0（默认），对自连接 Anti Join 的选择率估算不准确
+  recommended_value: `1` （bit0 = 1，使用改良的选择率估算方法）
+  recommendation_quote: "可以通过设置cost_param的bit0为1时，使Anti Join的行数估算更准确，从而提高查询性能"
+  risk_if_violated_quote: "估算Anti Join的行数与实际行数相差很大，导致查询性能下降"
+  reasoning_quote: "以上查询为lineitem表自连接的Anti Join，当使用cost_param的bit0为0时，估算Anti Join的行数与实际行数相差很大，导致查询性能下降"
+  linked_diagnostic_step_no: 1
+
+```
+
+## case_id: gaussdb-dws-cost-param-filter-selectivity-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: query-slow
+- **case_pattern**: core-perf-diagnosis
+- **title**: 多个过滤条件列强相关时选择率估算不准，通过 cost_param bit1 改善
+- **source_heading**: 案例：设置cost_param对查询性能优化 · 场景二
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/devg-911-dws/dws_04_0479.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 在以上查询中，supplier、lineitem、partsupp三表做hashjoin的条件为(lineitem.l_suppkey = supplier.s_suppkey) AND (lineitem.l_partkey = partsupp.ps_partkey)，此hashjoin条件中存在两个过滤条件，这前一个过滤条件中的lineitem.l_suppkey和后一个过滤条件中的lineitem.l_partkey同为lineitem表的两列，这两列存在强相关的关联关系。这种情况下，估算hashjoin条件的选择率时，如果使用cost_param的bit1为0时，实际是将AND的两个过滤条件分别计算的2个选择率的值相乘来得到hashjoin条件的选择率，导致行数估算不准确，查询性能较差。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: EXPLAIN VERBOSE · HashJoin 行数估算偏差
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `set cost_param=2; explain verbose select nation, sum(amount) as sum_profit from (...) as profit group by nation order by nation`
+  abnormal_pattern_quote: "导致行数估算不准确，查询性能较差"
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[parameter_causes · cause 1] cost_param
+  param_name: cost_param
+  abnormal_value_pattern: bit1 = 0（默认），多过滤条件列强相关时选择率计算方式不准确
+  recommended_value: `2` （bit1 = 1，过滤条件强相关时选最小选择率）
+  recommendation_quote: "所以需要将cost_param的bit1为1时，选择最小的选择率作为总的选择率估算行数比较准确，查询性能较好"
+  risk_if_violated_quote: "导致行数估算不准确，查询性能较差"
+  reasoning_quote: "此hashjoin条件中存在两个过滤条件，这前一个过滤条件中的lineitem.l_suppkey和后一个过滤条件中的lineitem.l_partkey同为lineitem表的两列，这两列存在强相关的关联关系"
+  linked_diagnostic_step_no: 1
+
+```
+
+## case_id: gaussdb-dws-data-skew-storage-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: data-skew
+- **case_pattern**: core-perf-diagnosis
+- **title**: 存储层数据倾斜导致部分 DN 成为查询瓶颈
+- **source_heading**: 存储层数据倾斜
+- **diagnostic_steps_count**: 3
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/devg-911-dws/dws_04_0451.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 如果数据分布存在倾斜，则会导致分布式执行某些DN成为瓶颈，影响查询性能。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: 磁盘利用率各 DN 差异
+  collection_layer: db-shell
+  collection_method_quote: `SELECT wait_status, count(*) as cnt FROM pgxc_thread_wait_status WHERE wait_status not like '%cmd%' AND wait_status not like '%none%' and wait_status not like '%quit%' group by 1 order by 2 desc`
+  abnormal_pattern_quote: "各个数据磁盘的利用率，会有不均衡的现象。正常情况下，利用率最高和利用率最低的磁盘空间相差不大，如果磁盘利用率相差超过了5%就要注意是不是有资源倾斜的情况。"
+  abnormal_pattern_threshold: `> 5% 差值`
+  metric_unit: %
+  prerequisite_steps: []
+
+[step 2]
+  metric_name: EXPLAIN PERFORMANCE 各 DN 基表 scan 行数及时间分布
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `explain performance select avg(ss_wholesale_cost) from store_sales`
+  abnormal_pattern_quote: "基表scan的时间：最快的DN耗时5ms，最慢的DN耗时1173ms。数据分布情况：某些DN有22831616行，其他DN都是0行，数据有严重倾斜。"
+  abnormal_pattern_threshold: NULL
+  metric_unit: ms
+  prerequisite_steps: [1]
+
+[step 3]
+  metric_name: table_skewness / table_distribution · 表数据倾斜率
+  collection_layer: db-shell
+  collection_method_quote: `SELECT table_skewness('store_sales')`
+  abnormal_pattern_quote: "某些DN有22831616行，其他DN都是0行，数据有严重倾斜"
+  abnormal_pattern_threshold: NULL
+  metric_unit: count
+  prerequisite_steps: [2]
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: "通常是由于分布列选择不合理，可以通过调整分布列的方式解决。"
+  linked_diagnostic_step_no: 3
+  mitigation_quote: "ALTER TABLE t2 DISTRIBUTE BY HASH (b)"
+
+```
+
+## case_id: gaussdb-dws-data-skew-compute-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: data-skew
+- **case_pattern**: core-perf-diagnosis
+- **title**: 计算层数据倾斜：重分布列上的倾斜值导致运行时 DN 数据不均衡
+- **source_heading**: 计算层数据倾斜
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 2
+- **source_url**: https://support.huaweicloud.com/devg-911-dws/dws_04_0451.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 在执行查询的过程中，仍然可能出现数据倾斜的问题。在运算过程中某个算子在DN上输出的结果集出现倾斜，从而导致此算子上层的运算出现计算倾斜。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: EXPLAIN PERFORMANCE · Stream 算子各 DN 行数分布
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `select * from skew s,test t where s.x = t.x order by s.a limit 1`
+  abnormal_pattern_quote: "6 --Streaming(type: REDISTRIBUTE) datanode1 (rows=5050368) datanode2 (rows=15276032) datanode3 (rows=5174272) datanode4 (rows=5219328)"
+  abnormal_pattern_threshold: NULL
+  metric_unit: count
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[parameter_causes · cause 1] skew_option
+  param_name: skew_option
+  abnormal_value_pattern: 未启用或设置为 lazy 时，优化器不对已知倾斜做额外优化
+  recommended_value: `normal`
+  recommendation_quote: "DWS提出了RLBT(Runtime Load Balance Technology)方案，用于解决运行时的计算倾斜问题，该特性由参数skew_option控制"
+  risk_if_violated_quote: "倾斜节点需要处理更多的数据，导致倾斜节点的计算性能远低于其他节点"
+  reasoning_quote: "当skew_option为normal时，这里认为倾斜数据依旧存在，仍然会对基表中识别到的倾斜进行优化"
+  linked_diagnostic_step_no: 1
+
+[non_parameter_causes · cause 1] data-distribution
+  cause_type: data-distribution
+  description_quote: "当重分布列上的数据存在倾斜时，就会导致运行时的数据倾斜，即重分布后部分节点的数据远大于其他"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "通过用户手动指定的方式，给定倾斜信息。优化器根据用户给定的倾斜信息，来对查询进行优化。详细hint使用语法参见运行倾斜的hint"
+
+```
+
+## case_id: gaussdb-dws-disk-skew-16
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: data-skew
+- **case_pattern**: core-perf-diagnosis
+- **title**: 磁盘倾斜:使用率最高与最低磁盘相差 ≥ 10%
+- **source_heading**: 场景二：磁盘倾斜
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/trouble-dws/dws_09_0031.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 场景二：磁盘倾斜，使用率最高的磁盘和最低的磁盘使用率之差>=10%。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: DMS · 节点磁盘使用率排序 (max - min)
+  collection_layer: db-system-view
+  collection_method_quote: `选择“监控 > 节点监控 > 磁盘”，单击“磁盘使用率”右侧的![](https://support.huaweicloud.com/trouble-dws/figure/zh-cn_image_0000001393399197.png)进行排序，可查看当前集群各个节点的磁盘使用率。`
+  abnormal_pattern_quote: `使用率最高的磁盘和最低的磁盘使用率之差>=10%`
+  abnormal_pattern_threshold: `max - min >= 10%`
+  metric_unit: %
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] data-distribution
+  cause_type: data-distribution
+  description_quote: `场景二：磁盘倾斜，使用率最高的磁盘和最低的磁盘使用率之差>=10%。`
+  linked_diagnostic_step_no: 1
+  mitigation_quote: NULL
+
+```
+
+## case_id: gaussdb-dws-distribution-key-redistribution-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: query-slow
+- **case_pattern**: core-perf-diagnosis
+- **title**: 分布列与 JOIN 条件不匹配导致 Redistribute Stream，查询耗时增加
+- **source_heading**: 案例：选择合适的分布列
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/devg-911-dws/dws_04_0475.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 则执行计划存在"Streaming(type: REDISTRIBUTE)"，即DN根据选定的列把数据重分布到所有的DN，这将导致DN之间存在较大通信数据量
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: EXPLAIN · Streaming(type: REDISTRIBUTE) 算子是否出现
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `EXPLAIN SELECT * FROM t1, t2 WHERE t1.a = t2.b`
+  abnormal_pattern_quote: "执行计划存在\"Streaming(type: REDISTRIBUTE)\"，即DN根据选定的列把数据重分布到所有的DN，这将导致DN之间存在较大通信数据量"
+  abnormal_pattern_threshold: NULL
+  metric_unit: ms
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: "在进行关联查询时，尽量选择查询中的关联条件作为分布键。当关联条件作为分布键时，相关数据都分布在DN本地，将减少DN之间的数据流动代价，提升查询速度。"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "将表t2的分布列改为b列之后，执行计划将不再包含\"Streaming(type: REDISTRIBUTE)\"，减少了DN之间存在的通信数据量的同时，执行时间也从8.7毫秒降低至2.7毫秒"
+
+```
+
+## case_id: gaussdb-dws-high-cpu-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: cpu-high
+- **case_pattern**: core-perf-diagnosis
+- **title**: 高 CPU 系统性能调优方案
+- **source_heading**: 高CPU系统性能调优方案
+- **diagnostic_steps_count**: 2
+- **likely_causes_count**: 3
+- **source_url**: https://support.huaweicloud.com/trouble-dws/dws_09_0112.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 如果当前集群CPU负载较高，可参考如下步骤进行优化
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: 节点 CPU 使用率 (1/3/12/24 小时)
+  collection_layer: os
+  collection_method_quote: 选择“监控 > 节点监控 > 概览”可查看当前集群各节点CPU使用率的具体情况，单击最右的监控按钮，查看最近1/3/12/24小时的CPU性能指标
+  abnormal_pattern_quote: 判断是否有CPU使用率突然增大的情况。
+  abnormal_pattern_threshold: NULL
+  metric_unit: %
+  prerequisite_steps: []
+
+[step 2]
+  metric_name: 资源池 CPU 限额 / 配额配置
+  collection_layer: db-system-view
+  collection_method_quote: 设置资源池CPU限额与配额。
+  abnormal_pattern_quote: 防止极端场景下某个语句占用CPU资源过多
+  abnormal_pattern_threshold: NULL
+  metric_unit: %
+  prerequisite_steps: [1]
+
+```
+
+### likely_causes
+
+```
+[parameter_causes · cause 1] resource_pool.cpu_dedicated_quota
+  param_name: resource_pool.cpu_dedicated_quota
+  abnormal_value_pattern: 未配置专属限额，导致复杂作业争抢 CPU
+  recommended_value: NULL
+  recommendation_quote: NULL
+  risk_if_violated_quote: 防止极端场景下某个语句占用CPU资源过多，导致数据库内其他语句因争抢CPU而变得缓慢迟钝的情况
+  reasoning_quote: 专属限额其实就是绑核，按照百分比的方式分配CPU核给资源池使用，该资源池上运行的复杂作业只能在分配的CPU上运行。
+  linked_diagnostic_step_no: 2
+
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: 根据业务场景适当降低作业并发量。
+  linked_diagnostic_step_no: 1
+  mitigation_quote: 根据业务场景适当降低作业并发量。
+
+[non_parameter_causes · cause 2] application-design
+  cause_type: application-design
+  description_quote: 设置异常规则及时终止高CPU语句。
+  linked_diagnostic_step_no: 1
+  mitigation_quote: 可创建与CPU资源相关的异常规则。具体操作可参考异常规则，对超过异常规则阈值的SQL及时终止拦截，保持集群稳定。
+
+```
+
+## case_id: gaussdb-dws-idle-in-transaction-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: connection-storm
+- **case_pattern**: core-perf-diagnosis
+- **title**: DWS 语句处于 idle in transaction 状态常见场景
+- **source_heading**: DWS语句处于idle in transaction状态常见场景
+- **diagnostic_steps_count**: 2
+- **likely_causes_count**: 3
+- **source_url**: https://support.huaweicloud.com/dws_faq/dws_03_2109.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 此状态下的语句已经执行完成，不占用CPU和IO等资源，会占用连接数，并发数等连接资源。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: pgxc_stat_activity state 字段
+  collection_layer: db-system-view
+  collection_method_quote: `SELECT state, query, query_id FROM pgxc_stat_activity;`
+  abnormal_pattern_quote: 查看结果显示：该语句状态为idle in transaction。
+  abnormal_pattern_threshold: `state = 'idle in transaction'`
+  metric_unit: enum
+  prerequisite_steps: []
+
+[step 2]
+  metric_name: 各 CN 上 SAVEPOINT/RELEASE 语句分布
+  collection_layer: db-system-view
+  collection_method_quote: `SELECT coorname,pid,query_id,state,query,usename FROM pgxc_stat_activity WHERE usename='jack';`
+  abnormal_pattern_quote: 结果显示SAVEPOINT/RELEASE语句处于idle in transaction。
+  abnormal_pattern_threshold: NULL
+  metric_unit: count
+  prerequisite_steps: [1]
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: 手动BEGIN/START TRANSACTION开启事务，执行某语句后，不执行COMMIT/ROLLBACK
+  linked_diagnostic_step_no: 1
+  mitigation_quote: 这种场景下需要手动对开启的事务执行COMMIT/ROLLBACK即可。
+
+[non_parameter_causes · cause 2] application-design
+  cause_type: application-design
+  description_quote: 存储过程中有DDL语句，该存储过程结束前，其他节点上DDL语句执行完后的状态是idle in transaction
+  linked_diagnostic_step_no: 1
+  mitigation_quote: 此类场景是由于存储过程执行慢导致，等存储过程执行完成即可，也可考虑优化存储过程中执行时间较长的语句。
+
+[non_parameter_causes · cause 3] application-design
+  cause_type: application-design
+  description_quote: SAVEPOINT和RELEASE语句是带EXCEPTION的存储过程执行时系统自动生成的（8.1.0之后的集群版本不再向CN下发SAVEPOINT），DWS带EXCEPTION的存储过程在实现上基于子事务实现
+  linked_diagnostic_step_no: 2
+  mitigation_quote: 当此类存储过程较多且有嵌套时容易出现，与场景二类似，等整个存储过程执行完即可。
+
+```
+
+## case_id: gaussdb-dws-in-clause-nestloop-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: query-slow
+- **case_pattern**: core-perf-diagnosis
+- **title**: any-clause 不等值 JOIN 条件导致 NestLoop，超时超 1 小时
+- **source_heading**: 案例：改写SQL消除in-clause
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/devg-911-dws/dws_04_0489.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 测试发现由于两表结果集过大，导致nestloop耗时过长，超过一小时未返回结果
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: EXPLAIN · JOIN 算子类型 (NestLoop vs HashJoin)
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `EXPLAIN SELECT ls_pid_cusr1,COALESCE(max(round((current_date-bthdate)/365)),0) FROM calc_empfyc_c1_result_tmp_t1 t1,p10_md_tmp_t2 t2 WHERE t1.ls_pid_cusr1 = any(values(id),(id15)) GROUP BY ls_pid_cusr1`
+  abnormal_pattern_quote: "因此join-condition实质上是一个不等式，这种不等值的join操作必须走nestloop"
+  abnormal_pattern_threshold: NULL
+  metric_unit: s
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: "性能优化的关键是消除nestloop，让join走更高效的hashjoin。从语义等价的角度消除any-clause"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "优化后，从超过1个小时未返回结果优化到7s返回结果。"
+
+```
+
+## case_id: gaussdb-dws-index-missing-slow-query-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: query-slow
+- **case_pattern**: core-perf-diagnosis
+- **title**: WHERE 过滤列缺少索引，列存分区表点查耗时 48ms，建索引后降至 18ms
+- **source_heading**: 案例：建立合适的索引
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/devg-911-dws/dws_04_0476.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 执行SQL语句查询没有建立索引情况下的执行计划，发现执行时间为48毫秒
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: EXPLAIN PERFORMANCE · 基表扫描方式及执行时间
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `EXPLAIN PERFORMANCE SELECT * FROM orders WHERE o_custkey = '1106459'`
+  abnormal_pattern_quote: "发现执行时间为48毫秒"
+  abnormal_pattern_threshold: NULL
+  metric_unit: ms
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: "where子句过滤条件的字段是o_custkey，在o_custkey字段上添加一个索引"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "CREATE INDEX idx_o_custkey ON orders (o_custkey) LOCAL；执行SQL语句查询建立索引后的执行计划，发现执行时间为18毫秒"
+
+```
+
+## case_id: gaussdb-dws-inlist2join-large-constants-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: query-slow
+- **case_pattern**: core-perf-diagnosis
+- **title**: "in 常量" 大量常量未转 join 导致执行不收
+- **source_heading**: 语句中存在"in 常量"导致SQL执行无结果
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/trouble-dws/dws_09_0080.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 简单的大表过滤的SQL语句中有一个"in 常量"的过滤条件，常量的个数非常多(约有2000多个)，基表数据量比较大，SQL语句执行无结果。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: EXPLAIN · in 条件是否转为 join
+  collection_layer: db-interactive-cmd
+  collection_method_quote: "打印语句的执行计划"
+  abnormal_pattern_quote: "执行计划中，in条件还是作为普通的过滤条件存在。这种场景下，join操作的性能优于in条件，最优的执行计划应该是将"in 常量"转化为join操作。"
+  abnormal_pattern_threshold: `执行计划中 in 仍作为 Filter 而非 Hash Join`
+  metric_unit: NULL
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[parameter_causes · cause 1] qrw_inlist2join_optmode
+  param_name: qrw_inlist2join_optmode
+  abnormal_value_pattern: 默认 cost_base 时优化器估算不准导致未做转化
+  recommended_value: `rule_base`
+  recommendation_quote: "这种情况下可以通过设置qrw_inlist2join_optmode为rule_base来规避解决。"
+  risk_if_violated_quote: "如果优化器估算不准，可能会出现需要转化的场景没有做转化，导致性能较差。"
+  reasoning_quote: "GUC参数qrw_inlist2join_optmode可以控制把"in 常量"转join的行为，默认是cost_base的。"
+  linked_diagnostic_step_no: 1
+
+```
+
+## case_id: gaussdb-dws-join-null-values-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: query-slow
+- **case_pattern**: core-perf-diagnosis
+- **title**: JOIN 列存在大量 NULL 值导致扫描阶段耗时过长
+- **source_heading**: 案例：增加JOIN列非空条件
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/devg-911-dws/dws_04_0477.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 若Join列上的NULL值较多，可以加上is not null过滤条件，以实现数据的提前过滤，提高Join效率。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: EXPLAIN · 执行计划顺序扫描阶段耗时
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `EXPLAIN` 查看多表 JOIN 执行计划
+  abnormal_pattern_quote: "分析执行计划可知，在顺序扫描阶段耗时较多"
+  abnormal_pattern_threshold: NULL
+  metric_unit: ms
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: "多表JOIN中，由于表PS.SDR_WEB_BSCRNC_1DAY的JOIN列\"BSCRNC_ID\"存在大量空值，JOIN性能差。建议在语句中手动添加JOIN列的非空判断"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "and SDR.BSCRNC_ID is not null"
+
+```
+
+## case_id: gaussdb-dws-not-in-nestloop-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: query-slow
+- **case_pattern**: core-perf-diagnosis
+- **title**: NOT IN 语句使用 NestLoop Anti Join，改写为 NOT EXISTS 可使用 Hash Anti Join
+- **source_heading**: 案例：NOT IN转NOT EXISTS
+- **diagnostic_steps_count**: 2
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/devg-911-dws/dws_04_1000.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> NOT IN语句需要使用nestloop anti join来实现，而NOT EXISTS则可以通过hash anti join来实现
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: EXPLAIN VERBOSE · NOT IN 执行计划算子类型
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `EXPLAIN VERBOSE SELECT * FROM t1 WHERE t1.c NOT IN (SELECT t2.c FROM t2)`
+  abnormal_pattern_quote: "从返回结果可知执行计划走NestLoop"
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: []
+
+[step 2]
+  metric_name: EXPLAIN VERBOSE · NOT EXISTS 执行计划算子类型验证
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `EXPLAIN VERBOSE SELECT * FROM t1 WHERE NOT EXISTS (SELECT 1 FROM t2 WHERE t2.c = t1.c)`
+  abnormal_pattern_quote: NULL
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: [1]
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: "NOT IN语句需要使用nestloop anti join来实现，而NOT EXISTS则可以通过hash anti join来实现。在join列不存在null值的情况下，not exists和not in等价。因此在确保没有null值时，可以通过将not in转换为not exists，通过生成hash join来提升查询效率。"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "SELECT * FROM t1 WHERE NOT EXISTS (SELECT * FROM t2 WHERE t2.c = t1.c)"
+
+```
+
+## case_id: gaussdb-dws-operator-spill-23
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: memory-pressure
+- **case_pattern**: core-perf-diagnosis
+- **title**: 中间数据量超出内存,算子下盘(spill) 导致查询响应剧烈劣化
+- **source_heading**: 算子下盘的概念 / 如何判断语句是否发生了下盘
+- **diagnostic_steps_count**: 4
+- **likely_causes_count**: 4
+- **source_url**: https://support.huaweicloud.com/dws_faq/dws_03_2103.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 发生算子下盘时，算子运算数据将写入磁盘，由于磁盘操作相对内存访问缓慢导致性能下降，查询响应时间出现极大劣化
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: base/pgsql_tmp 目录下 pgsql_tmp$queryid_$pid 文件
+  collection_layer: os
+  collection_method_quote: `下盘文件位于实例目录的base/pgsql_tmp路径下，下盘文件以 pgsql_tmp$queryid_$pid 命名`
+  abnormal_pattern_quote: `下盘文件位于实例目录的base/pgsql_tmp路径下`
+  abnormal_pattern_threshold: NULL
+  metric_unit: files
+  prerequisite_steps: []
+
+[step 2]
+  metric_name: pgxc_thread_wait_status · wait_status='write file'
+  collection_layer: db-system-view
+  collection_method_quote: `等待视图中，当出现write file时，表示发生了中间结果下盘`
+  abnormal_pattern_quote: `当出现write file时，表示发生了中间结果下盘`
+  abnormal_pattern_threshold: `wait_status = 'write file'`
+  metric_unit: NULL
+  prerequisite_steps: []
+
+[step 3]
+  metric_name: EXPLAIN PERFORMANCE · spill / written disk / temp file num 关键字
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `performance中出现spill、written disk、temp file num等关键字时，说明对应的算子出现了下盘。`
+  abnormal_pattern_quote: `performance中出现spill、written disk、temp file num等关键字时，说明对应的算子出现了下盘。`
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: []
+
+[step 4]
+  metric_name: TopSQL.spill_info
+  collection_layer: db-system-view
+  collection_method_quote: `实时TopSQL语句或历史TopSQL语句中，spill_info字段中会包含下盘信息，如果该字段不为空，说明有DN实例出现了下盘。`
+  abnormal_pattern_quote: `如果该字段不为空，说明有DN实例出现了下盘`
+  abnormal_pattern_threshold: `spill_info IS NOT NULL`
+  metric_unit: NULL
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[parameter_causes · cause 1] work_mem
+  param_name: work_mem
+  abnormal_value_pattern: 非自适应场景下设置过小,导致 hash/agg/sort 等可下盘算子触发下盘
+  recommended_value: `适当调大 (依据 Explain Performance 输出)`
+  recommendation_quote: `非内存自适应场景下，当中间结果集无法减少时，应根据实际情况适当调大work_mem参数。`
+  risk_if_violated_quote: `当内存使用超过该参数后将触发算子下盘`
+  reasoning_quote: `work_mem：可以判断执行作业可下盘算子是否触发已使用内存量下盘点，当内存使用超过该参数后将触发算子下盘。该参数仅在非内存自适应场景（enable_dynamic_workload=off）时生效。`
+  linked_diagnostic_step_no: 3
+
+[parameter_causes · cause 2] temp_file_limit
+  param_name: temp_file_limit
+  abnormal_value_pattern: 默认或过大,可能导致下盘填满磁盘
+  recommended_value: `根据实际磁盘可用空间设置上限`
+  recommendation_quote: `temp_file_limit：可以限制落盘算子的落盘文件大小，一般建议根据实际情况设置，防止下盘文件将磁盘空间占满，超过该值将报错退出。`
+  risk_if_violated_quote: `防止下盘文件将磁盘空间占满，超过该值将报错退出`
+  reasoning_quote: `temp_file_limit：可以限制落盘算子的落盘文件大小，一般建议根据实际情况设置，防止下盘文件将磁盘空间占满，超过该值将报错退出。`
+  linked_diagnostic_step_no: 1
+
+[non_parameter_causes · cause 1] data-distribution
+  cause_type: data-distribution
+  description_quote: `避免数据倾斜：数据倾斜严重时会导致单DN上数据量过大，引起单DN下盘。`
+  linked_diagnostic_step_no: 4
+  mitigation_quote: `避免数据倾斜`
+
+[non_parameter_causes · cause 2] application-design
+  cause_type: application-design
+  description_quote: `及时analyze：当统计信息不准时，行数估算可能偏小，导致计划选择非最优，从而出现下盘。`
+  linked_diagnostic_step_no: 3
+  mitigation_quote: `及时analyze`
+
+```
+
+## case_id: gaussdb-dws-seqscan-vs-indexscan-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: query-slow
+- **case_pattern**: core-perf-diagnosis
+- **title**: 点查/范围扫描场景 SeqScan 全表扫描耗时过长，应改为 IndexScan
+- **source_heading**: 算子级调优示例 · 示例1
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/devg-911-dws/dws_04_0450.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 基表扫描时，对于点查或者范围扫描等过滤大量数据的查询，如果使用SeqScan全表扫描会比较耗时
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: EXPLAIN ANALYZE · 基表扫描算子类型及执行时间
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `explain (analyze on, costs off) select * from store_sales where ss_sold_date_sk = 2450944`
+  abnormal_pattern_quote: "Seq Scan on store_sales [3594.611,3594.611] 3360 Rows Removed by Filter: 4968936"
+  abnormal_pattern_threshold: NULL
+  metric_unit: ms
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: "可以在条件列上建立索引选择IndexScan进行索引扫描提升扫描效率"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "create index idx on store_sales_row(ss_sold_date_sk)；建立索引后，使用IndexScan扫描效率显著提高，从3.6秒提升到13毫秒"
+
+```
+
+## case_id: gaussdb-dws-nestloop-to-hashjoin-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: query-slow
+- **case_pattern**: core-perf-diagnosis
+- **title**: 大表 JOIN 使用 NestLoop 导致执行时间过长，应改为 HashJoin
+- **source_heading**: 算子级调优示例 · 示例2
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/devg-911-dws/dws_04_0450.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 两表join选择了NestLoop，而实际行数比较大时，NestLoop Join可能执行比较慢
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: EXPLAIN ANALYZE · JOIN 算子类型及执行时间
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `EXPLAIN ANALYZE` 查看两表 JOIN 的算子类型
+  abnormal_pattern_quote: "NestLoop耗时181秒"
+  abnormal_pattern_threshold: NULL
+  metric_unit: s
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[parameter_causes · cause 1] enable_nestloop
+  param_name: enable_nestloop
+  abnormal_value_pattern: on（默认），大表 JOIN 时优化器错误选择 NestLoop
+  recommended_value: `off`
+  recommendation_quote: "设置参数enable_mergejoin=off关掉Merge Join，同时设置参数enable_nestloop=off关掉NestLoop，让优化器选择HashJoin，则Join耗时提升至200多毫秒"
+  risk_if_violated_quote: "NestLoop耗时181秒"
+  reasoning_quote: "两表join选择了NestLoop，而实际行数比较大时，NestLoop Join可能执行比较慢"
+  linked_diagnostic_step_no: 1
+
+```
+
+## case_id: gaussdb-dws-groupagg-to-hashagg-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: query-slow
+- **case_pattern**: core-perf-diagnosis
+- **title**: 大结果集 Agg 选择 Sort+GroupAgg 导致性能差，应改为 HashAgg
+- **source_heading**: 算子级调优示例 · 示例3
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/devg-911-dws/dws_04_0450.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 通常情况下Agg选择HashAgg性能较好，如果大结果集选择了Sort+GroupAgg，则需要设置enable_sort=off
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: EXPLAIN ANALYZE · Agg 算子类型及执行时间
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `EXPLAIN ANALYZE` 查看聚合操作算子选择
+  abnormal_pattern_quote: "如果大结果集选择了Sort+GroupAgg，则需要设置enable_sort=off，HashAgg耗时明显优于Sort+GroupAgg"
+  abnormal_pattern_threshold: NULL
+  metric_unit: ms
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[parameter_causes · cause 1] enable_sort
+  param_name: enable_sort
+  abnormal_value_pattern: on（默认），导致优化器在大结果集场景错误选择 Sort+GroupAgg
+  recommended_value: `off`
+  recommendation_quote: "如果大结果集选择了Sort+GroupAgg，则需要设置enable_sort=off，HashAgg耗时明显优于Sort+GroupAgg"
+  risk_if_violated_quote: NULL
+  reasoning_quote: "通常情况下Agg选择HashAgg性能较好，如果大结果集选择了Sort+GroupAgg，则需要设置enable_sort=off"
+  linked_diagnostic_step_no: 1
+
+```
+
+## case_id: gaussdb-dws-partition-pruning-failure-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: query-slow
+- **case_pattern**: core-perf-diagnosis
+- **title**: 分区键包含表达式导致分区剪枝失效，全分区扫描耗时长达 10s
+- **source_heading**: 案例：改写SQL排除剪枝干扰
+- **diagnostic_steps_count**: 2
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/devg-911-dws/dws_04_0488.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 测试结果显示此SQL的表Scan耗时长达10s
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: EXPLAIN ANALYZE VERBOSE · SQL 自诊断信息 + Partition Iterator 扫描分区数
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `EXPLAIN (ANALYZE ON, VERBOSE ON) SELECT count(1) FROM t_ddw_f10_op_cust_asset_mon b1 WHERE b1.year_mth < substr('20200722',1 ,6 ) AND b1.year_mth + 1 >= cast(substr('20200722',1 ,6 ) AS int)`
+  abnormal_pattern_quote: "Partitioned table unprunable Qual table public.t_ddw_f10_op_cust_asset_mon b1: left side of expression \"((year_mth + 1) > 202008)\" invokes function-call/type-conversion"
+  abnormal_pattern_threshold: NULL
+  metric_unit: ms
+  prerequisite_steps: []
+
+[step 2]
+  metric_name: EXPLAIN ANALYZE VERBOSE · 改写后 Partition Iterator Iterations
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `EXPLAIN (analyze ON, verbose ON) SELECT count(1) FROM t_ddw_f10_op_cust_asset_mon b1 WHERE b1.year_mth < substr('20200722',1 ,6 ) AND b1.year_mth >= cast(substr('20200722',1 ,6 ) AS int) - 1`
+  abnormal_pattern_quote: "不剪枝告警已经消除，剪枝后需要扫描分区数为1，执行时间从10s提升至3s"
+  abnormal_pattern_threshold: NULL
+  metric_unit: ms
+  prerequisite_steps: [1]
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: "Filter条件中存在表达式(year_mth + 1) > 202008，这种表达式一侧不是单纯的分区键、而是包含分区键的表达式的Filter条件是不能用来剪枝的，因而导致查询语句扫描了几乎整个分区表的数据。"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "跟原始SQL语句对比，可以确定表达式 '(year_mth + 1) > 202008' 是从表达式 'b1.year_mth + 1 > substr('20200822',1 ,6 )' 衍生而来，按照诊断信息把修改SQL语句为如下方式：WHERE b1.year_mth <= substr('20200822',1 ,6 ) AND b1.year_mth > cast(substr('20200822',1 ,6 ) AS int) - 1"
+
+```
+
+## case_id: gaussdb-dws-partition-table-scan-optimization-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: query-slow
+- **case_pattern**: core-perf-diagnosis
+- **title**: 大表无分区策略导致全表扫描耗时长，改建分区表后利用分区剪枝提升性能
+- **source_heading**: 案例：改建分区表
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/devg-911-dws/dws_04_0484.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 执行以下SQL语句查询非分区表的执行计划：由下图可知执行时间为73毫秒，其中全表扫描的时间为44~45毫秒。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: EXPLAIN PERFORMANCE · 全表扫描时间及 Partition Iterator Iterations
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `EXPLAIN PERFORMANCE SELECT count(*) FROM orders_no_part WHERE o_orderdate >= '1996-01-01 00:00:00'::timestamp(0)`
+  abnormal_pattern_quote: "执行时间为73毫秒，其中全表扫描的时间为44~45毫秒"
+  abnormal_pattern_threshold: NULL
+  metric_unit: ms
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: "在查询时，可通过分区剪枝技术尽可能减少底层数据扫描，即缩小表的扫描范围。分区剪枝是指对于分区表或分区索引来说，优化器可以自动从FROM和WHERE子句里根据分区键提取出需要扫描的分区，从而避免全表扫描，减少扫描的数据块，提高性能。"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "执行时间为40毫秒，其中表扫描时间仅为13毫秒。另外Iterations越小，分区剪枝效果越好。"
+
+```
+
+## case_id: gaussdb-dws-pck-point-query-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: query-slow
+- **case_pattern**: core-perf-diagnosis
+- **title**: 列存大表无 PCK 导致点查扫描全部 CU，执行时间 48ms，设置 PCK 后降至 5ms
+- **source_heading**: 案例：调整局部聚簇键
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/devg-911-dws/dws_04_0481.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 执行时间为48毫秒，查看Datanode Information发现filter时间为19毫秒，CUNone比例为0。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: EXPLAIN PERFORMANCE · CUNone 比例及 filter 耗时
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `EXPLAIN PERFORMANCE SELECT * FROM orders_no_pck WHERE o_orderkey = '13095143' ORDER BY o_orderdate`
+  abnormal_pattern_quote: "执行时间为48毫秒，查看Datanode Information发现filter时间为19毫秒，CUNone比例为0。"
+  abnormal_pattern_threshold: `CUNone比例 = 0`
+  metric_unit: ms
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: "使用ALTER TABLE将字段o_orderkey设置为PCK；由下图可知执行时间为5毫秒，查看Datanode Information发现filter时间为0.5毫秒，CUNone比例为82。CUNone比例越高，PCK的性能收益越明显。"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "ALTER TABLE将字段o_orderkey设置为PCK；执行时间为5毫秒，CUNone比例为82"
+
+```
+
+## case_id: gaussdb-dws-pck-scan-acceleration-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: query-slow
+- **case_pattern**: core-perf-diagnosis
+- **title**: 列存表未设置 Partial Cluster Key 导致 CStore Scan 大量加载 CU
+- **source_heading**: 案例：使用partial cluster key
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 2
+- **source_url**: https://support.huaweicloud.com/devg-911-dws/dws_04_0490.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 使用partial cluster key后，5-- CStore Scan on public.lineitem的时间减少了1.2s，得益于有84个CU被过滤掉了
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: EXPLAIN PERFORMANCE · CStore Scan CU 加载数量
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `EXPLAIN PERFORMANCE SELECT sum(l_extendedprice * l_discount) as revenue FROM lineitem WHERE l_shipdate >= '1994-01-01'::date and l_shipdate < '1994-01-01'::date + interval '1 year' and l_discount between 0.06 - 0.01 and 0.06 + 0.01 and l_quantity < 24`
+  abnormal_pattern_quote: "使用partial cluster key后，5-- CStore Scan on public.lineitem的时间减少了1.2s，得益于有84个CU被过滤掉了"
+  abnormal_pattern_threshold: NULL
+  metric_unit: ms
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[parameter_causes · cause 1] psort_work_mem
+  param_name: psort_work_mem
+  abnormal_value_pattern: 设值过小，导致 PCK 排序下盘写临时文件，影响导入性能
+  recommended_value: NULL
+  recommendation_quote: "排序使用的内存通过GUC参数psort_work_mem来设置，可以设置较大的值来使用更大的内存进行排序"
+  risk_if_violated_quote: "如果无法在内存中完成排序时，会下盘写临时文件，这时就会产生较大的影响"
+  reasoning_quote: "排序使用的内存通过GUC参数psort_work_mem来设置，可以设置较大的值来使用更大的内存进行排序"
+  linked_diagnostic_step_no: 1
+
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: "where条件中l_shipdate和l_quantity的distinct值数量较少且可以做min max过滤，将字段l_shipdate、l_quantity设置为PCK修改表定义"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "partial cluster key(l_shipdate, l_quantity)"
+
+```
+
+## case_id: gaussdb-dws-plan-hint-leading-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: plan-suboptimal
+- **case_pattern**: core-perf-diagnosis
+- **title**: Join 顺序 hint (leading) 调优 store_sales / date_dim join 顺序
+- **source_heading**: Join 顺序的hint
+- **diagnostic_steps_count**: 2
+- **likely_causes_count**: 1
+- **source_url**: https://segmentfault.com/a/1190000038975701
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> store_sales和item表join后未过滤掉任何数据，所以这两个表join并生成hash表的时间都比较长。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: explain performance 执行时间
+  collection_layer: db-interactive-cmd
+  collection_method_quote: explain performance select a.ca_state state, count(*) cnt from customer_address a ,customer c ,store_sales s ,date_dim d ,item i where a.ca_address_sk = c.c_current_addr_sk ...
+  abnormal_pattern_quote: store_sales和item表join后未过滤掉任何数据，所以这两个表join并生成hash表的时间都比较长。
+  abnormal_pattern_threshold: NULL
+  metric_unit: ms
+  prerequisite_steps: []
+
+[step 2]
+  metric_name: 加 leading hint 后执行时间
+  collection_layer: db-interactive-cmd
+  collection_method_quote: select /*+ leading((s d)) */ a.ca_state state, count(*) cnt ...
+  abnormal_pattern_quote: 执行时间由34268.322ms降为11095.046ms。
+  abnormal_pattern_threshold: `34268.322ms → 11095.046ms`
+  metric_unit: ms
+  prerequisite_steps: [1]
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: 根据对tpcds各表中数据分布的了解，我们知道，store_sales表和date_dim进行join，可以过滤掉较多数据，所以，可以使用hint来提示优化器优将store_sales表和date_dim表先进行join
+  linked_diagnostic_step_no: 2
+  mitigation_quote: 通过调整join顺序，使得之后各join的中间结果集都大幅减少
+
+```
+
+## case_id: gaussdb-dws-plan-hint-nojoin-method-02
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: plan-suboptimal
+- **case_pattern**: core-perf-diagnosis
+- **title**: no nestloop hint 改 hashjoin 避免低效 NestLoop
+- **source_heading**: Scan/Join方法的hint
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 1
+- **source_url**: https://segmentfault.com/a/1190000038975701
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 由于store_sales表的行数估算不准，store_sales和date_dim采用了效率不好的nestloop方式进行join。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: 加 leading + no nestloop hint 后执行时间
+  collection_layer: db-interactive-cmd
+  collection_method_quote: select /*+ leading((s d)) no nestloop(s d) */ a.ca_state state, count(*) cnt ...
+  abnormal_pattern_quote: 优化器对store_sales和date_dim表之间的join方法已经由nestloop改为了hashjoin，且这条语句的执行时间也由11095.046ms降为4644.409ms。
+  abnormal_pattern_threshold: `11095.046ms → 4644.409ms`
+  metric_unit: ms
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: 通过本节的hint方法来指示优化器不使用nestloop方式进行join。
+  linked_diagnostic_step_no: 1
+  mitigation_quote: no nestloop(table_list)
+
+```
+
+## case_id: gaussdb-dws-plan-hint-rows-03
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: plan-suboptimal
+- **case_pattern**: core-perf-diagnosis
+- **title**: 行数 hint 指明 store_sales 准确行数
+- **source_heading**: 行数hint
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 1
+- **source_url**: https://segmentfault.com/a/1190000038975701
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 由于store_sales表没有统计信息，所以在上面的各个计划中可以看到，store_sales表的估计行数和实际行数相差非常大，这就会导致生成了最初的效率比较低的计划。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: rows hint 后执行时间
+  collection_layer: db-interactive-cmd
+  collection_method_quote: select /*+ rows(s #2880404) */ a.ca_state state, count(*) cnt ...
+  abnormal_pattern_quote: 指定了store_sales表的准确行数后，优化器生成的计划执行时间直接从最初的34268.322ms将为1991.843ms，提升了17倍。
+  abnormal_pattern_threshold: `34268.322ms → 1991.843ms (17x)`
+  metric_unit: ms
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: 这也充分的说明了优化器对统计信息准确性的强烈依赖。
+  linked_diagnostic_step_no: 1
+
+```
+
+## case_id: gaussdb-dws-plan-hint-skew-04
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: data-skew
+- **case_pattern**: core-perf-diagnosis
+- **title**: 倾斜值 hint 优化 HashAgg 重分布倾斜
+- **source_heading**: 倾斜值hint
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 1
+- **source_url**: https://segmentfault.com/a/1190000038975701
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> with表达式中group by在做HashAgg中进行重分布时存在倾斜
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: skew hint 后双层 Agg 计划
+  collection_layer: db-interactive-cmd
+  collection_method_quote: select /*+ skew(store_returns(sr_store_sk sr_customer_sk)) */sr_customer_sk as ctr_customer_sk ...
+  abnormal_pattern_quote: 对于HashAgg，由于其重分布存在倾斜，所以优化为双层Agg。
+  abnormal_pattern_threshold: NULL
+  metric_unit: plan-shape
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] data-distribution
+  cause_type: data-distribution
+  description_quote: 用于指明查询运行时重分布过程中存在倾斜的重分布键和倾斜值，针对Join和HashAgg运算中的重分布进行优化。
+  linked_diagnostic_step_no: 1
+  mitigation_quote: skew(table (column) [(value)])
+
+```
+
+## case_id: gaussdb-dws-planhint-rows-estimate-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: query-slow
+- **case_pattern**: core-perf-diagnosis
+- **title**: 多列关联统计信息缺失导致 HashJoin 行数严重低估，使用 rows hint 干预后结合 join 顺序优化从 110s 降至 94s
+- **source_heading**: Plan Hint实际调优案例
+- **diagnostic_steps_count**: 2
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/devg-911-dws/dws_04_0465.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 该计划中，第10层算子使用broadcast性能较差，由于第11层算子估算行数为2140，比实际行数严重低估。错误行数估算主要来源于第13层算子的行数低估，根因是第13层hashjoin中，使用store_sales的(ss_ticket_number, ss_item_sk)列和store_returns的(sr_ticket_number, sr_item_sk)列进行关联，由于缺少多列相关性的估算导致行数严重低估。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: EXPLAIN PERFORMANCE · 各算子行数估算 vs 实际行数（A-rows vs E-rows）
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `EXPLAIN PERFORMANCE` 查看 TPC-DS Q24 部分语句执行计划
+  abnormal_pattern_quote: "第11层算子估算行数为2140，比实际行数严重低估"
+  abnormal_pattern_threshold: NULL
+  metric_unit: s
+  prerequisite_steps: []
+
+[step 2]
+  metric_name: EXPLAIN PERFORMANCE · rows hint 修正后各算子行数及整体耗时
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `select avg(netpaid) from (select /*+rows(store_sales store_returns * 11270)*/ c_last_name ...`
+  abnormal_pattern_quote: "最终计划如下图所示，运行时间94s，完成调优"
+  abnormal_pattern_threshold: NULL
+  metric_unit: s
+  prerequisite_steps: [1]
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: "根因是第13层hashjoin中，使用store_sales的(ss_ticket_number, ss_item_sk)列和store_returns的(sr_ticket_number, sr_item_sk)列进行关联，由于缺少多列相关性的估算导致行数严重低估。"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "发现最后一层使用单层Agg，但行数缩减较多。使用相同的hint，同时结合参数best_agg_plan=3进行双层Agg调优，最终计划如下图所示，运行时间94s，完成调优。"
+
+```
+
+## case_id: gaussdb-dws-pushdown-data-node-scan-12
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: plan-suboptimal
+- **case_pattern**: core-perf-diagnosis
+- **title**: SQL 语句不能下推,执行计划中出现 Data Node Scan / RemoteQuery 节点
+- **source_heading**: 语句下推调优 · 查看执行计划是否下推
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 2
+- **source_url**: https://support.huaweicloud.com/devg-dws/dws_04_0447.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 在“发送语句的分布式执行计划”策略中，要将大量中间结果从DN发送到CN，并且要在CN运行不能下推的部分语句，会导致CN成为性能瓶颈（带宽、存储、计算等）。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: EXPLAIN · 是否含 Data Node Scan 节点
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `如果执行计划中有Data Node Scan节点，那么此执行计划为不可下推的执行计划；如果执行计划中有Streaming节点，那么计划是可以下推的。`
+  abnormal_pattern_quote: `Data Node Scan on store_sales "_REMOTE_TABLE_QUERY_"`
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[parameter_causes · cause 1] enable_fast_query_shipping
+  param_name: enable_fast_query_shipping
+  abnormal_value_pattern: 默认开启 + 不下推 SQL 仍走 fast-shipping 屏蔽真实计划
+  recommended_value: `off (诊断时)`
+  recommendation_quote: `将GUC参数“enable_fast_query_shipping”设置为off，使查询优化器使用分布式框架策略。`
+  risk_if_violated_quote: NULL
+  reasoning_quote: `将GUC参数“enable_fast_query_shipping”设置为off，使查询优化器使用分布式框架策略。`
+  linked_diagnostic_step_no: 1
+
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: `执行语句不能下推是因为语句中含有不支持下推的函数或者不支持下推的语法。一般都可以通过等价改写规避执行计划不能下推的问题。`
+  linked_diagnostic_step_no: 1
+  mitigation_quote: `一般都可以通过等价改写规避执行计划不能下推的问题。`
+
+```
+
+## case_id: gaussdb-dws-row-vs-column-store-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: query-slow
+- **case_pattern**: core-perf-diagnosis
+- **title**: 中间表使用行存导致整体计划走行执行引擎，性能远差于列执行引擎
+- **source_heading**: 案例：调整中间表存储方式
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/devg-911-dws/dws_04_0482.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 某局点测试过程遇到如下的执行计划，客户希望将性能提升至3s内返回结果。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: EXPLAIN PERFORMANCE · 执行计划是否走向量化（列执行引擎）算子
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `EXPLAIN PERFORMANCE` 查看是否有 Vector 前缀算子
+  abnormal_pattern_quote: "经过分析发现计划走了行引擎。根本原因是：临时计划表input_acct_id_tbl和中间结果转储表row_unlogged_table使用了行存表。"
+  abnormal_pattern_threshold: NULL
+  metric_unit: ms
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: "修改这两个表为列存表之后，性能提升至1.6s。"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "修改这两个表为列存表之后，性能提升至1.6s。"
+
+```
+
+## case_id: gaussdb-dws-copy-cdm-sequence-cache-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: query-slow
+- **case_pattern**: core-perf-diagnosis
+- **title**: CDM 数据同步 COPY 入库导入速率不达预期
+- **source_heading**: sequence相关的典型优化场景
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/bestpractice-dws/dws_05_0113.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 某业务场景中使用CDM数据同步工具进行数据迁移，从源端入库目标端DWS。导入速率与经验值相差较大，业务将CDM并发从1调整为5，同步速率仍无法提升。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: COPY 语句等待视图 · 轻量级锁等待
+  collection_layer: db-system-view
+  collection_method_quote: "根据这5个COPY语句对应的query_id查看等待视图情况"
+  abnormal_pattern_quote: "查看到这5个COPY中，同一时刻，仅有1个COPY在向GTM申请序列值，其余的COPY在等待轻量级锁"
+  abnormal_pattern_threshold: `同时只有 1 个 COPY 向 GTM 申请序列值，其余在等待轻量级锁`
+  metric_unit: count
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[parameter_causes · cause 1] sequence.cache
+  param_name: sequence.cache
+  abnormal_value_pattern: default 为 1, 并发 COPY 入库时 CN 频繁与 GTM 建连
+  recommended_value: `10000 (按业务每次同步量评估)`
+  recommendation_quote: "根据业务评估，将cache值修改为10000（实际使用时应根据业务设置合理的cache值，既能保证快速访问，又不会造成序列号浪费）"
+  risk_if_violated_quote: "默认创建的sequence的cache为1，导致在并发COPY入库时，CN频繁与GTM建连，且多个并发之间存在轻量锁争抢，导致数据同步效率低"
+  reasoning_quote: "COPY场景中，由CN负责向GTM申请序列值，因此，当sequence的cache值较小，CN会频繁和GTM建联并申请nextval，出现性能瓶颈"
+  linked_diagnostic_step_no: 1
+
+```
+
+## case_id: gaussdb-dws-sort-pushdown-cn-bottleneck-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: query-slow
+- **case_pattern**: core-perf-diagnosis
+- **title**: CN 端 Window Agg + Sort 未下推导致查询耗时严重
+- **source_heading**: 案例：使排序下推
+- **diagnostic_steps_count**: 2
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/devg-911-dws/dws_04_0130.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 在做场景性能测试时，发现某场景大部分时间是CN端在做window agg，占到总执行时间95%以上，系统资源不能充分利用。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: EXPLAIN PERFORMANCE 执行计划 · Vector WindowAgg 耗时及位置
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `EXPLAIN PERFORMANCE SELECT COUNT(1) over() AS DATACNT, IMSI AS IMSI_IMSI, CAST(TRUNC(((SUM(L4_UL_THROUGHPUT) + SUM(L4_DW_THROUGHPUT))), 0) AS DECIMAL(20)) AS TOTAL_VOLUME_KPIID FROM public.test AS test GROUP BY IMSI ORDER BY TOTAL_VOLUME_KPIID DESC LIMIT 10`
+  abnormal_pattern_quote: "window agg和sort全部在CN端执行，耗时非常严重"
+  abnormal_pattern_threshold: NULL
+  metric_unit: ms
+  prerequisite_steps: []
+
+[step 2]
+  metric_name: EXPLAIN PERFORMANCE 改写后执行计划 · 排序下推验证
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `EXPLAIN PERFORMANCE SELECT COUNT(1) over() AS DATACNT, IMSI_IMSI, TOTAL_VOLUME_KPIID FROM (SELECT IMSI AS IMSI_IMSI, CAST(TRUNC(((SUM(L4_UL_THROUGHPUT) + SUM(L4_DW_THROUGHPUT))), 0) AS DECIMAL(20)) AS TOTAL_VOLUME_KPIID FROM public.test AS test GROUP BY IMSI ORDER BY TOTAL_VOLUME_KPIID DESC LIMIT 10)`
+  abnormal_pattern_quote: "经过SQL改写，性能由2.862s提升0.955s，优化效果明显"
+  abnormal_pattern_threshold: NULL
+  metric_unit: ms
+  prerequisite_steps: [1]
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: "研究发现该场景的特点是：将两列分别求sum作为一个子查询，外层对两列的和再求和后做trunc，然后排序。可以尝试将语句改写为子查询，使排序下推。"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "尝试将语句改写为子查询：SELECT COUNT(1) over() AS DATACNT, IMSI_IMSI, TOTAL_VOLUME_KPIID FROM (SELECT IMSI AS IMSI_IMSI, CAST(TRUNC(((SUM(L4_UL_THROUGHPUT) + SUM(L4_DW_THROUGHPUT))), 0) AS DECIMAL(20)) AS TOTAL_VOLUME_KPIID FROM public.test AS test GROUP BY IMSI ORDER BY TOTAL_VOLUME_KPIID DESC LIMIT 10)"
+
+```
+
+## case_id: gaussdb-dws-hashjoin-large-inner-table-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: query-slow
+- **case_pattern**: core-perf-diagnosis
+- **title**: HashJoin 大表做内表导致内存和性能问题
+- **source_heading**: HashJoin中大表做内表
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/devg-911-dws/dws_04_0446.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 在表连接过程中使用了Hashjoin（可通过GS_WLM_SESSION_HISTORY的"query_plan"字段查看），且连接的内表行数是外表行数的10倍或以上；同时内表在每个DN上的平均行数大于10万行，且发生了下盘
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: GS_WLM_SESSION_HISTORY.warning · SQL 自诊断信息
+  collection_layer: db-system-view
+  collection_method_quote: `SELECT query,warning FROM GS_WLM_SESSION_HISTORY ORDER BY start_time DESC`
+  abnormal_pattern_quote: "PlanNode[7] Large Table is INNER in HashJoin \"Vector Hash Aggregate\""
+  abnormal_pattern_threshold: `内表行数 ≥ 外表行数 × 10 且内表每DN平均行数 > 10万行且发生下盘`
+  metric_unit: count
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: "针对这种场景，需要调整HashJoin内外表顺序，具体调优方法参考Join顺序的Hint"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "针对这种场景，需要调整HashJoin内外表顺序，具体调优方法参考Join顺序的Hint"
+
+```
+
+## case_id: gaussdb-dws-large-table-broadcast-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: query-slow
+- **case_pattern**: core-perf-diagnosis
+- **title**: 大表 Broadcast 导致 DN 间大量数据传输
+- **source_heading**: 大表Broadcast
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/devg-911-dws/dws_04_0446.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 如果在Broadcast算子中，平均每DN的行数大于10万行，则告警大表Broadcast
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: GS_WLM_SESSION_HISTORY.warning · SQL 自诊断信息
+  collection_layer: db-system-view
+  collection_method_quote: `SELECT query,warning FROM GS_WLM_SESSION_HISTORY ORDER BY start_time DESC`
+  abnormal_pattern_quote: "PlanNode[5] Large Table in Broadcast \"Streaming(type: BROADCAST dop: 1/2)\""
+  abnormal_pattern_threshold: `平均每DN行数 > 10万行`
+  metric_unit: count
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: "针对这种场景，需要禁止Broadcast下层算子做Broadcast动作，具体调优方法参考Stream方式的Hint"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "针对这种场景，需要禁止Broadcast下层算子做Broadcast动作，具体调优方法参考Stream方式的Hint"
+
+```
+
+## case_id: gaussdb-dws-stats-not-collected-slow-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: query-slow
+- **case_pattern**: core-perf-diagnosis
+- **title**: 统计信息未收集导致优化器估算不准，查询性能下降
+- **source_heading**: 多列/单列统计信息未收集
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/devg-911-dws/dws_04_0446.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 如果存在单列或者多列统计信息未收集，则上报相关告警
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: GS_WLM_SESSION_HISTORY.warning · 统计信息未收集告警
+  collection_layer: db-system-view
+  collection_method_quote: `SELECT query,warning FROM GS_WLM_SESSION_STATISTICS ORDER BY start_time DESC`
+  abnormal_pattern_quote: "Statistic Not Collect schema_test.t1"
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: "对于这种告警，建议的优化方案是对相关表进行ANALYZE"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "对于这种告警，建议的优化方案是对相关表进行ANALYZE，可参考更新统计信息和统计信息调优"
+
+```
+
+## case_id: gaussdb-dws-system-level-tuning-24
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: other
+- **case_pattern**: core-perf-diagnosis
+- **title**: 集群吞吐受限,系统级 GUC 未按 CPU/IO/内存/网络资源充分使用调优
+- **source_heading**: 系统级调优项
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 6
+- **source_url**: https://www.modb.pro/db/40297
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 系统级调优又细分为操作系统参数调优和数据库全局参数调优，通常涉及到的是系统CPU、IO、内存、网络资源的充分使用，避免资源冲突，提升整个系统查询的吞吐量。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: EXPLAIN PERFORMANCE · 算子瓶颈维度判别(CPU/IO/内存/网络)
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `通过执行态信息，我们可以分析出算子为单位的性能，也可以分析出算子内部各步骤的性能，进一步为诊断性能的瓶颈打下了基础。`
+  abnormal_pattern_quote: NULL
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[parameter_causes · cause 1] query_dop
+  param_name: query_dop
+  abnormal_value_pattern: 未配置或为 0,未按系统资源动态获取并行度
+  recommended_value: `0 (动态) — 需开启 use_workload_manager=on`
+  recommendation_quote: `通过query_dop设置语句的执行并行度（注：query_dop为0时根据系统资源情况动态获取并行度，需要开启资源管理模块use_workload_manager=on）`
+  risk_if_violated_quote: NULL
+  reasoning_quote: `通过query_dop设置语句的执行并行度（注：query_dop为0时根据系统资源情况动态获取并行度，需要开启资源管理模块use_workload_manager=on）`
+  linked_diagnostic_step_no: 1
+
+[parameter_causes · cause 2] shared_buffers
+  param_name: shared_buffers
+  abnormal_value_pattern: 设置过小,数据页面频繁从磁盘加载
+  recommended_value: NULL
+  recommendation_quote: NULL
+  risk_if_violated_quote: NULL
+  reasoning_quote: `通过shared_buffers和cstore_buffers设置缓存大小，用于缓存数据页面，减少IO使用。`
+  linked_diagnostic_step_no: 1
+
+[parameter_causes · cause 3] cstore_buffers
+  param_name: cstore_buffers
+  abnormal_value_pattern: 设置过小,列存表场景下扫描频繁触发 IO
+  recommended_value: NULL
+  recommendation_quote: NULL
+  risk_if_violated_quote: NULL
+  reasoning_quote: `通过shared_buffers和cstore_buffers设置缓存大小，用于缓存数据页面，减少IO使用。`
+  linked_diagnostic_step_no: 1
+
+[parameter_causes · cause 4] max_process_memory
+  param_name: max_process_memory
+  abnormal_value_pattern: 内存自适应场景下设置过小,算子无法获得足够内存
+  recommended_value: NULL
+  recommendation_quote: NULL
+  risk_if_violated_quote: NULL
+  reasoning_quote: `内存自适应模式会自动根据系统可用内存为计划中各个算子分配内存，因此需要设置max_process_memory参数`
+  linked_diagnostic_step_no: 1
+
+[parameter_causes · cause 5] work_mem
+  param_name: work_mem
+  abnormal_value_pattern: 非内存自适应场景下未设置,算子越过阈值即下盘
+  recommended_value: NULL
+  recommendation_quote: NULL
+  risk_if_violated_quote: `超过阈值则下盘`
+  reasoning_quote: `非内存自适应需要通过work_mem参数指定算子使用内存，超过阈值则下盘。`
+  linked_diagnostic_step_no: 1
+
+[parameter_causes · cause 6] comm_max_stream
+  param_name: comm_max_stream
+  abnormal_value_pattern: 并发/并行度提升后,Stream 算子不足
+  recommended_value: `调大但不可过大(过大占内存)`
+  recommendation_quote: `通过comm_max_stream参数指定并发时最大的Stream算子个数。当并行度和并发度增大时，需要将该参数调大，否则Stream个数不够，但该参数过大也会占用更多内存。`
+  risk_if_violated_quote: `否则Stream个数不够`
+  reasoning_quote: `通过comm_max_stream参数指定并发时最大的Stream算子个数。当并行度和并发度增大时，需要将该参数调大，否则Stream个数不够，但该参数过大也会占用更多内存。`
+  linked_diagnostic_step_no: 1
+
+```
+
+## case_id: gaussdb-dws-vacuum-full-long-tx-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: disk-space-pressure
+- **case_pattern**: core-perf-diagnosis
+- **title**: VACUUM FULL 后表文件大小无变化(长事务干扰)
+- **source_heading**: VACUUM FULL一张表后，表文件大小无变化
+- **diagnostic_steps_count**: 2
+- **likely_causes_count**: 2
+- **source_url**: https://support.huaweicloud.com/trouble-dws/dws_09_0033.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 使用VACUUM FULL命令对一张表进行清理，清理完成后表大小和清理前一样大。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: 当前事务 XID
+  collection_layer: db-system-view
+  collection_method_quote: `SELECT txid_current();`
+  abnormal_pattern_quote: "执行以下命令查询当前的事务XID。"
+  abnormal_pattern_threshold: NULL
+  metric_unit: xid
+  prerequisite_steps: []
+
+[step 2]
+  metric_name: 活跃事务列表
+  collection_layer: db-system-view
+  collection_method_quote: `SELECT txid_current_snapshot(); `
+  abnormal_pattern_quote: "如果发现活跃事务列表中有XID比当前的事务XID小时"
+  abnormal_pattern_threshold: `活跃事务列表中有 XID < 当前事务 XID`
+  metric_unit: xid
+  prerequisite_steps: [1]
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: "在执行VACUUM FULL table_name时有长事务存在，可能会导致VACUUM FULL跳过清理最近删除的数据，导致清理不完全。"
+  linked_diagnostic_step_no: 2
+  mitigation_quote: "如果在VACUUM FULL时有并发的事务存在，此时需要等待所有事务结束，再次执行VACUUM FULL命令对该表进行清理。"
+
+[non_parameter_causes · cause 2] application-design
+  cause_type: application-design
+  description_quote: "表本身没有delete或update过数据，使用VACUUM FULL table_name后无需清理delete的数据，因此表大小清理前后一样大。"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: NULL
+
+```
+
+## case_id: gaussdb-dws-vacuum-defer-cleanup-age-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: disk-space-pressure
+- **case_pattern**: core-perf-diagnosis
+- **title**: VACUUM 后存储空间未释放 (vacuum_defer_cleanup_age 非 0)
+- **source_heading**: 删除表数据后执行了VACUUM，但存储空间并没有释放
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 3
+- **source_url**: https://support.huaweicloud.com/trouble-dws/dws_09_0047.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 删除表数据后执行了VACUUM，但是存储空间并没有释放。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: vacuum_defer_cleanup_age 参数值
+  collection_layer: db-shell
+  collection_method_quote: "参数vacuum_defer_cleanup_age不是0，该参数在老版本默认为8000，表示最近8000个事务产生的脏数据不进行回收。"
+  abnormal_pattern_quote: "参数vacuum_defer_cleanup_age不是0"
+  abnormal_pattern_threshold: `vacuum_defer_cleanup_age != 0`
+  metric_unit: xacts
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[parameter_causes · cause 1] vacuum_defer_cleanup_age
+  param_name: vacuum_defer_cleanup_age
+  abnormal_value_pattern: 非 0 (老版本默认 8000) 导致延迟清理
+  recommended_value: `0`
+  recommendation_quote: "对于vacuum_defer_cleanup_age不是0的场景，可以将此参数改为0，取消VACUUM的事务延迟。"
+  risk_if_violated_quote: "表示最近8000个事务产生的脏数据不进行回收"
+  reasoning_quote: "参数vacuum_defer_cleanup_age不是0，该参数在老版本默认为8000"
+  linked_diagnostic_step_no: 1
+
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: "为了保证事务可见性，产生脏数据的事务号，如果大于当前活跃的老事务号，则这部分脏数据也不会清理。"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "对于存在老事务的场景，重启集群再重新执行VACUUM FULL可以保证空间一定回收，否则只能等老事务结束再执行VACUUM FULL。"
+
+[non_parameter_causes · cause 2] application-design
+  cause_type: application-design
+  description_quote: "执行VACUUM，默认清理当前用户在数据库中拥有权限的每一个表，没有权限的表则直接跳过回收操作。"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: "如果您对表没有权限，请联系数据库管理员或表的所有者进行处理。"
+
+```
+
+## case_id: gaussdb-dws-cant-fit-xid-old-tx-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: other
+- **case_pattern**: core-perf-diagnosis
+- **title**: Can't fit xid into page 报错(老事务导致 freeze 失效)
+- **source_heading**: 执行业务报错"Can't fit xid into page"
+- **diagnostic_steps_count**: 2
+- **likely_causes_count**: 1
+- **source_url**: https://support.huaweicloud.com/trouble-dws/dws_09_0102.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 场景一：执行VACUUM FULL时报错"Can't fit xid into page, now xid is 34181619720, base is 29832807366, min is 3, max is 3."。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: GTM snapshot · oldestxmin 与 xid 差值
+  collection_layer: db-system-view
+  collection_method_quote: `SELECT * FROM pgxc_gtm_snapshot_status();`
+  abnormal_pattern_quote: "如果查询结果中oldestxmin小于base+min，且小很多，说明系统中存在老事务，且导致vacuum freeze执行未产生作用"
+  abnormal_pattern_threshold: `oldestxmin << base+min`
+  metric_unit: xid
+  prerequisite_steps: []
+
+[step 2]
+  metric_name: 老事务列表 (pgxc_running_xacts)
+  collection_layer: db-system-view
+  collection_method_quote: `SELECT * FROM pgxc_running_xacts where xmin::text::bigint < $base+$min and xmin::text::bigint > 0;`
+  abnormal_pattern_quote: "使用如下命令查询集群中老事务信息"
+  abnormal_pattern_threshold: `存在 xmin < base+min 的活跃事务`
+  metric_unit: xid
+  prerequisite_steps: [1]
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: "系统中存在老事务导致上述报错。"
+  linked_diagnostic_step_no: 2
+  mitigation_quote: "通过pgxc_stat_activity视图查询步骤2中的业务，确认后执行如下命令终止对应的线程。"
+
+```
+
+## case_id: gaussdb-import-skew-warning-07
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: data-skew
+- **case_pattern**: core-perf-diagnosis
+- **title**: 导入(INSERT/COPY)时 DN 间数据倾斜超过阈值需即时告警
+- **source_heading**: 导入过程存储倾斜即时检测
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 4
+- **source_url**: https://support.huaweicloud.com/bestpractice-dws/dws_05_0004.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 导入过程中对DN导入行数进行统计，导入完成后计算倾斜率，超过一定阈值时，立即进行告警。倾斜率通过（DN导入行数最大值-DN导入行数最小值）/导入总行数计算。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: DN 间导入行数倾斜率(WARNING)
+  collection_layer: log-grep
+  collection_method_quote: `WARNING:  Skewness occurs, table name: xxx, min value: xxx, max value: xxx, sum value: xxx, avg value: xxx, skew ratio: xxx`
+  abnormal_pattern_quote: `超过一定阈值时，立即进行告警`
+  abnormal_pattern_threshold: `skew ratio > table_skewness_warning_threshold`
+  metric_unit: ratio
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[parameter_causes · cause 1] enable_stream_operator
+  param_name: enable_stream_operator
+  abnormal_value_pattern: 关闭(off) 状态下,DN 一次性返回导入行数受影响,无法在 CN 计算倾斜率
+  recommended_value: `on`
+  recommendation_quote: `必须设置enable_stream_operator=on，确保计划下发到DN，DN一次性返回导入行数，从而可以在CN计算倾斜率。`
+  risk_if_violated_quote: NULL
+  reasoning_quote: `必须设置enable_stream_operator=on，确保计划下发到DN，DN一次性返回导入行数，从而可以在CN计算倾斜率。`
+  linked_diagnostic_step_no: 1
+
+[parameter_causes · cause 2] table_skewness_warning_threshold
+  param_name: table_skewness_warning_threshold
+  abnormal_value_pattern: 默认值 1(关闭状态),不会触发告警
+  recommended_value: `0~1 (设为 <1 即开启)`
+  recommendation_quote: `表倾斜告警阈值取值范围0~1，默认值为1，即关闭状态，取其他值时为开启状态。`
+  risk_if_violated_quote: NULL
+  reasoning_quote: `设置参数（表倾斜告警阈值table_skewness_warning_threshold和表倾斜告警最小行数table_skewness_warning_rows）`
+  linked_diagnostic_step_no: 1
+
+[parameter_causes · cause 3] table_skewness_warning_rows
+  param_name: table_skewness_warning_rows
+  abnormal_value_pattern: 设过小会在小数据量导入时无意义告警
+  recommended_value: `default 100000 (设为业务可接受最小行数)`
+  recommendation_quote: `表倾斜告警最小行数取值范围0~2147483647，默认值为100,000。当导入总行数超过该值与导入DN数之积时，才可能触发告警，从而不会在小数据量导入的场景进行无意义的告警。`
+  risk_if_violated_quote: NULL
+  reasoning_quote: `表倾斜告警最小行数取值范围0~2147483647，默认值为100,000。当导入总行数超过该值与导入DN数之积时，才可能触发告警，从而不会在小数据量导入的场景进行无意义的告警。`
+  linked_diagnostic_step_no: 1
+
+[non_parameter_causes · cause 1] data-distribution
+  cause_type: data-distribution
+  description_quote: `Please check data distribution or modify warning threshold`
+  linked_diagnostic_step_no: 1
+  mitigation_quote: `检查数据分布或者修改参数`
+
+```
+
+## case_id: gaussdb-too-many-clients-21
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: connection-storm
+- **case_pattern**: core-perf-diagnosis
+- **title**: Too many clients already — non-active 空闲连接积压
+- **source_heading**: 连接DWS数据库时，提示客户端连接数太多
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 3
+- **source_url**: https://support.huaweicloud.com/trouble-dws/dws_09_0038.html
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> FATAL: Already too many clients, active/non-active/reserved: 5/508/3.
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: pg_stat_activity · idle 连接数
+  collection_layer: db-system-view
+  collection_method_quote: `SELECT PG_TERMINATE_BACKEND(pid) from pg_stat_activity WHERE state='idle';`
+  abnormal_pattern_quote: `non-active的个数表示空闲连接数，例如，non-active为508，说明当前有大量的空闲连接。`
+  abnormal_pattern_threshold: NULL
+  metric_unit: count
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[parameter_causes · cause 1] session_timeout
+  param_name: session_timeout
+  abnormal_value_pattern: 默认 600s,在空闲连接积压场景下可调小
+  recommended_value: `> 0 (不建议设为 0)`
+  recommendation_quote: `session_timeout默认值为600秒，设置为0表示关闭超时限制，一般不建议设置为0。`
+  risk_if_violated_quote: `non-active的个数表示空闲连接数，例如，non-active为508，说明当前有大量的空闲连接。`
+  reasoning_quote: `在DWS控制台设置会话闲置超时时长session_timeout，在闲置会话超过所设定的时间后服务端将主动关闭连接。`
+  linked_diagnostic_step_no: 1
+
+[parameter_causes · cause 2] max_connections
+  param_name: max_connections
+  abnormal_value_pattern: 默认 800(CN) / 5000(DN),已达上限
+  recommended_value: `> default · 由 DBA 根据并发评估`
+  recommendation_quote: `查看CN上的连接来自哪里，总数量以及是否超过当前max_connections（默认值CN节点为800，DN节点为5000）。`
+  risk_if_violated_quote: `当前数据库连接已经超过了最大连接数`
+  reasoning_quote: `查看CN上的连接来自哪里，总数量以及是否超过当前max_connections（默认值CN节点为800，DN节点为5000）。`
+  linked_diagnostic_step_no: 1
+
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  linked_diagnostic_step_no: 1
+  mitigation_quote: NULL
+
+```
+
+## case_id: gaussdb-windowagg-single-dn-04
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb-dws
+- **platform**: bare
+- **engine**: gaussdb-dws
+- **symptom_category**: plan-suboptimal
+- **case_pattern**: core-perf-diagnosis
+- **title**: row_number() over() + count() over() 窗口函数全集中在单 DN 执行
+- **source_heading**: 1、【问题描述】+ 3、性能分析
+- **diagnostic_steps_count**: 2
+- **likely_causes_count**: 1
+- **source_url**: https://bbs.huaweicloud.com/blogs/906ef9eaf32e4254a9eefb2babdbd53a
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> row_number() over(), count() over()慢，执行计划中出现sort、WindowAgg，窗口函数集中在一个DN上运行。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: EXPLAIN PERFORMANCE · 算子分布
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `explain performance`
+  abnormal_pattern_quote: `执行计划中出现Sort和WindowAgg，第3~6步集中在一个DN上进行，使SQL非常缓慢`
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: []
+
+[step 2]
+  metric_name: 算子 A-time(在单 DN 上的运行耗时)
+  collection_layer: db-interactive-cmd
+  abnormal_pattern_quote: NULL
+  abnormal_pattern_threshold: NULL
+  metric_unit: ms
+  prerequisite_steps: [1]
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: `为了消除对大量数据的WindowAgg，需要对SQL进行改写，目的是通过等价逻辑改写，消除窗口函数。`
+  linked_diagnostic_step_no: 1
+  mitigation_quote: `改写逻辑：把t2写成with子查询以在join时使用其别名，使用left join (select count() from t2)代替count() over()，使用limit offset代替row_number() over()和对rn的过滤。`
+
+```
+

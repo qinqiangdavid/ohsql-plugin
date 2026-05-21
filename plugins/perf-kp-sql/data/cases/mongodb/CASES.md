@@ -1,4 +1,4 @@
-<!-- ============ Diagnostic-Flow (mongodb, 61 cases) ============ -->
+<!-- ============ Diagnostic-Flow (mongodb, 71 cases) ============ -->
 
 ## case_id: mongo-cache-spike-replication-lag-cascade-01
 
@@ -77,6 +77,50 @@
   description_quote: "the improvements to cache management and checkpoint areas were more likely to have improved my situation"
   linked_diagnostic_step_no: 1
   mitigation_quote: "We completed a significant upgrade on Tuesday that brings our cluster up to mongodb-server 3.4.15 (from 3.0.15)."
+
+```
+
+## case_id: mongo-ulimit-low-defaults-mongod-issues-03
+
+- **entry_kind**: diagnostic-flow
+- **db**: mongodb
+- **platform**: bare
+- **engine**: linux-os
+- **symptom_category**: startup-failure
+- **case_pattern**: parameter-audit
+- **title**: 系统默认 ulimit 过低导致 mongod 运行异常
+- **source_heading**: ulimit(in "Tuning For Performance")
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 1
+- **source_url**: https://amperecomputing.com/tuning-guides/mongoDB-tuning-guide
+- **source_url_lang**: en
+
+### symptom_description
+
+> Most UNIX-like operating systems, including Linux and macOS, provide ways to limit and control the usage of system resources such as threads, files, and network connections on a per-process and per-user basis. These "ulimits" prevent single users from using too many system resources. Sometimes, these limits have low default values that can cause a number of issues in the course of normal MongoDB operation.
+
+### diagnostic_steps
+
+```
+[step 1] 看 mongod 进程的 ulimit
+  metric_name: mongod 进程 nofile / nproc / fsize / memlock 等 ulimit
+  collection_layer: os
+  collection_method_quote: (Ampere 文档未直接给读法 · 通用方法 `cat /proc/$(pgrep -f mongod)/limits`)
+  abnormal_pattern_quote: "these limits have low default values that can cause a number of issues"
+  abnormal_pattern_threshold: nofile < 64000 / nproc < 64000(基于 mitigation 给定的推荐值)
+  metric_unit: count
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[parameter_causes · cause 1] /etc/security/limits.conf 中各 ulimit 项
+  param_name: /etc/security/limits.conf 中各 ulimit 项
+  abnormal_value_pattern: 默认偏低(发行版自带)
+  reasoning_quote: "To configure ulimit value for these versions, create a file named /etc/security/limits.d/99-mongodb-nproc.conf with new values to increase the process limit."
+  linked_diagnostic_step_no: 1
 
 ```
 
@@ -1876,6 +1920,50 @@
 
 ```
 
+## case_id: mongo-startup-kernel-6-19-tcmalloc-incompat-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: mongodb
+- **platform**: bare
+- **engine**: mongodb
+- **symptom_category**: startup-failure
+- **case_pattern**: parameter-audit
+- **title**: MongoDB 8.0+ 在 Linux Kernel 6.19 上启动 crash
+- **source_heading**: MongoDB 8.0 Incompatible with Kernel 6.19
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 1
+- **source_url**: https://www.mongodb.com/docs/manual/administration/production-notes/
+- **source_url_lang**: en
+
+### symptom_description
+
+> Due to an incompatibility between a new kernel release and the currently vendored version of TCMalloc, running MongoDB 8.0 or newer with Linux kernel version 6.19 can cause MongoDB to crash on startup. This applies to all MongoDB packages, including those obtained from the MongoDB website, or obtained from package managers or Docker.
+
+### diagnostic_steps
+
+```
+[step 1] 同时看 mongod 版本 + kernel 版本
+  metric_name: mongod --version + uname -r
+  collection_layer: os
+  collection_method_quote: (原文未给具体命令 · 通用 `mongod --version` + `uname -r`)
+  abnormal_pattern_quote: "running MongoDB 8.0 or newer with Linux kernel version 6.19 can cause MongoDB to crash on startup"
+  abnormal_pattern_threshold: mongod major >= 8 AND kernel == 6.19.x
+  metric_unit: version
+  prerequisite_steps: []
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] os-version-bug
+  cause_type: os-version-bug
+  description_quote: "Due to an incompatibility between a new kernel release and the currently vendored version of TCMalloc"
+  linked_diagnostic_step_no: 1
+  mitigation_quote: (NULL · 原文给的是未来通告而非可执行 mitigation)
+
+```
+
 ## case_id: mongo-network-tcp-keepalive-too-long-cloud-lb-drops-02
 
 - **entry_kind**: diagnostic-flow
@@ -2150,6 +2238,59 @@
   description_quote: "These operating systems use the legacy TCMalloc version. If you use these operating systems, disable THP."
   linked_diagnostic_step_no: 1
   mitigation_quote: "If you use these operating systems, disable THP."
+
+```
+
+## case_id: mongo-inmemory-cache-full-overflow-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: mongodb
+- **platform**: bare
+- **engine**: mongodb
+- **symptom_category**: memory-pressure
+- **case_pattern**: parameter-audit
+- **title**: In-memory storage engine 数据超出 inMemorySizeGB → WT_CACHE_FULL
+- **source_heading**: Memory Use
+- **diagnostic_steps_count**: 2
+- **likely_causes_count**: 1
+- **source_url**: https://www.mongodb.com/docs/manual/core/inmemory/
+- **source_url_lang**: en
+
+### symptom_description
+
+> If a write operation would cause the data to exceed the specified memory size, MongoDB returns with the error
+
+### diagnostic_steps
+
+```
+[step 1] 看 mongod 日志中是否含 WT_CACHE_FULL 错误
+  metric_name: mongod log "WT_CACHE_FULL" 出现频次
+  collection_layer: log-grep
+  collection_method_quote: (NULL · 原文未给具体 grep 命令)
+  abnormal_pattern_quote: "WT_CACHE_FULL: operation would overflow cache"
+  abnormal_pattern_threshold: 任意一次出现该错误即异常
+  metric_unit: count
+  prerequisite_steps: []
+
+[step 2] 比对当前 in-memory 用量与 inMemorySizeGB 配置
+  metric_name: dbStats / collStats 总 size vs inMemorySizeGB
+  collection_layer: mongo-runtime-cmd
+  collection_method_quote: "To specify a new size, use the"
+  abnormal_pattern_quote: "If a write operation would cause the data to exceed the specified memory size"
+  abnormal_pattern_threshold: sum(dbStats.dataSize) + indexes + oplog 接近 inMemorySizeGB
+  metric_unit: bytes
+  prerequisite_steps: [1]
+
+```
+
+### likely_causes
+
+```
+[parameter_causes · cause 1] storage.inMemory.engineConfig.inMemorySizeGB / --inMemorySizeGB
+  param_name: storage.inMemory.engineConfig.inMemorySizeGB / --inMemorySizeGB
+  abnormal_value_pattern: inMemorySizeGB < 当前业务总数据(含索引 + oplog)
+  reasoning_quote: "By default, the in-memory storage engine uses 50% of physical RAM minus 1 GB"
+  linked_diagnostic_step_no: 2
 
 ```
 
@@ -3581,3 +3722,191 @@
 
 ```
 
+## case_id: wt-evict-cold-page-compact-cure-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: mongodb
+- **platform**: bare
+- **engine**: os-or-allocator
+- **symptom_category**: other
+- **case_pattern**: core-perf-diagnosis
+- **title**: WiredTiger 冷数据 evict 后 checkpoint 不再处理 · compact 触发 reconciliation 强制回收
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 0
+- **source_url**: https://github.com/y123456yz/reading-and-annotate-wiredtiger-11.3.1/blob/main/%E7%A3%81%E7%9B%98%E7%A9%BA%E9%97%B4%E6%B3%84%E6%BC%8F%E5%AE%9E%E9%AA%8C%E7%BB%93%E6%9E%9C%E5%88%86%E6%9E%90.md
+- **source_url_lang**: zh-cn
+
+### diagnostic_steps
+
+```
+[step 1] 采火焰图识别栈帧
+  collection_layer: flamegraph
+  collection_method_quote: perf record -g + flamegraph.pl
+  flame_pattern:
+    pattern_regex: undefined
+    scope: storage-engine-wt
+    signature_type: stack-pattern
+
+```
+
+## case_id: wt-app-thread-evict-assist-pressure-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: mongodb
+- **platform**: bare
+- **engine**: os-or-allocator
+- **symptom_category**: other
+- **case_pattern**: core-perf-diagnosis
+- **title**: WiredTiger 应用线程被迫参与 eviction 助手(cache 使用率超阈值压力 signature)
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 0
+- **source_url**: https://raw.githubusercontent.com/y123456yz/reading-and-annotate-wiredtiger-11.3.1/main/MongoDB%E5%9C%A8%E7%BA%BF%E8%B0%83%E6%95%B4cache_size%E6%85%A2%E7%9A%84%E6%B7%B1%E5%BA%A6%E5%88%86%E6%9E%90.md
+- **source_url_lang**: zh-cn
+
+### diagnostic_steps
+
+```
+[step 1] 采火焰图识别栈帧
+  collection_layer: flamegraph
+  collection_method_quote: perf record -g + flamegraph.pl
+  flame_pattern:
+    pattern_regex: ^__wt_cache_eviction_.*
+    scope: storage-engine-wt
+    signature_type: function-prefix
+
+```
+
+## case_id: wt-evict-reconcile-blocked-ebusy-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: mongodb
+- **platform**: bare
+- **engine**: os-or-allocator
+- **symptom_category**: other
+- **case_pattern**: core-perf-diagnosis
+- **title**: WiredTiger eviction reconcile 被多重 EBUSY 阻碍(__evict_review → __evict_reconcile 链路热点)
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 0
+- **source_url**: https://raw.githubusercontent.com/y123456yz/reading-and-annotate-wiredtiger-11.3.1/main/MongoDB%E5%9C%A8%E7%BA%BF%E8%B0%83%E6%95%B4cache_size%E6%85%A2%E7%9A%84%E6%B7%B1%E5%BA%A6%E5%88%86%E6%9E%90.md
+- **source_url_lang**: zh-cn
+
+### diagnostic_steps
+
+```
+[step 1] 采火焰图识别栈帧
+  collection_layer: flamegraph
+  collection_method_quote: perf record -g + flamegraph.pl
+  flame_pattern:
+    pattern_regex: undefined
+    scope: storage-engine-wt
+    signature_type: stack-pattern
+
+```
+
+## case_id: wt-capacity-throttle-cond-signal-crash-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: mongodb
+- **platform**: bare
+- **engine**: os-or-allocator
+- **symptom_category**: other
+- **case_pattern**: core-perf-diagnosis
+- **title**: WiredTiger io_capacity 配置语法错误后,后台 eviction 线程经 capacity_throttle 调用 __wt_cond_signal 解引用 NULL capacity_cond 触发 SIGSEGV
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 0
+- **source_url**: https://raw.githubusercontent.com/y123456yz/reading-and-annotate-wiredtiger-11.3.1/main/MongoDB_io_capacity_crash%E5%AE%8C%E6%95%B4%E4%BF%AE%E5%A4%8D%E6%96%B9%E6%A1%88.md
+- **source_url_lang**: zh-cn
+
+### diagnostic_steps
+
+```
+[step 1] 采火焰图识别栈帧
+  collection_layer: flamegraph
+  collection_method_quote: perf record -g + flamegraph.pl
+  flame_pattern:
+    pattern_regex: undefined
+    scope: storage-engine-wt
+    signature_type: stack-pattern
+
+```
+
+## case_id: wt-reconcile-row-tombstone-skip-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: mongodb
+- **platform**: bare
+- **engine**: os-or-allocator
+- **symptom_category**: other
+- **case_pattern**: core-perf-diagnosis
+- **title**: WiredTiger reconcile 在 row leaf 上跳过全局可见 stop_ts 的 key(磁盘清理读-判-跳路径 signature)
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 0
+- **source_url**: https://raw.githubusercontent.com/y123456yz/reading-and-annotate-wiredtiger-11.3.1/main/%E7%A3%81%E7%9B%98%E5%B7%B2%E6%8C%81%E4%B9%85%E5%8C%96%E6%95%B0%E6%8D%AE%E7%9A%84%E6%B8%85%E7%90%86%E4%BB%A3%E7%A0%81%E8%B7%AF%E5%BE%84.md
+- **source_url_lang**: zh-cn
+
+### diagnostic_steps
+
+```
+[step 1] 采火焰图识别栈帧
+  collection_layer: flamegraph
+  collection_method_quote: perf record -g + flamegraph.pl
+  flame_pattern:
+    pattern_regex: undefined
+    scope: storage-engine-wt
+    signature_type: stack-pattern
+
+```
+
+## case_id: wt-reconcile-write-wrapup-block-free-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: mongodb
+- **platform**: bare
+- **engine**: os-or-allocator
+- **symptom_category**: other
+- **case_pattern**: core-perf-diagnosis
+- **title**: WiredTiger reconcile 写入 wrapup 阶段释放旧页面磁盘块(block manager free-list 入队 signature)
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 0
+- **source_url**: https://raw.githubusercontent.com/y123456yz/reading-and-annotate-wiredtiger-11.3.1/main/%E7%A3%81%E7%9B%98%E5%B7%B2%E6%8C%81%E4%B9%85%E5%8C%96%E6%95%B0%E6%8D%AE%E7%9A%84%E6%B8%85%E7%90%86%E4%BB%A3%E7%A0%81%E8%B7%AF%E5%BE%84.md
+- **source_url_lang**: zh-cn
+
+### diagnostic_steps
+
+```
+[step 1] 采火焰图识别栈帧
+  collection_layer: flamegraph
+  collection_method_quote: perf record -g + flamegraph.pl
+  flame_pattern:
+    pattern_regex: undefined
+    scope: storage-engine-wt
+    signature_type: function-prefix
+
+```
+
+## case_id: wt-reconcile-row-leaf-tombstone-not-globally-visible-01
+
+- **entry_kind**: diagnostic-flow
+- **db**: mongodb
+- **platform**: bare
+- **engine**: os-or-allocator
+- **symptom_category**: other
+- **case_pattern**: core-perf-diagnosis
+- **title**: WiredTiger 行叶页 reconcile 路径下 tombstone 非全局可见 → 已删除数据被整页保留(oldest_timestamp 推进不足 signature)
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 0
+- **source_url**: https://raw.githubusercontent.com/y123456yz/reading-and-annotate-wiredtiger-11.3.1/main/%E4%B8%BA%E4%BB%80%E4%B9%88%E5%B7%B2%E5%88%A0%E9%99%A4%E6%95%B0%E6%8D%AE%E4%BB%8D%E5%9C%A8%E6%96%87%E4%BB%B6%E4%B8%AD_%E6%B7%B1%E5%BA%A6%E5%88%86%E6%9E%90.md
+- **source_url_lang**: zh-cn
+
+### diagnostic_steps
+
+```
+[step 1] 采火焰图识别栈帧
+  collection_layer: flamegraph
+  collection_method_quote: perf record -g + flamegraph.pl
+  flame_pattern:
+    pattern_regex: undefined
+    scope: storage-engine-wt
+    signature_type: stack-pattern
+
+```
