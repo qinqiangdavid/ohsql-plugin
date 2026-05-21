@@ -3724,7 +3724,7 @@
 
 ## case_id: wt-evict-cold-page-compact-cure-01
 
-- **entry_kind**: diagnostic-flow
+- **entry_kind**: flame-signature
 - **db**: mongodb
 - **platform**: bare
 - **engine**: os-or-allocator
@@ -3743,7 +3743,7 @@
   collection_layer: flamegraph
   collection_method_quote: perf record -g + flamegraph.pl
   flame_pattern:
-    pattern_regex: undefined
+    pattern_regex: (compact|reconciliation|evict).*
     scope: storage-engine-wt
     signature_type: stack-pattern
 
@@ -3751,7 +3751,7 @@
 
 ## case_id: wt-app-thread-evict-assist-pressure-01
 
-- **entry_kind**: diagnostic-flow
+- **entry_kind**: flame-signature
 - **db**: mongodb
 - **platform**: bare
 - **engine**: os-or-allocator
@@ -3778,7 +3778,7 @@
 
 ## case_id: wt-evict-reconcile-blocked-ebusy-01
 
-- **entry_kind**: diagnostic-flow
+- **entry_kind**: flame-signature
 - **db**: mongodb
 - **platform**: bare
 - **engine**: os-or-allocator
@@ -3797,7 +3797,7 @@
   collection_layer: flamegraph
   collection_method_quote: perf record -g + flamegraph.pl
   flame_pattern:
-    pattern_regex: undefined
+    pattern_regex: ^__evict_(review|reconcile)$
     scope: storage-engine-wt
     signature_type: stack-pattern
 
@@ -3805,7 +3805,7 @@
 
 ## case_id: wt-capacity-throttle-cond-signal-crash-01
 
-- **entry_kind**: diagnostic-flow
+- **entry_kind**: flame-signature
 - **db**: mongodb
 - **platform**: bare
 - **engine**: os-or-allocator
@@ -3824,7 +3824,7 @@
   collection_layer: flamegraph
   collection_method_quote: perf record -g + flamegraph.pl
   flame_pattern:
-    pattern_regex: undefined
+    pattern_regex: (__wt_capacity_throttle|__capacity_signal|__wt_cond_signal)
     scope: storage-engine-wt
     signature_type: stack-pattern
 
@@ -3832,7 +3832,7 @@
 
 ## case_id: wt-reconcile-row-tombstone-skip-01
 
-- **entry_kind**: diagnostic-flow
+- **entry_kind**: flame-signature
 - **db**: mongodb
 - **platform**: bare
 - **engine**: os-or-allocator
@@ -3851,7 +3851,7 @@
   collection_layer: flamegraph
   collection_method_quote: perf record -g + flamegraph.pl
   flame_pattern:
-    pattern_regex: undefined
+    pattern_regex: ^(__wt_row_leaf_value_cell|__wti_rec_upd_select|__wt_txn_tw_stop_visible_all)$
     scope: storage-engine-wt
     signature_type: stack-pattern
 
@@ -3859,7 +3859,7 @@
 
 ## case_id: wt-reconcile-write-wrapup-block-free-01
 
-- **entry_kind**: diagnostic-flow
+- **entry_kind**: flame-signature
 - **db**: mongodb
 - **platform**: bare
 - **engine**: os-or-allocator
@@ -3878,7 +3878,7 @@
   collection_layer: flamegraph
   collection_method_quote: perf record -g + flamegraph.pl
   flame_pattern:
-    pattern_regex: undefined
+    pattern_regex: ^(__rec_write_wrapup|__rec_split_discard|__wt_ref_block_free|__wt_btree_block_free)$
     scope: storage-engine-wt
     signature_type: function-prefix
 
@@ -3886,7 +3886,7 @@
 
 ## case_id: wt-reconcile-row-leaf-tombstone-not-globally-visible-01
 
-- **entry_kind**: diagnostic-flow
+- **entry_kind**: flame-signature
 - **db**: mongodb
 - **platform**: bare
 - **engine**: os-or-allocator
@@ -3905,7 +3905,7 @@
   collection_layer: flamegraph
   collection_method_quote: perf record -g + flamegraph.pl
   flame_pattern:
-    pattern_regex: undefined
+    pattern_regex: ^(__wti_rec_row_leaf|__wti_rec_upd_select|__wt_txn_tw_stop_visible_all|__wti_rec_image_copy)$
     scope: storage-engine-wt
     signature_type: stack-pattern
 

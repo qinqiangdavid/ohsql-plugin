@@ -1308,7 +1308,7 @@
 
 ## case_id: linux-fs-mmap-metadata-archiver-01
 
-- **entry_kind**: diagnostic-flow
+- **entry_kind**: flame-signature
 - **db**: _common
 - **platform**: bare
 - **engine**: os-or-allocator
@@ -1327,7 +1327,7 @@
   collection_layer: flamegraph
   collection_method_quote: perf record -g + flamegraph.pl
   flame_pattern:
-    pattern_regex: undefined
+    pattern_regex: ^(sys_newfstatat|sys_getdents|sys_openat|page_fault).*
     scope: linux-fs
     signature_type: stack-pattern
 
@@ -1335,7 +1335,7 @@
 
 ## case_id: glibc-malloc-allocator-hot-stack-01
 
-- **entry_kind**: diagnostic-flow
+- **entry_kind**: flame-signature
 - **db**: _common
 - **platform**: bare
 - **engine**: os-or-allocator
@@ -1354,7 +1354,7 @@
   collection_layer: flamegraph
   collection_method_quote: perf record -g + flamegraph.pl
   flame_pattern:
-    pattern_regex: undefined
+    pattern_regex: ^(__GI___libc_malloc|Perl_pp_split|JOIN::(optimize|exec)).*
     scope: mem-allocator-glibc
     signature_type: stack-pattern
 
@@ -1362,7 +1362,7 @@
 
 ## case_id: linux-mm-brk-heap-expansion-01
 
-- **entry_kind**: diagnostic-flow
+- **entry_kind**: flame-signature
 - **db**: _common
 - **platform**: bare
 - **engine**: os-or-allocator
@@ -1381,7 +1381,7 @@
   collection_layer: flamegraph
   collection_method_quote: perf record -g + flamegraph.pl
   flame_pattern:
-    pattern_regex: undefined
+    pattern_regex: ^(sys_brk|SyS_brk|brk)$
     scope: linux-mm
     signature_type: function-prefix
 
@@ -1389,7 +1389,7 @@
 
 ## case_id: linux-mm-mmap-vm-growth-01
 
-- **entry_kind**: diagnostic-flow
+- **entry_kind**: flame-signature
 - **db**: _common
 - **platform**: bare
 - **engine**: os-or-allocator
@@ -1408,7 +1408,7 @@
   collection_layer: flamegraph
   collection_method_quote: perf record -g + flamegraph.pl
   flame_pattern:
-    pattern_regex: undefined
+    pattern_regex: ^(sys_mmap|SyS_mmap|mmap)$
     scope: linux-mm
     signature_type: function-prefix
 
@@ -1416,7 +1416,7 @@
 
 ## case_id: linux-mm-page-fault-physical-population-01
 
-- **entry_kind**: diagnostic-flow
+- **entry_kind**: flame-signature
 - **db**: _common
 - **platform**: bare
 - **engine**: os-or-allocator
@@ -1435,7 +1435,7 @@
   collection_layer: flamegraph
   collection_method_quote: perf record -g + flamegraph.pl
   flame_pattern:
-    pattern_regex: undefined
+    pattern_regex: ^(handle_mm_fault|page_fault_user|page_fault_kernel)$
     scope: linux-mm
     signature_type: function-prefix
 
@@ -1443,7 +1443,7 @@
 
 ## case_id: linux-block-offwake-disk-io-block-completion-01
 
-- **entry_kind**: diagnostic-flow
+- **entry_kind**: flame-signature
 - **db**: _common
 - **platform**: bare
 - **engine**: os-or-allocator
@@ -1462,7 +1462,7 @@
   collection_layer: flamegraph
   collection_method_quote: perf record -g + flamegraph.pl
   flame_pattern:
-    pattern_regex: undefined
+    pattern_regex: ^(blkif_interrupt|__blk_mq_complete_request|blk_mq_end_request|blk_update_request|mpage_end_io|wake_up_page_bit|__wake_up_common|autoremove_wake_function|finish_task_switch|__schedule|schedule|io_schedule|generic_file_read_iter|__vfs_read|vfs_read).*
     scope: linux-block
     signature_type: stack-pattern
 
