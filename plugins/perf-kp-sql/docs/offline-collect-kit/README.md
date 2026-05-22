@@ -6,13 +6,25 @@
 
 ```
 offline-collect-kit/
-├── README.md           本文件
-├── checklist.ndjson    341 个 check (GaussDB 关联 · 由 by-check-item 派生)
-├── collect.sh          bash 版采集器 (依赖: bash 3+ · jq · GNU timeout(coreutils))
-└── collect.py          python 版采集器 (依赖: python3 3.6+ · 纯 stdlib)
+├── README.md                 本文件
+├── checklist.ndjson          341 个 check (GaussDB 关联 · 由 by-check-item 派生)
+│
+├── collect-precompiled.sh    ★ 预编译版 bash · 216 个命令 inline · 完全自包含
+├── collect-precompiled.py    ★ 预编译版 python · 216 个命令 inline · 纯 stdlib
+│
+├── collect.sh                现场解析版 bash · 读 ndjson · 依赖 jq
+├── collect.py                现场解析版 python · 读 ndjson · 纯 stdlib
+└── _build-precompiled.mjs    本地工具 · 重编译 precompiled.{sh,py} (本地跑 · 不部署)
 ```
 
-两版独立可用 · **不互相依赖**。db 服务器有 jq 用 sh 版,只有 python3 用 py 版。
+## 两种形态选哪个
+
+| 形态 | 文件 | 依赖 (db 服务器) | 适合 |
+|---|---|---|---|
+| **预编译** ★ 推荐 | `collect-precompiled.{sh,py}` | bash / python3 自带 · **无外部** | 部署到 db 服务器 · 一份脚本拷过去就跑 · 内网/隔离环境 |
+| 现场解析 | `collect.{sh,py}` + `checklist.ndjson` | sh 版要 jq · py 版纯 stdlib | 本地开发 / 频繁改 checklist 时 |
+
+**预编译** = 216 个 ready-to-run 命令直接 inline 在脚本里 (heredoc / tuple list),不需要 db 服务器装 jq、不需要现场解析 ndjson。改 checklist 后本地跑一次 `node _build-precompiled.mjs` 重编译 precompiled.{sh,py} 即可。
 
 ### 依赖安装(db 服务器一次性)
 
@@ -24,24 +36,31 @@ apt install -y jq coreutils                 # sh 版
 # python3 各发行版基本都自带 (3.6+)         # py 版无需额外装
 ```
 
-## 部署 + 运行
+## 部署 + 运行 (预编译版 · 推荐)
 
 ```bash
-# 1. scp 整个目录到 GaussDB 服务器
-scp -r offline-collect-kit/ root@<gaussdb-host>:/tmp/
+# 1. 只拷一个文件 (要 bash 拷 .sh,要 python 拷 .py)
+scp collect-precompiled.sh root@<gaussdb-host>:/tmp/
 
-# 2. 登服务器 + source gsql env
+# 2. 登服务器 · source gsql env · 跑
+ssh root@<gaussdb-host>
+source ~/gauss_env_file
+COLLECT_TIMEOUT=10 /tmp/collect-precompiled.sh ./out-$(hostname)-$(date +%Y%m%d)
+
+# 3. 拷结果回本地
+scp -r root@<gaussdb-host>:./out-* ./
+```
+
+## 部署 + 运行 (现场解析版)
+
+```bash
+# 整个目录都要拷 (checklist.ndjson + collect.sh + collect.py)
+scp -r offline-collect-kit/ root@<gaussdb-host>:/tmp/
 ssh root@<gaussdb-host>
 cd /tmp/offline-collect-kit
-source ~/gauss_env_file        # 让 gsql / SHOW <param> 之类命令能跑
-
-# 3a. 跑 bash 版
-./collect.sh ./checklist.ndjson ./out-$(hostname)-$(date +%Y%m%d)
-
-# 3b. 或跑 python 版
-python3 collect.py --checklist ./checklist.ndjson --out ./out-$(hostname)-$(date +%Y%m%d)
-
-# 4. 把 out-* 目录 scp 回本地, 喂给 perf-kp-sql skill
+source ~/gauss_env_file
+./collect.sh checklist.ndjson ./out-$(hostname)-$(date +%Y%m%d)
+# 或 python3 collect.py --checklist checklist.ndjson --out ./out-$(hostname)-$(date +%Y%m%d)
 ```
 
 ## 行为
