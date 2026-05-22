@@ -8,8 +8,20 @@
 offline-collect-kit/
 ├── README.md           本文件
 ├── checklist.ndjson    341 个 check (GaussDB 关联 · 由 by-check-item 派生)
-├── collect.sh          bash 版采集器 (依赖: bash 4+ · python3 · GNU timeout)
-└── collect.py          python 版采集器 (依赖: python3 3.6+)
+├── collect.sh          bash 版采集器 (依赖: bash 3+ · jq · GNU timeout(coreutils))
+└── collect.py          python 版采集器 (依赖: python3 3.6+ · 纯 stdlib)
+```
+
+两版独立可用 · **不互相依赖**。db 服务器有 jq 用 sh 版,只有 python3 用 py 版。
+
+### 依赖安装(db 服务器一次性)
+
+```bash
+# RHEL / CentOS / openEuler
+yum install -y jq coreutils                 # sh 版
+# Ubuntu / Debian
+apt install -y jq coreutils                 # sh 版
+# python3 各发行版基本都自带 (3.6+)         # py 版无需额外装
 ```
 
 ## 部署 + 运行
