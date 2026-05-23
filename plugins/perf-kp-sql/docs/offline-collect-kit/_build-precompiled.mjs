@@ -69,20 +69,25 @@ TIMEOUT="\${COLLECT_TIMEOUT:-5}"
 T_BIN=\$(command -v timeout 2>/dev/null || command -v gtimeout 2>/dev/null || echo "")
 mkdir -p "\$OUTDIR/stdout" "\$OUTDIR/stderr"
 
-# ── 部署形态自识别 (集中式 vs 分布式) ───────────────────────────────────────
-# 探测 enable_stream_operator / enable_fast_query_shipping GUC 是否存在.
-# 分布式必有这两个 GUC, 集中式必无 (pg_settings 不返回).
-# pgxc_node catalog 表在两种部署都可能存在 (空表 · 不可靠) → 不用作判据.
+# ── 部署形态自识别 (集中式 / 分布式 / 单节点) ──────────────────────────────
+# 用 GaussDB 内置函数 pg_catalog.gs_deployment() (C immutable · 返回 text).
+# 实测返回值:
+#   BusinessCentralized   → 集中式 (商用版)
+#   Distribute            → 分布式 (含 CN/DN 拓扑)
+#   SingleNode 类         → 单节点 (兜底匹配)
+# 这函数 GaussDB 内核保证一致 · 不依赖 GUC 注册时机 / catalog schema 残留.
 detect_deploy_form() {
   command -v gsql >/dev/null 2>&1 || { echo "unknown-no-gsql"; return; }
-  local cnt
-  cnt=\$(gsql -d postgres -t -A -c \\
-    "SELECT count(*) FROM pg_settings WHERE name IN ('enable_stream_operator','enable_fast_query_shipping')" \\
-    2>/dev/null | tr -d '[:space:]')
-  case "\$cnt" in
-    0) echo "centralized" ;;
-    [1-9]*) echo "distributed" ;;
-    *) echo "unknown-detect-fail" ;;
+  local v
+  v=\$(gsql -d postgres -t -A -c "SELECT pg_catalog.gs_deployment()" 2>/dev/null | tr -d '[:space:]')
+  local lower
+  lower=\$(echo "\$v" | tr '[:upper:]' '[:lower:]')
+  case "\$lower" in
+    *centralized*) echo "centralized" ;;
+    *distribut*)   echo "distributed" ;;
+    *single*node*|*singlenode*) echo "single-node" ;;
+    "") echo "unknown-detect-fail" ;;
+    *)  echo "unknown-\$v" ;;
   esac
 }
 DEPLOY_FORM=\$(detect_deploy_form)
@@ -207,10 +212,9 @@ TIMEOUT = int(os.environ.get('COLLECT_TIMEOUT', '5'))
 (OUTDIR / 'stdout').mkdir(parents=True, exist_ok=True)
 (OUTDIR / 'stderr').mkdir(parents=True, exist_ok=True)
 
-# ── 部署形态自识别 (集中式 vs 分布式) ───────────────────────────────────────
-# 探测 enable_stream_operator / enable_fast_query_shipping GUC 是否存在.
-# 分布式必有这两个 GUC, 集中式必无.
-# pgxc_node catalog 表在两种部署都可能存在 (空表 · 不可靠) → 不用作判据.
+# ── 部署形态自识别 (集中式 / 分布式 / 单节点) ──────────────────────────────
+# 用 GaussDB 内置函数 pg_catalog.gs_deployment() (C immutable · 返回 text).
+# 实测返回值: BusinessCentralized → 集中式 · Distribute → 分布式 · SingleNode → 单节点
 def detect_deploy_form():
     import shutil as _sh
     if not _sh.which('gsql'):
@@ -218,15 +222,18 @@ def detect_deploy_form():
     try:
         r = subprocess.run(
             ['gsql', '-d', 'postgres', '-t', '-A', '-c',
-             "SELECT count(*) FROM pg_settings WHERE name IN ('enable_stream_operator','enable_fast_query_shipping')"],
+             "SELECT pg_catalog.gs_deployment()"],
             capture_output=True, timeout=5, text=True,
         )
         if r.returncode != 0:
             return 'unknown-detect-fail'
-        cnt = r.stdout.strip()
-        if cnt == '0': return 'centralized'
-        if cnt.isdigit() and int(cnt) > 0: return 'distributed'
-        return 'unknown-detect-fail'
+        v = r.stdout.strip()
+        lo = v.lower()
+        if not v: return 'unknown-detect-fail'
+        if 'centralized' in lo:                       return 'centralized'
+        if 'distribut' in lo:                         return 'distributed'
+        if 'singlenode' in lo or 'single_node' in lo: return 'single-node'
+        return f'unknown-{v}'
     except Exception:
         return 'unknown-detect-fail'
 

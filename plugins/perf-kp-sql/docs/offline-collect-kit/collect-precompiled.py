@@ -3,7 +3,7 @@
 
 所有 216 个 auto 命令已 inline 在 CHECKS list 里 (不解析 ndjson).
 
-生成时间: 2026-05-23T03:43:55.105Z
+生成时间: 2026-05-23T07:55:50.142Z
 数据: auto=216 · manual=117 · skip=8 · total=341
 
 用法:
@@ -24,10 +24,9 @@ TIMEOUT = int(os.environ.get('COLLECT_TIMEOUT', '5'))
 (OUTDIR / 'stdout').mkdir(parents=True, exist_ok=True)
 (OUTDIR / 'stderr').mkdir(parents=True, exist_ok=True)
 
-# ── 部署形态自识别 (集中式 vs 分布式) ───────────────────────────────────────
-# 探测 enable_stream_operator / enable_fast_query_shipping GUC 是否存在.
-# 分布式必有这两个 GUC, 集中式必无.
-# pgxc_node catalog 表在两种部署都可能存在 (空表 · 不可靠) → 不用作判据.
+# ── 部署形态自识别 (集中式 / 分布式 / 单节点) ──────────────────────────────
+# 用 GaussDB 内置函数 pg_catalog.gs_deployment() (C immutable · 返回 text).
+# 实测返回值: BusinessCentralized → 集中式 · Distribute → 分布式 · SingleNode → 单节点
 def detect_deploy_form():
     import shutil as _sh
     if not _sh.which('gsql'):
@@ -35,15 +34,18 @@ def detect_deploy_form():
     try:
         r = subprocess.run(
             ['gsql', '-d', 'postgres', '-t', '-A', '-c',
-             "SELECT count(*) FROM pg_settings WHERE name IN ('enable_stream_operator','enable_fast_query_shipping')"],
+             "SELECT pg_catalog.gs_deployment()"],
             capture_output=True, timeout=5, text=True,
         )
         if r.returncode != 0:
             return 'unknown-detect-fail'
-        cnt = r.stdout.strip()
-        if cnt == '0': return 'centralized'
-        if cnt.isdigit() and int(cnt) > 0: return 'distributed'
-        return 'unknown-detect-fail'
+        v = r.stdout.strip()
+        lo = v.lower()
+        if not v: return 'unknown-detect-fail'
+        if 'centralized' in lo:                       return 'centralized'
+        if 'distribut' in lo:                         return 'distributed'
+        if 'singlenode' in lo or 'single_node' in lo: return 'single-node'
+        return f'unknown-{v}'
     except Exception:
         return 'unknown-detect-fail'
 
