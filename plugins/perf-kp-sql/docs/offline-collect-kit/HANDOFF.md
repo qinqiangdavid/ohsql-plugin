@@ -43,7 +43,9 @@ offline-collect-kit/
 │
 ├── collect.sh                   现场解析版 bash · 读 ndjson · 依赖 jq
 ├── collect.py                   现场解析版 python · 读 ndjson · 纯 stdlib
-└── _build-precompiled.mjs       本地工具 · 重生成 precompiled.{sh,py}
+│
+├── manual-audit.md              ★ 153 manual 人审清单 · 每条带 matched_rule + 派生命令 (98.7% 有派生)
+└── _build-precompiled.mjs       本地工具 · 重生成 precompiled.{sh,py} + manual-audit.md
 ```
 
 **precompiled.{sh,py} 是 user-facing**,部署一个文件就跑。  
@@ -181,11 +183,16 @@ fi
 
 **修法**:跑完后写 `bucket-diff.mjs` 比较两 outdir 的 stdout content,出 `common / centralized-only / distributed-only` 三类报告。
 
-### 6.4 reasons.tsv 没记 manual 决策依据
+### 6.4 ~~reasons.tsv 没记 manual 决策依据~~ ✅ 已做 (2026-05-23)
 
-当前 `manual.md` 只列 method,没标"被哪条 isManual 规则切的"。
+build 时落 `manual-audit.md` (本地工程文件 · 不在 outdir),每条 manual 带:
+- `matched_rule` (r0 ~ r10,对应 isManual 的 10 条规则)
+- 派生命令 `derived_commands` — 启发式从描述里挖出 0..N 个"看起来能跑"的命令作为人审起点(已知视图 → `SELECT * LIMIT 50`、GUC → `SHOW`、OS 命令直引、RDS metric → 标准采集、中文兜底)
+- 蒸馏原文
 
-**修法**:`_build-precompiled.mjs` 跑时给每条 manual 标 matched_rule,落 `reasons.tsv`(check_id / matched_rule / method)。
+153 manual 项里 **151 有派生命令** (覆盖率 98.7%),剩 2 条是纯主观建议(尝试在低峰时跑 / 重复执行同一 SQL)无标准命令。
+
+重新生成:`node _build-precompiled.mjs`。
 
 ### 6.5 chk-iostat / chk-vecnestloopruntime 等真 OS 命令应该保留 auto
 
