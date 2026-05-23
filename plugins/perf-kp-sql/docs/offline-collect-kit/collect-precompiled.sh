@@ -2,7 +2,7 @@
 # GaussDB 离线采集 · 预编译版 · 完全自包含
 # 所有 216 个 auto 命令已 inline 为 heredoc (不解析 ndjson · 不需 jq).
 #
-# 生成时间: 2026-05-22T04:59:52.934Z
+# 生成时间: 2026-05-23T03:43:55.104Z
 # 数据: auto=216 · manual=117 · skip=8 · total=341
 #
 # 用法:
@@ -20,7 +20,35 @@ OUTDIR="${1:-./collect-results-$(date +%Y%m%d-%H%M%S)}"
 TIMEOUT="${COLLECT_TIMEOUT:-5}"
 T_BIN=$(command -v timeout 2>/dev/null || command -v gtimeout 2>/dev/null || echo "")
 mkdir -p "$OUTDIR/stdout" "$OUTDIR/stderr"
-printf 'check_id\texit_code\tstatus\n' > "$OUTDIR/report.tsv"
+
+# ── 部署形态自识别 (集中式 vs 分布式) ───────────────────────────────────────
+# 探测 enable_stream_operator / enable_fast_query_shipping GUC 是否存在.
+# 分布式必有这两个 GUC, 集中式必无 (pg_settings 不返回).
+# pgxc_node catalog 表在两种部署都可能存在 (空表 · 不可靠) → 不用作判据.
+detect_deploy_form() {
+  command -v gsql >/dev/null 2>&1 || { echo "unknown-no-gsql"; return; }
+  local cnt
+  cnt=$(gsql -d postgres -t -A -c \
+    "SELECT count(*) FROM pg_settings WHERE name IN ('enable_stream_operator','enable_fast_query_shipping')" \
+    2>/dev/null | tr -d '[:space:]')
+  case "$cnt" in
+    0) echo "centralized" ;;
+    [1-9]*) echo "distributed" ;;
+    *) echo "unknown-detect-fail" ;;
+  esac
+}
+DEPLOY_FORM=$(detect_deploy_form)
+echo "部署形态自识别: $DEPLOY_FORM" >&2
+
+# 写到 report 头部元数据 (注释行 · 也 dump 到 deploy.txt 便于程序解析)
+{
+  printf '# deploy_form\t%s\n' "$DEPLOY_FORM"
+  printf '# detected_at\t%s\n' "$(date -Iseconds 2>/dev/null || date -u +%Y-%m-%dT%H:%M:%SZ)"
+  printf '# host\t%s\n' "$(hostname 2>/dev/null || echo unknown)"
+  printf '# user\t%s\n' "$(whoami)"
+  printf 'check_id\texit_code\tstatus\n'
+} > "$OUTDIR/report.tsv"
+printf '%s\n' "$DEPLOY_FORM" > "$OUTDIR/deploy.txt"
 
 run_check() {
   # 用法: run_check <check_id> <<'EOF_XXX'

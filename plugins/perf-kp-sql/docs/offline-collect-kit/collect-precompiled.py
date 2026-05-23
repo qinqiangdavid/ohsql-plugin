@@ -3,7 +3,7 @@
 
 所有 216 个 auto 命令已 inline 在 CHECKS list 里 (不解析 ndjson).
 
-生成时间: 2026-05-22T04:59:52.935Z
+生成时间: 2026-05-23T03:43:55.105Z
 数据: auto=216 · manual=117 · skip=8 · total=341
 
 用法:
@@ -23,6 +23,33 @@ OUTDIR = Path(sys.argv[1] if len(sys.argv) > 1 else f'./collect-results-{datetim
 TIMEOUT = int(os.environ.get('COLLECT_TIMEOUT', '5'))
 (OUTDIR / 'stdout').mkdir(parents=True, exist_ok=True)
 (OUTDIR / 'stderr').mkdir(parents=True, exist_ok=True)
+
+# ── 部署形态自识别 (集中式 vs 分布式) ───────────────────────────────────────
+# 探测 enable_stream_operator / enable_fast_query_shipping GUC 是否存在.
+# 分布式必有这两个 GUC, 集中式必无.
+# pgxc_node catalog 表在两种部署都可能存在 (空表 · 不可靠) → 不用作判据.
+def detect_deploy_form():
+    import shutil as _sh
+    if not _sh.which('gsql'):
+        return 'unknown-no-gsql'
+    try:
+        r = subprocess.run(
+            ['gsql', '-d', 'postgres', '-t', '-A', '-c',
+             "SELECT count(*) FROM pg_settings WHERE name IN ('enable_stream_operator','enable_fast_query_shipping')"],
+            capture_output=True, timeout=5, text=True,
+        )
+        if r.returncode != 0:
+            return 'unknown-detect-fail'
+        cnt = r.stdout.strip()
+        if cnt == '0': return 'centralized'
+        if cnt.isdigit() and int(cnt) > 0: return 'distributed'
+        return 'unknown-detect-fail'
+    except Exception:
+        return 'unknown-detect-fail'
+
+DEPLOY_FORM = detect_deploy_form()
+print(f'部署形态自识别: {DEPLOY_FORM}', file=sys.stderr, flush=True)
+(OUTDIR / 'deploy.txt').write_text(DEPLOY_FORM + '\n')
 
 # (check_id, name, layer, method) · 216 条 auto · 直接跑
 CHECKS = [
@@ -381,6 +408,11 @@ SKIP = [
 print(f'开始: {len(CHECKS)} 个 auto 命令 · timeout {TIMEOUT}s · outdir {OUTDIR}', flush=True)
 report = OUTDIR / 'report.tsv'
 with open(report, 'w', encoding='utf-8') as rf:
+    import socket as _sk
+    rf.write(f'# deploy_form\t{DEPLOY_FORM}\n')
+    rf.write(f'# detected_at\t{datetime.now().astimezone().isoformat(timespec="seconds")}\n')
+    rf.write(f'# host\t{_sk.gethostname()}\n')
+    rf.write(f'# user\t{os.environ.get("USER", "unknown")}\n')
     rf.write('check_id\texit_code\tstatus\n')
     for i, (cid, name, layer, method) in enumerate(CHECKS, 1):
         try:
