@@ -20,17 +20,63 @@ const OUT_PY = join(HERE, 'collect-precompiled.py');
 const DESC_KEYWORDS = [
   '查看', '判断是否', '如果发现', '通常', '示例为', '排查', '建议', '观察', '尝试',
   '可参考', '例如', '可借助', '需要联系', '以下', '应该', '可在', '可以查',
-  '可执行', '建议保留', '建议设置',
+  '可执行', '建议保留', '建议设置', '日志中', '日志中会', '建议保持', '请联系',
 ];
 function isManual(m) {
   if (!m || m.toLowerCase() === 'null') return true;
   const hans = (m.match(/[一-鿿]/g) || []).length;
-  if (hans >= 8) return true;
-  return DESC_KEYWORDS.some(kw => m.includes(kw));
+  const ascii = (m.match(/[a-zA-Z0-9]/g) || []).length;
+
+  // 1. 短描述: 4+ 汉字 (从 8 降下来 · 集中式实测 8 个 rc127 都是 3-6 汉字纯描述)
+  if (hans >= 4) return true;
+  // 2. 描述关键词
+  if (DESC_KEYWORDS.some(kw => m.includes(kw))) return true;
+  // 3. distill 字段残留 ('- **abnormal_patterns**: [...]' / '- **collection_method**: ...')
+  if (/^\s*-\s+\*\*[a-z_]+\*\*\s*:/i.test(m)) return true;
+  // 4. 纯中文 metric 名 (含汉字 · ASCII alphanumeric 太少 → 不是命令)
+  if (hans >= 1 && ascii < 5) return true;
+  // 5. 单 token 视图/表名 (含 _ · 无空格 · 没 SELECT FROM · 不是 ready-to-run)
+  if (/^[a-z_][a-z0-9_.]+$/i.test(m) && m.length > 6 && !/^(top|sar|free|vmstat|iostat|netstat|pidstat|gstack|gsql|perf|jstack|jmap|strace|tcpdump|dmesg)$/i.test(m)) return true;
+  // 6. 含中文占位符 (进程号 / 实例号 / xxx / <var>)
+  if (/进程号|实例号|查询.{0,2}号|<\w+>|\bxxx\b|\bXXX\b/.test(m)) return true;
+  // 7. 日志关键词描述行 (WARNING / ERROR / 日志中 starts)
+  if (/^(WARNING|ERROR|FATAL|PANIC|NOTICE|HINT)[:\s]/.test(m)) return true;
+  // 8. 起始中文动词 ("查询pg_proc" / "查看 xxx" / "执行 EXPLAIN ..." 类 · 非 ready-to-run)
+  if (/^(查询|查看|检测|分析|定位|确认|计算|获取|读取|检查|执行)/.test(m)) return true;
+  // 9. 含真 PID/OID 数字占位 (4+ 连续数字 + 短 cmd) · 像 'gstack 14104' / 'strace -p 12345'
+  if (/^(gstack|strace|jstack|jmap|pstack|pmap)\s+\d{4,}/.test(m)) return true;
+  // 10. GaussDB 集群工具 (gs_ssh / gs_om / cm_ctl / gs_check) · 分布式专用 · 集中式无效
+  if (/^(gs_ssh|gs_om|cm_ctl|gs_check|gs_collector|gs_dump)\b/.test(m)) return true;
+
+  return false;
 }
 function normalize(m) {
-  return (m || '').trim().replace(/^[`"']+/, '').replace(/[`"']+$/, '').trim();
+  let s = (m || '').trim();
+  // 1. strip backtick / quote / code-fence 包裹
+  s = s.replace(/^[`"']+/, '').replace(/[`"']+$/, '').trim();
+  s = s.replace(/^```\w*\s*/, '').replace(/\s*```$/, '').trim();
+  // 2. unicode dash → ASCII dash (en-dash – / em-dash — / minus − 都换 -)
+  //    distill 蒸 HTML 时被 typographic 替换 · bash / 工具命令不识别非 ASCII dash
+  s = s.replace(/[–—−]/g, '-');
+  // 3. strip gsql session prompt 残留 (gaussdb=# / yshen=# / 任意 [a-z_]+=# / =>)
+  //    distill 阶段从网页文本扒出来的 method 里很常见 · 不去会让 bash 当变量赋值跑
+  s = s.replace(/(^|\s)[a-zA-Z_][a-zA-Z0-9_]*=[#>]\s*/g, '$1').trim();
+  // 4. 砍 ' -- ' 行内 SQL 注释 (含中文 / 含 "或" 之后的) · 跨多行不动 · 单行就丢
+  //    distill 把多语句串在一行 method 里 · -- 后的"或 SELECT ..."注释会污染
+  s = s.replace(/\s+--\s+[^\n]*$/g, '').trim();
+  // 5. strip leading prompt-like "$ " / "# " / "gaussdb> "
+  s = s.replace(/^[#$]\s+/, '').trim();
+  // 6. top 单跑要 -b -n 1 (非交互 tty 跑) · 否则 'top: failed tty get'
+  if (/^top\s*$/.test(s)) return 'top -b -n 1';
+  // 7. sar 同理需要 -n / -u / count interval · 单 'sar' 报错 · 给个轻量兜底
+  if (/^sar\s*$/.test(s)) return 'sar -u 1 1';
+  return s;
 }
+
+// 起始词在这些 SQL 关键字里 · collector 跑时自动走 gsql -f 而非 bash
+const SQL_FIRST_WORDS = ['SELECT','EXPLAIN','SHOW','WITH','SET','VACUUM','ANALYZE',
+  'CREATE','ALTER','DROP','TRUNCATE','UPDATE','INSERT','DELETE','COPY','REINDEX',
+  'CHECKPOINT','GRANT','REVOKE','RESET','BEGIN','COMMIT','ROLLBACK','CALL','VALUES'];
 
 // 分类
 const checks = readFileSync(NDJSON, 'utf8').trim().split('\n').map(l => JSON.parse(l));
@@ -67,6 +113,8 @@ set -uo pipefail
 OUTDIR="\${1:-./collect-results-\$(date +%Y%m%d-%H%M%S)}"
 TIMEOUT="\${COLLECT_TIMEOUT:-5}"
 T_BIN=\$(command -v timeout 2>/dev/null || command -v gtimeout 2>/dev/null || echo "")
+# top / sar / vmstat 等 tty 工具在非交互 shell 会抱怨 TERM unset · 给个 dumb 兜底
+export TERM="\${TERM:-dumb}"
 mkdir -p "\$OUTDIR/stdout" "\$OUTDIR/stderr"
 
 # ── 部署形态自识别 (集中式 / 分布式 / 单节点) ──────────────────────────────
@@ -107,15 +155,32 @@ run_check() {
   # 用法: run_check <check_id> <<'EOF_XXX'
   #         <真命令>
   #       EOF_XXX
+  # 自动 dispatch: 起始词是 SQL 关键字 → gsql -f, 否则 bash.
   local cid="\$1"
   local tmpf
   tmpf=\$(mktemp)
   cat > "\$tmpf"
+  # 取第一个非空 token (大写化 · 砍标点)
+  local first
+  first=\$(awk 'NF{for(i=1;i<=NF;i++)if(\$i!~/^--/){print toupper(\$i);exit}}' "\$tmpf" | tr -d '[:punct:]')
+  local cmd_kind="shell"
+  case "\$first" in
+    SELECT|EXPLAIN|SHOW|WITH|SET|VACUUM|ANALYZE|CREATE|ALTER|DROP|TRUNCATE|UPDATE|INSERT|DELETE|COPY|REINDEX|CHECKPOINT|GRANT|REVOKE|RESET|BEGIN|COMMIT|ROLLBACK|CALL|VALUES)
+      cmd_kind="sql" ;;
+  esac
   set +e
-  if [ -n "\$T_BIN" ]; then
-    "\$T_BIN" "\$TIMEOUT" bash "\$tmpf" > "\$OUTDIR/stdout/\$cid.txt" 2> "\$OUTDIR/stderr/\$cid.txt"
+  if [ "\$cmd_kind" = "sql" ]; then
+    if [ -n "\$T_BIN" ]; then
+      "\$T_BIN" "\$TIMEOUT" gsql -d postgres -f "\$tmpf" > "\$OUTDIR/stdout/\$cid.txt" 2> "\$OUTDIR/stderr/\$cid.txt"
+    else
+      gsql -d postgres -f "\$tmpf" > "\$OUTDIR/stdout/\$cid.txt" 2> "\$OUTDIR/stderr/\$cid.txt"
+    fi
   else
-    bash "\$tmpf" > "\$OUTDIR/stdout/\$cid.txt" 2> "\$OUTDIR/stderr/\$cid.txt"
+    if [ -n "\$T_BIN" ]; then
+      "\$T_BIN" "\$TIMEOUT" bash "\$tmpf" > "\$OUTDIR/stdout/\$cid.txt" 2> "\$OUTDIR/stderr/\$cid.txt"
+    else
+      bash "\$tmpf" > "\$OUTDIR/stdout/\$cid.txt" 2> "\$OUTDIR/stderr/\$cid.txt"
+    fi
   fi
   local rc=\$?
   set -e
@@ -209,6 +274,7 @@ from datetime import datetime
 
 OUTDIR = Path(sys.argv[1] if len(sys.argv) > 1 else f'./collect-results-{datetime.now().strftime("%Y%m%d-%H%M%S")}')
 TIMEOUT = int(os.environ.get('COLLECT_TIMEOUT', '5'))
+os.environ.setdefault('TERM', 'dumb')  # top/sar 等 tty 工具非交互需 TERM
 (OUTDIR / 'stdout').mkdir(parents=True, exist_ok=True)
 (OUTDIR / 'stderr').mkdir(parents=True, exist_ok=True)
 
@@ -280,9 +346,29 @@ with open(report, 'w', encoding='utf-8') as rf:
     rf.write(f'# host\\t{_sk.gethostname()}\\n')
     rf.write(f'# user\\t{os.environ.get("USER", "unknown")}\\n')
     rf.write('check_id\\texit_code\\tstatus\\n')
+    # 自动 dispatch: SQL 起始词走 gsql -f, 其他走 bash -c
+    SQL_FIRST = {'SELECT','EXPLAIN','SHOW','WITH','SET','VACUUM','ANALYZE','CREATE',
+                 'ALTER','DROP','TRUNCATE','UPDATE','INSERT','DELETE','COPY','REINDEX',
+                 'CHECKPOINT','GRANT','REVOKE','RESET','BEGIN','COMMIT','ROLLBACK','CALL','VALUES'}
+    import tempfile, re as _re
     for i, (cid, name, layer, method) in enumerate(CHECKS, 1):
+        # 取第一个非注释 token 大写化
+        first = ''
+        for tok in _re.split(r'\\s+', method.strip()):
+            if tok and not tok.startswith('--'):
+                first = _re.sub(r'[^A-Z0-9_]', '', tok.upper())
+                break
+        is_sql = first in SQL_FIRST
         try:
-            r = subprocess.run(['bash', '-c', method], capture_output=True, timeout=TIMEOUT)
+            if is_sql:
+                with tempfile.NamedTemporaryFile('w', suffix='.sql', delete=False) as tf:
+                    tf.write(method)
+                    sqlf = tf.name
+                r = subprocess.run(['gsql','-d','postgres','-f',sqlf],
+                                   capture_output=True, timeout=TIMEOUT)
+                os.unlink(sqlf)
+            else:
+                r = subprocess.run(['bash','-c', method], capture_output=True, timeout=TIMEOUT)
             rc = r.returncode
             (OUTDIR / 'stdout' / f'{cid}.txt').write_bytes(r.stdout)
             (OUTDIR / 'stderr' / f'{cid}.txt').write_bytes(r.stderr)

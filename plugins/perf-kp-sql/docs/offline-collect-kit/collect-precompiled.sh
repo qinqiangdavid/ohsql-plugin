@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # GaussDB 离线采集 · 预编译版 · 完全自包含
-# 所有 216 个 auto 命令已 inline 为 heredoc (不解析 ndjson · 不需 jq).
+# 所有 180 个 auto 命令已 inline 为 heredoc (不解析 ndjson · 不需 jq).
 #
-# 生成时间: 2026-05-23T07:55:50.141Z
-# 数据: auto=216 · manual=117 · skip=8 · total=341
+# 生成时间: 2026-05-23T09:08:35.405Z
+# 数据: auto=180 · manual=153 · skip=8 · total=341
 #
 # 用法:
 #   source ~/gauss_env_file              # 先 source gsql env (如需要)
@@ -19,6 +19,8 @@ set -uo pipefail
 OUTDIR="${1:-./collect-results-$(date +%Y%m%d-%H%M%S)}"
 TIMEOUT="${COLLECT_TIMEOUT:-5}"
 T_BIN=$(command -v timeout 2>/dev/null || command -v gtimeout 2>/dev/null || echo "")
+# top / sar / vmstat 等 tty 工具在非交互 shell 会抱怨 TERM unset · 给个 dumb 兜底
+export TERM="${TERM:-dumb}"
 mkdir -p "$OUTDIR/stdout" "$OUTDIR/stderr"
 
 # ── 部署形态自识别 (集中式 / 分布式 / 单节点) ──────────────────────────────
@@ -59,15 +61,32 @@ run_check() {
   # 用法: run_check <check_id> <<'EOF_XXX'
   #         <真命令>
   #       EOF_XXX
+  # 自动 dispatch: 起始词是 SQL 关键字 → gsql -f, 否则 bash.
   local cid="$1"
   local tmpf
   tmpf=$(mktemp)
   cat > "$tmpf"
+  # 取第一个非空 token (大写化 · 砍标点)
+  local first
+  first=$(awk 'NF{for(i=1;i<=NF;i++)if($i!~/^--/){print toupper($i);exit}}' "$tmpf" | tr -d '[:punct:]')
+  local cmd_kind="shell"
+  case "$first" in
+    SELECT|EXPLAIN|SHOW|WITH|SET|VACUUM|ANALYZE|CREATE|ALTER|DROP|TRUNCATE|UPDATE|INSERT|DELETE|COPY|REINDEX|CHECKPOINT|GRANT|REVOKE|RESET|BEGIN|COMMIT|ROLLBACK|CALL|VALUES)
+      cmd_kind="sql" ;;
+  esac
   set +e
-  if [ -n "$T_BIN" ]; then
-    "$T_BIN" "$TIMEOUT" bash "$tmpf" > "$OUTDIR/stdout/$cid.txt" 2> "$OUTDIR/stderr/$cid.txt"
+  if [ "$cmd_kind" = "sql" ]; then
+    if [ -n "$T_BIN" ]; then
+      "$T_BIN" "$TIMEOUT" gsql -d postgres -f "$tmpf" > "$OUTDIR/stdout/$cid.txt" 2> "$OUTDIR/stderr/$cid.txt"
+    else
+      gsql -d postgres -f "$tmpf" > "$OUTDIR/stdout/$cid.txt" 2> "$OUTDIR/stderr/$cid.txt"
+    fi
   else
-    bash "$tmpf" > "$OUTDIR/stdout/$cid.txt" 2> "$OUTDIR/stderr/$cid.txt"
+    if [ -n "$T_BIN" ]; then
+      "$T_BIN" "$TIMEOUT" bash "$tmpf" > "$OUTDIR/stdout/$cid.txt" 2> "$OUTDIR/stderr/$cid.txt"
+    else
+      bash "$tmpf" > "$OUTDIR/stdout/$cid.txt" 2> "$OUTDIR/stderr/$cid.txt"
+    fi
   fi
   local rc=$?
   set -e
@@ -78,7 +97,7 @@ run_check() {
 }
 
 i=0
-TOTAL=216
+TOTAL=180
 echo "开始: $TOTAL 个 auto 命令 · timeout ${TIMEOUT}s · outdir $OUTDIR"
 echo ""
 
@@ -100,21 +119,21 @@ i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-explain-verbose-remotequery · explain verbose · RemoteQuery 计划 · layer=db-interactive-cmd
 run_check "chk-explain-verbose-remotequery" <<'EOF_CHK_EXPLAIN_VERBOSE_REMOTEQUERY'
-yshen=# set rewrite_rule='none'; SET yshen=# explain (verbose on, costs off)  select two_sum(tt.c1, tt.c2) from (select t1.c1,t2.c2 from t1,t2 where t1.c1=t2.c2) tt(c1,c2);
+set rewrite_rule='none'; SET explain (verbose on, costs off)  select two_sum(tt.c1, tt.c2) from (select t1.c1,t2.c2 from t1,t2 where t1.c1=t2.c2) tt(c1,c2);
 EOF_CHK_EXPLAIN_VERBOSE_REMOTEQUERY
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-explain-verbose-subplan · explain verbose · SubPlan 执行方式 · layer=db-interactive-cmd
 run_check "chk-explain-verbose-subplan" <<'EOF_CHK_EXPLAIN_VERBOSE_SUBPLAN'
-yshen=# set rewrite_rule='none'; SET yshen=# explain (verbose on, costs off) select c1,(select avg(c2) from t2 where t2.c2=t1.c2) from t1 where t1.c1<100 order by t1.c2;
+set rewrite_rule='none'; SET explain (verbose on, costs off) select c1,(select avg(c2) from t2 where t2.c2=t1.c2) from t1 where t1.c1<100 order by t1.c2;
 EOF_CHK_EXPLAIN_VERBOSE_SUBPLAN
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-null-001 · 执行计划下推标识 · layer=db-interactive-cmd
 run_check "chk-null-001" <<'EOF_CHK_NULL_001'
-gaussdb=# explain select * from t where c1 > 1;
+explain select * from t where c1 > 1;
 EOF_CHK_NULL_001
 
 i=$((i+1))
@@ -128,63 +147,63 @@ i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-explain-analyze-a-time-rows-removed-by-filter · explain analyze · A-time / Rows Removed by Filter · layer=db-interactive-cmd
 run_check "chk-explain-analyze-a-time-rows-removed-by-filter" <<'EOF_CHK_EXPLAIN_ANALYZE_A_TIME_ROWS_REMOVED_BY_FILTER'
-gaussdb=#  explain (analyze on,costs off) select * from t1 where c2=10004;
+explain (analyze on,costs off) select * from t1 where c2=10004;
 EOF_CHK_EXPLAIN_ANALYZE_A_TIME_ROWS_REMOVED_BY_FILTER
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-explain-analyze-nested-loop-a-time · explain analyze · Nested Loop A-time · layer=db-interactive-cmd
 run_check "chk-explain-analyze-nested-loop-a-time" <<'EOF_CHK_EXPLAIN_ANALYZE_NESTED_LOOP_A_TIME'
-gaussdb=#  explain analyze select count(*) from t2,t1 where t1.c1=t2.c2;
+explain analyze select count(*) from t2,t1 where t1.c1=t2.c2;
 EOF_CHK_EXPLAIN_ANALYZE_NESTED_LOOP_A_TIME
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-explain-analyze-groupaggregate-a-time-vs-hashaggregate · explain analyze · GroupAggregate A-time vs HashAggregate · layer=db-interactive-cmd
 run_check "chk-explain-analyze-groupaggregate-a-time-vs-hashaggregate" <<'EOF_CHK_EXPLAIN_ANALYZE_GROUPAGGREGATE_A_TIME_VS_HASHAGGREGATE'
-gaussdb=#  explain analyze select count(*) from t1 group by c2;
+explain analyze select count(*) from t1 group by c2;
 EOF_CHK_EXPLAIN_ANALYZE_GROUPAGGREGATE_A_TIME_VS_HASHAGGREGATE
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-explain-analyze-a-time · EXPLAIN ANALYZE A-time 瓶颈算子识别 · layer=db-interactive-cmd
 run_check "chk-explain-analyze-a-time" <<'EOF_CHK_EXPLAIN_ANALYZE_A_TIME'
-gaussdb=# explain analyze select avg(netpaid) from (select c_last_name,c_first_name,s_store_name,ca_state,s_state,i_color,i_current_price,i_manager_id,i_units,i_size,sum(ss_sales_price) netpaid from store_sales,store_returns,store,item,customer,customer_address where ss_ticket_number = sr_ticket_number and ss_item_sk = sr_item_sk and ss_customer_sk = c_customer_sk and ss_item_sk = i_item_sk and ss_store_sk = s_store_sk and c_birth_country = upper(ca_country) and s_zip = ca_zip ...
+explain analyze select avg(netpaid) from (select c_last_name,c_first_name,s_store_name,ca_state,s_state,i_color,i_current_price,i_manager_id,i_units,i_size,sum(ss_sales_price) netpaid from store_sales,store_returns,store,item,customer,customer_address where ss_ticket_number = sr_ticket_number and ss_item_sk = sr_item_sk and ss_customer_sk = c_customer_sk and ss_item_sk = i_item_sk and ss_store_sk = s_store_sk and c_birth_country = upper(ca_country) and s_zip = ca_zip ...
 EOF_CHK_EXPLAIN_ANALYZE_A_TIME
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-explain-verbose-streaming-vs-data-node-scan · EXPLAIN VERBOSE · 执行计划是否含 Streaming 节点 vs Data Node Scan · layer=db-interactive-cmd
 run_check "chk-explain-verbose-streaming-vs-data-node-scan" <<'EOF_CHK_EXPLAIN_VERBOSE_STREAMING_VS_DATA_NODE_SCAN'
-gaussdb=# set rewrite_rule='none'; SET gaussdb=# explain (verbose on, costs off)  select group_concat(tt.c1, tt.c2) from (select t1.c1,t2.c2 from t1,t2 where t1.c1=t2.c2) tt(c1,c2);
+set rewrite_rule='none'; SET explain (verbose on, costs off)  select group_concat(tt.c1, tt.c2) from (select t1.c1,t2.c2 from t1,t2 where t1.c1=t2.c2) tt(c1,c2);
 EOF_CHK_EXPLAIN_VERBOSE_STREAMING_VS_DATA_NODE_SCAN
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-explain-verbose-subplan · EXPLAIN VERBOSE · SubPlan 算子出现在目标列 · layer=db-interactive-cmd
 run_check "chk-explain-verbose-subplan" <<'EOF_CHK_EXPLAIN_VERBOSE_SUBPLAN'
-gaussdb=# set rewrite_rule='none'; SET gaussdb=# explain (verbose on, costs off) select c1,(select avg(c2) from t2 where t2.c2=t1.c2) from t1 where t1.c1<100 order by t1.c2;
+set rewrite_rule='none'; SET explain (verbose on, costs off) select c1,(select avg(c2) from t2 where t2.c2=t1.c2) from t1 where t1.c1<100 order by t1.c2;
 EOF_CHK_EXPLAIN_VERBOSE_SUBPLAN
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-pg-stat-get-last-data-changed-time · 近期数据变更表列表（pg_stat_get_last_data_changed_time） · layer=db-system-view
 run_check "chk-pg-stat-get-last-data-changed-time" <<'EOF_CHK_PG_STAT_GET_LAST_DATA_CHANGED_TIME'
-gaussdb=# SELECT table_distribution(schemaname,relname) FROM get_last_changed_table();
+SELECT table_distribution(schemaname,relname) FROM get_last_changed_table();
 EOF_CHK_PG_STAT_GET_LAST_DATA_CHANGED_TIME
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-pgxc-get-table-skewness · PGXC_GET_TABLE_SKEWNESS · layer=db-system-view
 run_check "chk-pgxc-get-table-skewness" <<'EOF_CHK_PGXC_GET_TABLE_SKEWNESS'
-gaussdb=#SELECT * FROM pgxc_get_table_skewness ORDER BY totalsize DESC;
+SELECT * FROM pgxc_get_table_skewness ORDER BY totalsize DESC;
 EOF_CHK_PGXC_GET_TABLE_SKEWNESS
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-table-distribution-dn-1w · table_distribution() 各DN空间（大表个数超1W场景） · layer=db-system-view
 run_check "chk-table-distribution-dn-1w" <<'EOF_CHK_TABLE_DISTRIBUTION_DN_1W'
-gaussdb=#SELECT schemaname,tablename,max(dnsize) AS maxsize, min(dnsize) AS minsize FROM pg_catalog.pg_class c INNER JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace INNER JOIN pg_catalog.table_distribution() s ON s.schemaname = n.nspname AND s.tablename = c.relname INNER JOIN pg_catalog.pgxc_class x ON c.oid = x.pcrelid AND x.pclocatortype = 'H' GROUP BY schemaname,tablename;
+SELECT schemaname,tablename,max(dnsize) AS maxsize, min(dnsize) AS minsize FROM pg_catalog.pg_class c INNER JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace INNER JOIN pg_catalog.table_distribution() s ON s.schemaname = n.nspname AND s.tablename = c.relname INNER JOIN pg_catalog.pgxc_class x ON c.oid = x.pcrelid AND x.pclocatortype = 'H' GROUP BY schemaname,tablename;
 EOF_CHK_TABLE_DISTRIBUTION_DN_1W
 
 i=$((i+1))
@@ -205,21 +224,21 @@ i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-explain-analyze-a-time-seqscan-vs-indexscan · EXPLAIN ANALYZE A-time · SeqScan vs IndexScan · layer=db-interactive-cmd
 run_check "chk-explain-analyze-a-time-seqscan-vs-indexscan" <<'EOF_CHK_EXPLAIN_ANALYZE_A_TIME_SEQSCAN_VS_INDEXSCAN'
-gaussdb=#  explain (analyze on, costs off) select * from t1 where c1=10004;
+explain (analyze on, costs off) select * from t1 where c1=10004;
 EOF_CHK_EXPLAIN_ANALYZE_A_TIME_SEQSCAN_VS_INDEXSCAN
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-explain-analyze-a-time-nestloop · EXPLAIN ANALYZE A-time · NestLoop算子耗时 · layer=db-interactive-cmd
 run_check "chk-explain-analyze-a-time-nestloop" <<'EOF_CHK_EXPLAIN_ANALYZE_A_TIME_NESTLOOP'
-gaussdb=#  explain analyze select count(*) from t1,t2 where t1.c1=t2.c2;
+explain analyze select count(*) from t1,t2 where t1.c1=t2.c2;
 EOF_CHK_EXPLAIN_ANALYZE_A_TIME_NESTLOOP
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-explain-analyze-a-time-sort-groupagg-vs-hashagg · EXPLAIN ANALYZE A-time · Sort+GroupAgg vs HashAgg · layer=db-interactive-cmd
 run_check "chk-explain-analyze-a-time-sort-groupagg-vs-hashagg" <<'EOF_CHK_EXPLAIN_ANALYZE_A_TIME_SORT_GROUPAGG_VS_HASHAGG'
-gaussdb=#  explain analyze select count(*) from t1 group by c1;
+explain analyze select count(*) from t1 group by c1;
 EOF_CHK_EXPLAIN_ANALYZE_A_TIME_SORT_GROUPAGG_VS_HASHAGG
 
 i=$((i+1))
@@ -247,21 +266,21 @@ i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-hashaggregate · 执行计划中双层HashAggregate · layer=db-interactive-cmd
 run_check "chk-hashaggregate" <<'EOF_CHK_HASHAGGREGATE'
-gaussdb=# EXPLAIN (costs off) SELECT t.c2, sum(cc) FROM (SELECT c2, sum(c3) AS cc FROM t1 GROUP BY c2) s1, t WHERE s1.c2=t.c2 GROUP BY t.c2 ORDER BY 1,2;
+EXPLAIN (costs off) SELECT t.c2, sum(cc) FROM (SELECT c2, sum(c3) AS cc FROM t1 GROUP BY c2) s1, t WHERE s1.c2=t.c2 GROUP BY t.c2 ORDER BY 1,2;
 EOF_CHK_HASHAGGREGATE
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-null-002 · 执行计划子查询关联方式 · layer=db-interactive-cmd
 run_check "chk-null-002" <<'EOF_CHK_NULL_002'
-gaussdb=# EXPLAIN (costs off) SELECT t1 FROM t1 WHERE t1.c2 = 10 AND t1.c3 < (SELECT sum(c3) FROM t2 WHERE t1.c1 = t2.c1);
+EXPLAIN (costs off) SELECT t1 FROM t1 WHERE t1.c2 = 10 AND t1.c3 < (SELECT sum(c3) FROM t2 WHERE t1.c1 = t2.c1);
 EOF_CHK_NULL_002
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-subplan · 执行计划中SubPlan节点 · layer=db-interactive-cmd
 run_check "chk-subplan" <<'EOF_CHK_SUBPLAN'
-gaussdb=#  EXPLAIN (verbose on, costs off) SELECT c1,(SELECT avg(c2) FROM t2 WHERE t2.c2=t1.c2) FROM t1 WHERE t1.c1<100 ORDER BY t1.c2;
+EXPLAIN (verbose on, costs off) SELECT c1,(SELECT avg(c2) FROM t2 WHERE t2.c2=t1.c2) FROM t1 WHERE t1.c1<100 ORDER BY t1.c2;
 EOF_CHK_SUBPLAN
 
 i=$((i+1))
@@ -280,76 +299,6 @@ EOF_CHK_LOCAL_EXPLAIN_ANALYZE_TOTAL_RUNTIME
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-rds001-cpu-util · rds001_cpu_util · layer=db-internal-counter
-run_check "chk-rds001-cpu-util" <<'EOF_CHK_RDS001_CPU_UTIL'
-CPU使用率
-EOF_CHK_RDS001_CPU_UTIL
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-rds002-mem-util · rds002_mem_util · layer=db-internal-counter
-run_check "chk-rds002-mem-util" <<'EOF_CHK_RDS002_MEM_UTIL'
-内存使用率
-EOF_CHK_RDS002_MEM_UTIL
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-io-bandwidth-usage · io_bandwidth_usage · layer=db-internal-counter
-run_check "chk-io-bandwidth-usage" <<'EOF_CHK_IO_BANDWIDTH_USAGE'
-磁盘io带宽占用率
-EOF_CHK_IO_BANDWIDTH_USAGE
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-iops-usage · iops_usage · layer=db-internal-counter
-run_check "chk-iops-usage" <<'EOF_CHK_IOPS_USAGE'
-IOPS使用率
-EOF_CHK_IOPS_USAGE
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-rds036-deadlocks · rds036_deadlocks · layer=db-internal-counter
-run_check "chk-rds036-deadlocks" <<'EOF_CHK_RDS036_DEADLOCKS'
-死锁次数
-EOF_CHK_RDS036_DEADLOCKS
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-rds048-p80 · rds048_P80 · layer=db-internal-counter
-run_check "chk-rds048-p80" <<'EOF_CHK_RDS048_P80'
-80% SQL的响应时间
-EOF_CHK_RDS048_P80
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-rds049-p95 · rds049_P95 · layer=db-internal-counter
-run_check "chk-rds049-p95" <<'EOF_CHK_RDS049_P95'
-95% SQL的响应时间
-EOF_CHK_RDS049_P95
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-rds063-slowquery-user · rds063_slowquery_user · layer=db-internal-counter
-run_check "chk-rds063-slowquery-user" <<'EOF_CHK_RDS063_SLOWQUERY_USER'
-用户库慢SQL数量
-EOF_CHK_RDS063_SLOWQUERY_USER
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-rds065-dynamic-used-memory-usage · rds065_dynamic_used_memory_usage · layer=db-internal-counter
-run_check "chk-rds065-dynamic-used-memory-usage" <<'EOF_CHK_RDS065_DYNAMIC_USED_MEMORY_USAGE'
-动态内存使用率
-EOF_CHK_RDS065_DYNAMIC_USED_MEMORY_USAGE
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-rds070-thread-pool · rds070_thread_pool · layer=db-internal-counter
-run_check "chk-rds070-thread-pool" <<'EOF_CHK_RDS070_THREAD_POOL'
-线程池使用率
-EOF_CHK_RDS070_THREAD_POOL
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-explain-agg · EXPLAIN 执行计划 Agg 算子模式 · layer=db-interactive-cmd
 run_check "chk-explain-agg" <<'EOF_CHK_EXPLAIN_AGG'
 explain select b,count(1) from t1 group by b;
@@ -359,7 +308,7 @@ i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-copy · COPY 导入是否存在约束冲突类容错需求 · layer=db-shell
 run_check "chk-copy" <<'EOF_CHK_COPY'
-gaussdb=# SET a_format_load_with_constraints_violation = 's2';
+SET a_format_load_with_constraints_violation = 's2';
 EOF_CHK_COPY
 
 i=$((i+1))
@@ -378,30 +327,23 @@ EOF_CHK_EXPLAIN_VERBOSE_HASHJOIN
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-pg-stat-statements-total-time-calls · pg_stat_statements · total_time + calls (慢查询统计) · layer=db-system-view
-run_check "chk-pg-stat-statements-total-time-calls" <<'EOF_CHK_PG_STAT_STATEMENTS_TOTAL_TIME_CALLS'
-- **abnormal_patterns**: ["total_time > 1000 AND calls > 10"]
-EOF_CHK_PG_STAT_STATEMENTS_TOTAL_TIME_CALLS
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-explain-performance-dn · explain performance 各 DN 实际行数 · layer=db-interactive-cmd
 run_check "chk-explain-performance-dn" <<'EOF_CHK_EXPLAIN_PERFORMANCE_DN'
-openGauss=# explain performance select count(*) from inventory;
+explain performance select count(*) from inventory;
 EOF_CHK_EXPLAIN_PERFORMANCE_DN
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-table-skewness-dn · table_skewness() 各 DN 数据分布比例 · layer=db-system-view
 run_check "chk-table-skewness-dn" <<'EOF_CHK_TABLE_SKEWNESS_DN'
-openGauss=# select table_skewness('inventory');
+select table_skewness('inventory');
 EOF_CHK_TABLE_SKEWNESS_DN
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-explain-analyze-streaming-redistribute-dn · EXPLAIN ANALYZE Streaming(REDISTRIBUTE) 各 DN 输出行数 · layer=db-interactive-cmd
 run_check "chk-explain-analyze-streaming-redistribute-dn" <<'EOF_CHK_EXPLAIN_ANALYZE_STREAMING_REDISTRIBUTE_DN'
-openGauss=# explain select * from skew s,test t where s.x = t.x order by s.a limit 1;
+explain select * from skew s,test t where s.x = t.x order by s.a limit 1;
 EOF_CHK_EXPLAIN_ANALYZE_STREAMING_REDISTRIBUTE_DN
 
 i=$((i+1))
@@ -441,13 +383,6 @@ EOF_CHK_EXPLAIN_STREAMING
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-groupagg-sort · EXPLAIN · 算子(GroupAgg+Sort) · layer=db-interactive-cmd
-run_check "chk-explain-groupagg-sort" <<'EOF_CHK_EXPLAIN_GROUPAGG_SORT'
-计划中包含GroupAgg+Sort算子
-EOF_CHK_EXPLAIN_GROUPAGG_SORT
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-explain-analyze-hashjoin-dn · EXPLAIN ANALYZE HashJoin 各 DN 执行时间范围 · layer=db-interactive-cmd
 run_check "chk-explain-analyze-hashjoin-dn" <<'EOF_CHK_EXPLAIN_ANALYZE_HASHJOIN_DN'
 EXPLAIN ANALYZE
@@ -466,20 +401,6 @@ i=$((i+1))
 run_check "chk-seq-scan-dn" <<'EOF_CHK_SEQ_SCAN_DN'
 EXPLAIN ANALYZE
 EOF_CHK_SEQ_SCAN_DN
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-analyze · EXPLAIN ANALYZE 顺序扫描耗时 · layer=db-interactive-cmd
-run_check "chk-explain-analyze" <<'EOF_CHK_EXPLAIN_ANALYZE'
-EXPLAIN
-EOF_CHK_EXPLAIN_ANALYZE
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-join · EXPLAIN 执行计划 Join 类型 · layer=db-interactive-cmd
-run_check "chk-explain-join" <<'EOF_CHK_EXPLAIN_JOIN'
-EXPLAIN
-EOF_CHK_EXPLAIN_JOIN
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -511,52 +432,10 @@ EOF_CHK_IOSTAT_UTIL_R_AWAIT_W_AWAIT
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-pidstat-iotop-i-o · pidstat / iotop 显示线程 I/O 消耗 · layer=os
-run_check "chk-pidstat-iotop-i-o" <<'EOF_CHK_PIDSTAT_IOTOP_I_O'
-pidstat -dt -p gaussdb进程号
-EOF_CHK_PIDSTAT_IOTOP_I_O
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-top-sar-gaussdb-cpu · top / sar 中 gaussdb 进程 CPU 占用 · layer=os
 run_check "chk-top-sar-gaussdb-cpu" <<'EOF_CHK_TOP_SAR_GAUSSDB_CPU'
-$ top
+top -b -n 1
 EOF_CHK_TOP_SAR_GAUSSDB_CPU
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-filter · EXPLAIN 执行计划 Filter 条件分析 · layer=db-interactive-cmd
-run_check "chk-explain-filter" <<'EOF_CHK_EXPLAIN_FILTER'
-EXPLAIN
-EOF_CHK_EXPLAIN_FILTER
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-pg-proc-volatility · pg_proc 函数 volatility 类型查询 · layer=db-system-view
-run_check "chk-pg-proc-volatility" <<'EOF_CHK_PG_PROC_VOLATILITY'
-查询pg_proc
-EOF_CHK_PG_PROC_VOLATILITY
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain · EXPLAIN 执行计划算子估算行数 · layer=db-interactive-cmd
-run_check "chk-explain" <<'EOF_CHK_EXPLAIN'
-EXPLAIN
-EOF_CHK_EXPLAIN
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-stream · EXPLAIN 执行计划 Stream 算子类型 · layer=db-interactive-cmd
-run_check "chk-explain-stream" <<'EOF_CHK_EXPLAIN_STREAM'
-EXPLAIN
-EOF_CHK_EXPLAIN_STREAM
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-remotequery-data-node-scan · EXPLAIN · 是否含 RemoteQuery / Data Node Scan · layer=db-interactive-cmd
-run_check "chk-explain-remotequery-data-node-scan" <<'EOF_CHK_EXPLAIN_REMOTEQUERY_DATA_NODE_SCAN'
-- **abnormal_patterns**: ["`Data Node Scan on t1 \"_REMOTE_TABLE_QUERY_\"`"]
-EOF_CHK_EXPLAIN_REMOTEQUERY_DATA_NODE_SCAN
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -574,24 +453,10 @@ EOF_CHK_SCAN_FILTER
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-cn-vs-dn · EXPLAIN 执行计划算子位置（CN vs DN） · layer=db-interactive-cmd
-run_check "chk-explain-cn-vs-dn" <<'EOF_CHK_EXPLAIN_CN_VS_DN'
-EXPLAIN
-EOF_CHK_EXPLAIN_CN_VS_DN
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-not-in · 含 NOT IN 子查询的执行计划 · layer=db-interactive-cmd
 run_check "chk-not-in" <<'EOF_CHK_NOT_IN'
-gaussdb=# EXPLAIN SELECT * FROM t1 WHERE c1 NOT IN (SELECT d2 FROM t2);
+EXPLAIN SELECT * FROM t1 WHERE c1 NOT IN (SELECT d2 FROM t2);
 EOF_CHK_NOT_IN
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-subplan · EXPLAIN 执行计划 SubPlan 存在 · layer=db-interactive-cmd
-run_check "chk-explain-subplan" <<'EOF_CHK_EXPLAIN_SUBPLAN'
-EXPLAIN
-EOF_CHK_EXPLAIN_SUBPLAN
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -602,45 +467,10 @@ EOF_CHK_NULL_005
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-pgxc-wlm-session-history-block-time-duration · pgxc_wlm_session_history · block_time / duration · layer=db-system-view
-run_check "chk-pgxc-wlm-session-history-block-time-duration" <<'EOF_CHK_PGXC_WLM_SESSION_HISTORY_BLOCK_TIME_DURATION'
-pgxc_wlm_session_history
-EOF_CHK_PGXC_WLM_SESSION_HISTORY_BLOCK_TIME_DURATION
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-pgxc-wlm-session-history · pgxc_wlm_session_history · 同期并发作业数 · layer=db-system-view
-run_check "chk-pgxc-wlm-session-history" <<'EOF_CHK_PGXC_WLM_SESSION_HISTORY'
-pgxc_wlm_session_history
-EOF_CHK_PGXC_WLM_SESSION_HISTORY
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-pgxc-wlm-session-history-min-dn-time-max-dn-time-average-dn- · pgxc_wlm_session_history · min_dn_time / max_dn_time / average_dn_time / dntime_ · layer=db-system-view
-run_check "chk-pgxc-wlm-session-history-min-dn-time-max-dn-time-average-dn-" <<'EOF_CHK_PGXC_WLM_SESSION_HISTORY_MIN_DN_TIME_MAX_DN_TIME_AVERAGE_DN_'
-pgxc_wlm_session_history
-EOF_CHK_PGXC_WLM_SESSION_HISTORY_MIN_DN_TIME_MAX_DN_TIME_AVERAGE_DN_
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-gs-wlm-instance-history-io-await-io-util-disk-read-disk-writ · GS_WLM_INSTANCE_HISTORY · io_await / io_util / disk_read / disk_write / process_ · layer=db-system-view
-run_check "chk-gs-wlm-instance-history-io-await-io-util-disk-read-disk-writ" <<'EOF_CHK_GS_WLM_INSTANCE_HISTORY_IO_AWAIT_IO_UTIL_DISK_READ_DISK_WRIT'
-GS_WLM_INSTANCE_HISTORY
-EOF_CHK_GS_WLM_INSTANCE_HISTORY_IO_AWAIT_IO_UTIL_DISK_READ_DISK_WRIT
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-explain-performance-windowagg-sort · EXPLAIN PERFORMANCE 执行计划 · WindowAgg/Sort 算子耗时 · layer=db-interactive-cmd
 run_check "chk-explain-performance-windowagg-sort" <<'EOF_CHK_EXPLAIN_PERFORMANCE_WINDOWAGG_SORT'
 explain performance
 EOF_CHK_EXPLAIN_PERFORMANCE_WINDOWAGG_SORT
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-dn · 各DN磁盘利用率 · layer=os
-run_check "chk-dn" <<'EOF_CHK_DN'
-gs_ssh –c "df -h
-EOF_CHK_DN
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -662,13 +492,6 @@ i=$((i+1))
 run_check "chk-null-006" <<'EOF_CHK_NULL_006'
 select * from pg_thread_wait_status where query_id='149181737656737395';
 EOF_CHK_NULL_006
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-vecnestloopruntime · 进程堆栈（VecNestLoopRuntime） · layer=os
-run_check "chk-vecnestloopruntime" <<'EOF_CHK_VECNESTLOOPRUNTIME'
-gstack 14104
-EOF_CHK_VECNESTLOOPRUNTIME
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -697,13 +520,6 @@ i=$((i+1))
 run_check "chk-period-ttl" <<'EOF_CHK_PERIOD_TTL'
 CREATE TABLE CPU1(...) with (TTL='7 days',PERIOD='1 day', TIME_FORMAT='YYYYMMDD')
 EOF_CHK_PERIOD_TTL
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-evs · EVS 磁盘空间占用百分比 · layer=log-grep
-run_check "chk-evs" <<'EOF_CHK_EVS'
-日志中会出现\"Disk usage on the node %u has reached the read-only threshold 90%\
-EOF_CHK_EVS
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -756,24 +572,10 @@ EOF_CHK_PGXC_WLM_SESSION_INFO_MAX_CPU_TIME_CPU
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-pgxc-wlm-session-info-duration-block-time-query-plan-sql-has · pgxc_wlm_session_info · duration / block_time / query_plan（按 sql_hash 比对历史） · layer=db-system-view
-run_check "chk-pgxc-wlm-session-info-duration-block-time-query-plan-sql-has" <<'EOF_CHK_PGXC_WLM_SESSION_INFO_DURATION_BLOCK_TIME_QUERY_PLAN_SQL_HAS'
-SELECT start_time, block_time, duration, sql_hash, warning, max_peak_memory, max_spill_size, query_plan FROM pgxc_wlm_session_info were start_time > 'xxxx-xx-xx xx:xx' and sql_hash = 'xxx' ORDER BY start_time desc limit 10;
-EOF_CHK_PGXC_WLM_SESSION_INFO_DURATION_BLOCK_TIME_QUERY_PLAN_SQL_HAS
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-resource-track-level-operator-realtime · resource_track_level · operator_realtime 级别实时算子监控 · layer=db-system-view
 run_check "chk-resource-track-level-operator-realtime" <<'EOF_CHK_RESOURCE_TRACK_LEVEL_OPERATOR_REALTIME'
 SET resource_track_level = 'operator_realtime';
 EOF_CHK_RESOURCE_TRACK_LEVEL_OPERATOR_REALTIME
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-pgxc-stat-activity-state-waiting-enqueue · PGXC_STAT_ACTIVITY · state / waiting / enqueue · layer=db-system-view
-run_check "chk-pgxc-stat-activity-state-waiting-enqueue" <<'EOF_CHK_PGXC_STAT_ACTIVITY_STATE_WAITING_ENQUEUE'
-SELECT coorname, usename,client_addr,application_name,state,waiting,enqueue,pid FROM PGXC_STAT_ACTIVITY WHERE DATNAME='数据库名称';
-EOF_CHK_PGXC_STAT_ACTIVITY_STATE_WAITING_ENQUEUE
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -795,13 +597,6 @@ i=$((i+1))
 run_check "chk-pgxc-lock-conflicts" <<'EOF_CHK_PGXC_LOCK_CONFLICTS'
 SELECT * FROM pgxc_lock_conflicts;
 EOF_CHK_PGXC_LOCK_CONFLICTS
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-pg-stat-activity-pg-locks-sql-8-0-x · pg_stat_activity / pg_locks 阻塞SQL（8.0.x及之前版本） · layer=db-system-view
-run_check "chk-pg-stat-activity-pg-locks-sql-8-0-x" <<'EOF_CHK_PG_STAT_ACTIVITY_PG_LOCKS_SQL_8_0_X'
-- **abnormal_patterns**: ["NULL"]
-EOF_CHK_PG_STAT_ACTIVITY_PG_LOCKS_SQL_8_0_X
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -882,13 +677,6 @@ EOF_CHK_PG_SESSION_WLMSTAT_STATUS_STATEMENT_MEM
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-cudesc-cu-row-count · cudesc表中CU的row_count分布 · layer=db-system-view
-run_check "chk-cudesc-cu-row-count" <<'EOF_CHK_CUDESC_CU_ROW_COUNT'
-- **abnormal_patterns**: ["row_count << 60000"]
-EOF_CHK_CUDESC_CU_ROW_COUNT
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-pgxc-thread-wait-status-wait-status-wait-event · pgxc_thread_wait_status · wait_status / wait_event · layer=db-system-view
 run_check "chk-pgxc-thread-wait-status-wait-status-wait-event" <<'EOF_CHK_PGXC_THREAD_WAIT_STATUS_WAIT_STATUS_WAIT_EVENT'
 SELECT wait_status,wait_event,count(*) AS cnt FROM pgxc_thread_wait_status WHERE wait_status <> 'wait cmd' AND wait_status <> 'synchronize quit' AND wait_status <> 'none'  GROUP BY 1,2 ORDER BY 3 DESC limit 50;
@@ -900,13 +688,6 @@ i=$((i+1))
 run_check "chk-pg-partition" <<'EOF_CHK_PG_PARTITION'
 SELECT relname,reloptions,partcount FROM pg_class c INNER JOIN ( SELECT parentid,count(*) AS partcount FROM pg_partition GROUP BY parentid ) s ON c.oid = s.parentid ORDER BY partcount DESC;
 EOF_CHK_PG_PARTITION
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-pv-total-memory-detail-process-used-memory-vs-max-process-me · pv_total_memory_detail · process_used_memory vs max_process_memory · layer=db-system-view
-run_check "chk-pv-total-memory-detail-process-used-memory-vs-max-process-me" <<'EOF_CHK_PV_TOTAL_MEMORY_DETAIL_PROCESS_USED_MEMORY_VS_MAX_PROCESS_ME'
-pv_total_memory_detail
-EOF_CHK_PV_TOTAL_MEMORY_DETAIL_PROCESS_USED_MEMORY_VS_MAX_PROCESS_ME
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -1190,13 +971,6 @@ EOF_CHK_PGXC_RUNNING_XACTS
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-dn-warning · DN 间导入行数倾斜率(WARNING) · layer=log-grep
-run_check "chk-dn-warning" <<'EOF_CHK_DN_WARNING'
-WARNING:  Skewness occurs, table name: xxx, min value: xxx, max value: xxx, sum value: xxx, avg value: xxx, skew ratio: xxx
-EOF_CHK_DN_WARNING
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-pg-stat-activity-idle · pg_stat_activity · idle 连接数 · layer=db-system-view
 run_check "chk-pg-stat-activity-idle" <<'EOF_CHK_PG_STAT_ACTIVITY_IDLE'
 SELECT PG_TERMINATE_BACKEND(pid) from pg_stat_activity WHERE state='idle';
@@ -1211,393 +985,386 @@ EOF_CHK_EXPLAIN_PERFORMANCE
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-a-time-dn · 算子 A-time(在单 DN 上的运行耗时) · layer=db-interactive-cmd
-run_check "chk-a-time-dn" <<'EOF_CHK_A_TIME_DN'
-- **abnormal_patterns**: ["NULL"]
-EOF_CHK_A_TIME_DN
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-shared-buffers · shared_buffers · layer=gaussdb-guc-param
 run_check "chk-shared-buffers" <<'EOF_CHK_SHARED_BUFFERS'
-gsql -d postgres -c "SHOW shared_buffers;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='shared_buffers';
+gsql -d postgres -c "SHOW shared_buffers;"
 EOF_CHK_SHARED_BUFFERS
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-work-mem · work_mem · layer=gaussdb-guc-param
 run_check "chk-work-mem" <<'EOF_CHK_WORK_MEM'
-gsql -d postgres -c "SHOW work_mem;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='work_mem';
+gsql -d postgres -c "SHOW work_mem;"
 EOF_CHK_WORK_MEM
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-rewrite-rule · rewrite_rule · layer=gaussdb-guc-param
 run_check "chk-rewrite-rule" <<'EOF_CHK_REWRITE_RULE'
-gsql -d postgres -c "SHOW rewrite_rule;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='rewrite_rule';
+gsql -d postgres -c "SHOW rewrite_rule;"
 EOF_CHK_REWRITE_RULE
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-enable-hashjoin · enable_hashjoin · layer=gaussdb-guc-param
 run_check "chk-enable-hashjoin" <<'EOF_CHK_ENABLE_HASHJOIN'
-gsql -d postgres -c "SHOW enable_hashjoin;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='enable_hashjoin';
+gsql -d postgres -c "SHOW enable_hashjoin;"
 EOF_CHK_ENABLE_HASHJOIN
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-enable-nestloop · enable_nestloop · layer=gaussdb-guc-param
 run_check "chk-enable-nestloop" <<'EOF_CHK_ENABLE_NESTLOOP'
-gsql -d postgres -c "SHOW enable_nestloop;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='enable_nestloop';
+gsql -d postgres -c "SHOW enable_nestloop;"
 EOF_CHK_ENABLE_NESTLOOP
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-enable-mergejoin · enable_mergejoin · layer=gaussdb-guc-param
 run_check "chk-enable-mergejoin" <<'EOF_CHK_ENABLE_MERGEJOIN'
-gsql -d postgres -c "SHOW enable_mergejoin;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='enable_mergejoin';
+gsql -d postgres -c "SHOW enable_mergejoin;"
 EOF_CHK_ENABLE_MERGEJOIN
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-enable-sort · enable_sort · layer=gaussdb-guc-param
 run_check "chk-enable-sort" <<'EOF_CHK_ENABLE_SORT'
-gsql -d postgres -c "SHOW enable_sort;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='enable_sort';
+gsql -d postgres -c "SHOW enable_sort;"
 EOF_CHK_ENABLE_SORT
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-best-agg-plan · best_agg_plan · layer=gaussdb-guc-param
 run_check "chk-best-agg-plan" <<'EOF_CHK_BEST_AGG_PLAN'
-gsql -d postgres -c "SHOW best_agg_plan;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='best_agg_plan';
+gsql -d postgres -c "SHOW best_agg_plan;"
 EOF_CHK_BEST_AGG_PLAN
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-a-format-load-with-constraints-violation · a_format_load_with_constraints_violation · layer=gaussdb-guc-param
 run_check "chk-a-format-load-with-constraints-violation" <<'EOF_CHK_A_FORMAT_LOAD_WITH_CONSTRAINTS_VIOLATION'
-gsql -d postgres -c "SHOW a_format_load_with_constraints_violation;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='a_format_load_with_constraints_violation';
+gsql -d postgres -c "SHOW a_format_load_with_constraints_violation;"
 EOF_CHK_A_FORMAT_LOAD_WITH_CONSTRAINTS_VIOLATION
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-cost-param · cost_param · layer=gaussdb-guc-param
 run_check "chk-cost-param" <<'EOF_CHK_COST_PARAM'
-gsql -d postgres -c "SHOW cost_param;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='cost_param';
+gsql -d postgres -c "SHOW cost_param;"
 EOF_CHK_COST_PARAM
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-skew-option · skew_option · layer=gaussdb-guc-param
 run_check "chk-skew-option" <<'EOF_CHK_SKEW_OPTION'
-gsql -d postgres -c "SHOW skew_option;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='skew_option';
+gsql -d postgres -c "SHOW skew_option;"
 EOF_CHK_SKEW_OPTION
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-thread-pool-attr · thread_pool_attr · layer=gaussdb-guc-param
 run_check "chk-thread-pool-attr" <<'EOF_CHK_THREAD_POOL_ATTR'
-gsql -d postgres -c "SHOW thread_pool_attr;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='thread_pool_attr';
+gsql -d postgres -c "SHOW thread_pool_attr;"
 EOF_CHK_THREAD_POOL_ATTR
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-default-statistics-target · default_statistics_target · layer=gaussdb-guc-param
 run_check "chk-default-statistics-target" <<'EOF_CHK_DEFAULT_STATISTICS_TARGET'
-gsql -d postgres -c "SHOW default_statistics_target;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='default_statistics_target';
+gsql -d postgres -c "SHOW default_statistics_target;"
 EOF_CHK_DEFAULT_STATISTICS_TARGET
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-behavior-compat-options · behavior_compat_options · layer=gaussdb-guc-param
 run_check "chk-behavior-compat-options" <<'EOF_CHK_BEHAVIOR_COMPAT_OPTIONS'
-gsql -d postgres -c "SHOW behavior_compat_options;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='behavior_compat_options';
+gsql -d postgres -c "SHOW behavior_compat_options;"
 EOF_CHK_BEHAVIOR_COMPAT_OPTIONS
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-enable-fast-query-shipping · enable_fast_query_shipping · layer=gaussdb-guc-param
 run_check "chk-enable-fast-query-shipping" <<'EOF_CHK_ENABLE_FAST_QUERY_SHIPPING'
-gsql -d postgres -c "SHOW enable_fast_query_shipping;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='enable_fast_query_shipping';
+gsql -d postgres -c "SHOW enable_fast_query_shipping;"
 EOF_CHK_ENABLE_FAST_QUERY_SHIPPING
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-recovery-parse-workers · recovery_parse_workers · layer=gaussdb-guc-param
 run_check "chk-recovery-parse-workers" <<'EOF_CHK_RECOVERY_PARSE_WORKERS'
-gsql -d postgres -c "SHOW recovery_parse_workers;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='recovery_parse_workers';
+gsql -d postgres -c "SHOW recovery_parse_workers;"
 EOF_CHK_RECOVERY_PARSE_WORKERS
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-recovery-redo-workers · recovery_redo_workers · layer=gaussdb-guc-param
 run_check "chk-recovery-redo-workers" <<'EOF_CHK_RECOVERY_REDO_WORKERS'
-gsql -d postgres -c "SHOW recovery_redo_workers;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='recovery_redo_workers';
+gsql -d postgres -c "SHOW recovery_redo_workers;"
 EOF_CHK_RECOVERY_REDO_WORKERS
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-enable-index-nestloop · enable_index_nestloop · layer=gaussdb-guc-param
 run_check "chk-enable-index-nestloop" <<'EOF_CHK_ENABLE_INDEX_NESTLOOP'
-gsql -d postgres -c "SHOW enable_index_nestloop;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='enable_index_nestloop';
+gsql -d postgres -c "SHOW enable_index_nestloop;"
 EOF_CHK_ENABLE_INDEX_NESTLOOP
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-enable-indexscan · enable_indexscan · layer=gaussdb-guc-param
 run_check "chk-enable-indexscan" <<'EOF_CHK_ENABLE_INDEXSCAN'
-gsql -d postgres -c "SHOW enable_indexscan;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='enable_indexscan';
+gsql -d postgres -c "SHOW enable_indexscan;"
 EOF_CHK_ENABLE_INDEXSCAN
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-max-process-memory · max_process_memory · layer=gaussdb-guc-param
 run_check "chk-max-process-memory" <<'EOF_CHK_MAX_PROCESS_MEMORY'
-gsql -d postgres -c "SHOW max_process_memory;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='max_process_memory';
+gsql -d postgres -c "SHOW max_process_memory;"
 EOF_CHK_MAX_PROCESS_MEMORY
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-qrw-inlist2join-optmode · qrw_inlist2join_optmode · layer=gaussdb-guc-param
 run_check "chk-qrw-inlist2join-optmode" <<'EOF_CHK_QRW_INLIST2JOIN_OPTMODE'
-gsql -d postgres -c "SHOW qrw_inlist2join_optmode;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='qrw_inlist2join_optmode';
+gsql -d postgres -c "SHOW qrw_inlist2join_optmode;"
 EOF_CHK_QRW_INLIST2JOIN_OPTMODE
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-fetchsize · fetchSize · layer=gaussdb-guc-param
 run_check "chk-fetchsize" <<'EOF_CHK_FETCHSIZE'
-gsql -d postgres -c "SHOW fetchSize;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='fetchSize';
+gsql -d postgres -c "SHOW fetchSize;"
 EOF_CHK_FETCHSIZE
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-period · period · layer=gaussdb-guc-param
 run_check "chk-period" <<'EOF_CHK_PERIOD'
-gsql -d postgres -c "SHOW period;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='period';
+gsql -d postgres -c "SHOW period;"
 EOF_CHK_PERIOD
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-ttl · ttl · layer=gaussdb-guc-param
 run_check "chk-ttl" <<'EOF_CHK_TTL'
-gsql -d postgres -c "SHOW ttl;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='ttl';
+gsql -d postgres -c "SHOW ttl;"
 EOF_CHK_TTL
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-disk-cache-max-size · disk_cache_max_size · layer=gaussdb-guc-param
 run_check "chk-disk-cache-max-size" <<'EOF_CHK_DISK_CACHE_MAX_SIZE'
-gsql -d postgres -c "SHOW disk_cache_max_size;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='disk_cache_max_size';
+gsql -d postgres -c "SHOW disk_cache_max_size;"
 EOF_CHK_DISK_CACHE_MAX_SIZE
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-disk-cache-dual-write-option · disk_cache_dual_write_option · layer=gaussdb-guc-param
 run_check "chk-disk-cache-dual-write-option" <<'EOF_CHK_DISK_CACHE_DUAL_WRITE_OPTION'
-gsql -d postgres -c "SHOW disk_cache_dual_write_option;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='disk_cache_dual_write_option';
+gsql -d postgres -c "SHOW disk_cache_dual_write_option;"
 EOF_CHK_DISK_CACHE_DUAL_WRITE_OPTION
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-min-batch-rows · min_batch_rows · layer=gaussdb-guc-param
 run_check "chk-min-batch-rows" <<'EOF_CHK_MIN_BATCH_ROWS'
-gsql -d postgres -c "SHOW min_batch_rows;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='min_batch_rows';
+gsql -d postgres -c "SHOW min_batch_rows;"
 EOF_CHK_MIN_BATCH_ROWS
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-autovacuum · autovacuum · layer=gaussdb-guc-param
 run_check "chk-autovacuum" <<'EOF_CHK_AUTOVACUUM'
-gsql -d postgres -c "SHOW autovacuum;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='autovacuum';
+gsql -d postgres -c "SHOW autovacuum;"
 EOF_CHK_AUTOVACUUM
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-autovacuum-vacuum-cost-delay · autovacuum_vacuum_cost_delay · layer=gaussdb-guc-param
 run_check "chk-autovacuum-vacuum-cost-delay" <<'EOF_CHK_AUTOVACUUM_VACUUM_COST_DELAY'
-gsql -d postgres -c "SHOW autovacuum_vacuum_cost_delay;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='autovacuum_vacuum_cost_delay';
+gsql -d postgres -c "SHOW autovacuum_vacuum_cost_delay;"
 EOF_CHK_AUTOVACUUM_VACUUM_COST_DELAY
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-autovacuum-max-workers · autovacuum_max_workers · layer=gaussdb-guc-param
 run_check "chk-autovacuum-max-workers" <<'EOF_CHK_AUTOVACUUM_MAX_WORKERS'
-gsql -d postgres -c "SHOW autovacuum_max_workers;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='autovacuum_max_workers';
+gsql -d postgres -c "SHOW autovacuum_max_workers;"
 EOF_CHK_AUTOVACUUM_MAX_WORKERS
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-autovacuum-naptime · autovacuum_naptime · layer=gaussdb-guc-param
 run_check "chk-autovacuum-naptime" <<'EOF_CHK_AUTOVACUUM_NAPTIME'
-gsql -d postgres -c "SHOW autovacuum_naptime;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='autovacuum_naptime';
+gsql -d postgres -c "SHOW autovacuum_naptime;"
 EOF_CHK_AUTOVACUUM_NAPTIME
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-max-active-statements · max_active_statements · layer=gaussdb-guc-param
 run_check "chk-max-active-statements" <<'EOF_CHK_MAX_ACTIVE_STATEMENTS'
-gsql -d postgres -c "SHOW max_active_statements;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='max_active_statements';
+gsql -d postgres -c "SHOW max_active_statements;"
 EOF_CHK_MAX_ACTIVE_STATEMENTS
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-autovacuum-max-workers-hstore · autovacuum_max_workers_hstore · layer=gaussdb-guc-param
 run_check "chk-autovacuum-max-workers-hstore" <<'EOF_CHK_AUTOVACUUM_MAX_WORKERS_HSTORE'
-gsql -d postgres -c "SHOW autovacuum_max_workers_hstore;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='autovacuum_max_workers_hstore';
+gsql -d postgres -c "SHOW autovacuum_max_workers_hstore;"
 EOF_CHK_AUTOVACUUM_MAX_WORKERS_HSTORE
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-enable-codegen · enable_codegen · layer=gaussdb-guc-param
 run_check "chk-enable-codegen" <<'EOF_CHK_ENABLE_CODEGEN'
-gsql -d postgres -c "SHOW enable_codegen;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='enable_codegen';
+gsql -d postgres -c "SHOW enable_codegen;"
 EOF_CHK_ENABLE_CODEGEN
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-enable-numa-bind · enable_numa_bind · layer=gaussdb-guc-param
 run_check "chk-enable-numa-bind" <<'EOF_CHK_ENABLE_NUMA_BIND'
-gsql -d postgres -c "SHOW enable_numa_bind;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='enable_numa_bind';
+gsql -d postgres -c "SHOW enable_numa_bind;"
 EOF_CHK_ENABLE_NUMA_BIND
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-abnormal-check-general-task · abnormal_check_general_task · layer=gaussdb-guc-param
 run_check "chk-abnormal-check-general-task" <<'EOF_CHK_ABNORMAL_CHECK_GENERAL_TASK'
-gsql -d postgres -c "SHOW abnormal_check_general_task;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='abnormal_check_general_task';
+gsql -d postgres -c "SHOW abnormal_check_general_task;"
 EOF_CHK_ABNORMAL_CHECK_GENERAL_TASK
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-resource-track-level · resource_track_level · layer=gaussdb-guc-param
 run_check "chk-resource-track-level" <<'EOF_CHK_RESOURCE_TRACK_LEVEL'
-gsql -d postgres -c "SHOW resource_track_level;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='resource_track_level';
+gsql -d postgres -c "SHOW resource_track_level;"
 EOF_CHK_RESOURCE_TRACK_LEVEL
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-track-activities · track_activities · layer=gaussdb-guc-param
 run_check "chk-track-activities" <<'EOF_CHK_TRACK_ACTIVITIES'
-gsql -d postgres -c "SHOW track_activities;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='track_activities';
+gsql -d postgres -c "SHOW track_activities;"
 EOF_CHK_TRACK_ACTIVITIES
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-connectiontimeout · connectionTimeOut · layer=gaussdb-guc-param
 run_check "chk-connectiontimeout" <<'EOF_CHK_CONNECTIONTIMEOUT'
-gsql -d postgres -c "SHOW connectionTimeOut;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='connectionTimeOut';
+gsql -d postgres -c "SHOW connectionTimeOut;"
 EOF_CHK_CONNECTIONTIMEOUT
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-lockwait-timeout · lockwait_timeout · layer=gaussdb-guc-param
 run_check "chk-lockwait-timeout" <<'EOF_CHK_LOCKWAIT_TIMEOUT'
-gsql -d postgres -c "SHOW lockwait_timeout;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='lockwait_timeout';
+gsql -d postgres -c "SHOW lockwait_timeout;"
 EOF_CHK_LOCKWAIT_TIMEOUT
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-psort-work-mem · psort_work_mem · layer=gaussdb-guc-param
 run_check "chk-psort-work-mem" <<'EOF_CHK_PSORT_WORK_MEM'
-gsql -d postgres -c "SHOW psort_work_mem;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='psort_work_mem';
+gsql -d postgres -c "SHOW psort_work_mem;"
 EOF_CHK_PSORT_WORK_MEM
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-enable-delta · ENABLE_DELTA · layer=gaussdb-guc-param
 run_check "chk-enable-delta" <<'EOF_CHK_ENABLE_DELTA'
-gsql -d postgres -c "SHOW ENABLE_DELTA;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='ENABLE_DELTA';
+gsql -d postgres -c "SHOW ENABLE_DELTA;"
 EOF_CHK_ENABLE_DELTA
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-resource-pool-cpu-dedicated-quota · resource_pool.cpu_dedicated_quota · layer=gaussdb-guc-param
 run_check "chk-resource-pool-cpu-dedicated-quota" <<'EOF_CHK_RESOURCE_POOL_CPU_DEDICATED_QUOTA'
-gsql -d postgres -c "SHOW resource_pool.cpu_dedicated_quota;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='resource_pool.cpu_dedicated_quota';
+gsql -d postgres -c "SHOW resource_pool.cpu_dedicated_quota;"
 EOF_CHK_RESOURCE_POOL_CPU_DEDICATED_QUOTA
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-temp-file-limit · temp_file_limit · layer=gaussdb-guc-param
 run_check "chk-temp-file-limit" <<'EOF_CHK_TEMP_FILE_LIMIT'
-gsql -d postgres -c "SHOW temp_file_limit;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='temp_file_limit';
+gsql -d postgres -c "SHOW temp_file_limit;"
 EOF_CHK_TEMP_FILE_LIMIT
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-sequence-cache · sequence.cache · layer=gaussdb-guc-param
 run_check "chk-sequence-cache" <<'EOF_CHK_SEQUENCE_CACHE'
-gsql -d postgres -c "SHOW sequence.cache;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='sequence.cache';
+gsql -d postgres -c "SHOW sequence.cache;"
 EOF_CHK_SEQUENCE_CACHE
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-query-dop · query_dop · layer=gaussdb-guc-param
 run_check "chk-query-dop" <<'EOF_CHK_QUERY_DOP'
-gsql -d postgres -c "SHOW query_dop;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='query_dop';
+gsql -d postgres -c "SHOW query_dop;"
 EOF_CHK_QUERY_DOP
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-cstore-buffers · cstore_buffers · layer=gaussdb-guc-param
 run_check "chk-cstore-buffers" <<'EOF_CHK_CSTORE_BUFFERS'
-gsql -d postgres -c "SHOW cstore_buffers;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='cstore_buffers';
+gsql -d postgres -c "SHOW cstore_buffers;"
 EOF_CHK_CSTORE_BUFFERS
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-comm-max-stream · comm_max_stream · layer=gaussdb-guc-param
 run_check "chk-comm-max-stream" <<'EOF_CHK_COMM_MAX_STREAM'
-gsql -d postgres -c "SHOW comm_max_stream;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='comm_max_stream';
+gsql -d postgres -c "SHOW comm_max_stream;"
 EOF_CHK_COMM_MAX_STREAM
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-vacuum-defer-cleanup-age · vacuum_defer_cleanup_age · layer=gaussdb-guc-param
 run_check "chk-vacuum-defer-cleanup-age" <<'EOF_CHK_VACUUM_DEFER_CLEANUP_AGE'
-gsql -d postgres -c "SHOW vacuum_defer_cleanup_age;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='vacuum_defer_cleanup_age';
+gsql -d postgres -c "SHOW vacuum_defer_cleanup_age;"
 EOF_CHK_VACUUM_DEFER_CLEANUP_AGE
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-enable-stream-operator · enable_stream_operator · layer=gaussdb-guc-param
 run_check "chk-enable-stream-operator" <<'EOF_CHK_ENABLE_STREAM_OPERATOR'
-gsql -d postgres -c "SHOW enable_stream_operator;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='enable_stream_operator';
+gsql -d postgres -c "SHOW enable_stream_operator;"
 EOF_CHK_ENABLE_STREAM_OPERATOR
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-table-skewness-warning-threshold · table_skewness_warning_threshold · layer=gaussdb-guc-param
 run_check "chk-table-skewness-warning-threshold" <<'EOF_CHK_TABLE_SKEWNESS_WARNING_THRESHOLD'
-gsql -d postgres -c "SHOW table_skewness_warning_threshold;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='table_skewness_warning_threshold';
+gsql -d postgres -c "SHOW table_skewness_warning_threshold;"
 EOF_CHK_TABLE_SKEWNESS_WARNING_THRESHOLD
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-table-skewness-warning-rows · table_skewness_warning_rows · layer=gaussdb-guc-param
 run_check "chk-table-skewness-warning-rows" <<'EOF_CHK_TABLE_SKEWNESS_WARNING_ROWS'
-gsql -d postgres -c "SHOW table_skewness_warning_rows;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='table_skewness_warning_rows';
+gsql -d postgres -c "SHOW table_skewness_warning_rows;"
 EOF_CHK_TABLE_SKEWNESS_WARNING_ROWS
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-session-timeout · session_timeout · layer=gaussdb-guc-param
 run_check "chk-session-timeout" <<'EOF_CHK_SESSION_TIMEOUT'
-gsql -d postgres -c "SHOW session_timeout;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='session_timeout';
+gsql -d postgres -c "SHOW session_timeout;"
 EOF_CHK_SESSION_TIMEOUT
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-max-connections · max_connections · layer=gaussdb-guc-param
 run_check "chk-max-connections" <<'EOF_CHK_MAX_CONNECTIONS'
-gsql -d postgres -c "SHOW max_connections;"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='max_connections';
+gsql -d postgres -c "SHOW max_connections;"
 EOF_CHK_MAX_CONNECTIONS
 
 
-# ── 117 个描述性 method (蒸馏不可执行 · 写 manual.md) ──────────
+# ── 153 个描述性 method (蒸馏不可执行 · 写 manual.md) ──────────
 cat > "$OUTDIR/manual.md" <<'MANUAL_DOC_END'
-# 需人审 method (描述性中文 · 不自动跑 · 共 117 项)
+# 需人审 method (描述性中文 · 不自动跑 · 共 153 项)
 
 > distill-v2 蒸馏出来的描述性文本 (含 8+ 汉字 OR "查看/判断/通常/建议..." 等关键词),
 > 不能直接当 shell 命令跑。请人工解读后手工执行,把结果跟 case abnormal_pattern 比对。
@@ -1777,6 +1544,34 @@ cat > "$OUTDIR/manual.md" <<'MANUAL_DOC_END'
   添加索引后，通过与无索引时执行计划的对比，查询时间从原来的382.624ms缩短到0.293 ms。
   ```
 
+## chk-rds001-cpu-util · rds001_cpu_util
+- layer: `db-internal-counter` · type: `metric`
+- method:
+  ```
+  CPU使用率
+  ```
+
+## chk-rds002-mem-util · rds002_mem_util
+- layer: `db-internal-counter` · type: `metric`
+- method:
+  ```
+  内存使用率
+  ```
+
+## chk-io-bandwidth-usage · io_bandwidth_usage
+- layer: `db-internal-counter` · type: `metric`
+- method:
+  ```
+  磁盘io带宽占用率
+  ```
+
+## chk-iops-usage · iops_usage
+- layer: `db-internal-counter` · type: `metric`
+- method:
+  ```
+  IOPS使用率
+  ```
+
 ## chk-rds007-instance-disk-usage · rds007_instance_disk_usage
 - layer: `db-internal-counter` · type: `metric`
 - method:
@@ -1798,11 +1593,46 @@ cat > "$OUTDIR/manual.md" <<'MANUAL_DOC_END'
   数据磁盘单次读取花费的时间
   ```
 
+## chk-rds036-deadlocks · rds036_deadlocks
+- layer: `db-internal-counter` · type: `metric`
+- method:
+  ```
+  死锁次数
+  ```
+
+## chk-rds048-p80 · rds048_P80
+- layer: `db-internal-counter` · type: `metric`
+- method:
+  ```
+  80% SQL的响应时间
+  ```
+
+## chk-rds049-p95 · rds049_P95
+- layer: `db-internal-counter` · type: `metric`
+- method:
+  ```
+  95% SQL的响应时间
+  ```
+
 ## chk-rds060-long-running-transaction-exectime · rds060_long_running_transaction_exectime
 - layer: `db-internal-counter` · type: `metric`
 - method:
   ```
   数据库最长事务的执行时长
+  ```
+
+## chk-rds063-slowquery-user · rds063_slowquery_user
+- layer: `db-internal-counter` · type: `metric`
+- method:
+  ```
+  用户库慢SQL数量
+  ```
+
+## chk-rds065-dynamic-used-memory-usage · rds065_dynamic_used_memory_usage
+- layer: `db-internal-counter` · type: `metric`
+- method:
+  ```
+  动态内存使用率
   ```
 
 ## chk-rds066-replication-slot-wal-log-size · rds066_replication_slot_wal_log_size
@@ -1812,6 +1642,13 @@ cat > "$OUTDIR/manual.md" <<'MANUAL_DOC_END'
   复制槽保留的WAL日志大小
   ```
 
+## chk-rds070-thread-pool · rds070_thread_pool
+- layer: `db-internal-counter` · type: `metric`
+- method:
+  ```
+  线程池使用率
+  ```
+
 ## chk-top-gsql-cpu · top · gsql 进程 CPU 占用
 - layer: `os` · type: `metric`
 - method:
@@ -1819,11 +1656,46 @@ cat > "$OUTDIR/manual.md" <<'MANUAL_DOC_END'
   top 命令显示 gsql 进程占用率高
   ```
 
+## chk-pg-stat-statements-total-time-calls · pg_stat_statements · total_time + calls (慢查询统计)
+- layer: `db-system-view` · type: `metric`
+- method:
+  ```
+  - **abnormal_patterns**: ["total_time > 1000 AND calls > 10"]
+  ```
+
+## chk-explain-groupagg-sort · EXPLAIN · 算子(GroupAgg+Sort)
+- layer: `db-interactive-cmd` · type: `metric`
+- method:
+  ```
+  计划中包含GroupAgg+Sort算子
+  ```
+
+## chk-explain-analyze · EXPLAIN ANALYZE 顺序扫描耗时
+- layer: `db-interactive-cmd` · type: `metric`
+- method:
+  ```
+  EXPLAIN
+  ```
+
 ## chk-explain-seqscan-vs-indexscan · EXPLAIN · 算子(seqscan vs indexscan)
 - layer: `db-interactive-cmd` · type: `metric`
 - method:
   ```
   在优化前，没有创建places.place_id和states.state_id索引，执行计划如下
+  ```
+
+## chk-explain-join · EXPLAIN 执行计划 Join 类型
+- layer: `db-interactive-cmd` · type: `metric`
+- method:
+  ```
+  EXPLAIN
+  ```
+
+## chk-pidstat-iotop-i-o · pidstat / iotop 显示线程 I/O 消耗
+- layer: `os` · type: `metric`
+- method:
+  ```
+  pidstat -dt -p gaussdb进程号
   ```
 
 ## chk-pg-thread-wait-status-pg-stat-activity-i-o-sql · pg_thread_wait_status + pg_stat_activity 中 I/O 高的 SQL
@@ -1861,6 +1733,34 @@ cat > "$OUTDIR/manual.md" <<'MANUAL_DOC_END'
   PACKAGE变量是在PACKAGE内定义的全局变量，其生命周期覆盖整个数据库会话（SESSION）。
   ```
 
+## chk-explain-filter · EXPLAIN 执行计划 Filter 条件分析
+- layer: `db-interactive-cmd` · type: `metric`
+- method:
+  ```
+  EXPLAIN
+  ```
+
+## chk-pg-proc-volatility · pg_proc 函数 volatility 类型查询
+- layer: `db-system-view` · type: `metric`
+- method:
+  ```
+  查询pg_proc
+  ```
+
+## chk-explain · EXPLAIN 执行计划算子估算行数
+- layer: `db-interactive-cmd` · type: `metric`
+- method:
+  ```
+  EXPLAIN
+  ```
+
+## chk-explain-stream · EXPLAIN 执行计划 Stream 算子类型
+- layer: `db-interactive-cmd` · type: `metric`
+- method:
+  ```
+  EXPLAIN
+  ```
+
 ## chk-exception · 存储过程 EXCEPTION 块使用频率与上下文创建/销毁开销
 - layer: `db-shell` · type: `metric`
 - method:
@@ -1873,6 +1773,20 @@ cat > "$OUTDIR/manual.md" <<'MANUAL_DOC_END'
 - method:
   ```
   存储过程默认具有SECURITYINVOKER权限。
+  ```
+
+## chk-explain-remotequery-data-node-scan · EXPLAIN · 是否含 RemoteQuery / Data Node Scan
+- layer: `db-interactive-cmd` · type: `metric`
+- method:
+  ```
+  - **abnormal_patterns**: ["`Data Node Scan on t1 \"_REMOTE_TABLE_QUERY_\"`"]
+  ```
+
+## chk-explain-cn-vs-dn · EXPLAIN 执行计划算子位置（CN vs DN）
+- layer: `db-interactive-cmd` · type: `metric`
+- method:
+  ```
+  EXPLAIN
   ```
 
 ## chk-group-by-groupagg-sort · GROUP BY 查询计划中是否包含 GroupAgg+Sort
@@ -1894,6 +1808,13 @@ cat > "$OUTDIR/manual.md" <<'MANUAL_DOC_END'
 - method:
   ```
   通常而言explain语句后没有显示具体的执行计划算子，执行计划中关键字\"Data Node Scan on\"出现在第一行（不包含计划格式）则说明语句已下推给DN去执行。
+  ```
+
+## chk-explain-subplan · EXPLAIN 执行计划 SubPlan 存在
+- layer: `db-interactive-cmd` · type: `metric`
+- method:
+  ```
+  EXPLAIN
   ```
 
 ## chk-dn-cpu · 备DN CPU使用率 · 回放线程资源
@@ -1938,6 +1859,34 @@ cat > "$OUTDIR/manual.md" <<'MANUAL_DOC_END'
   该问题发生在实时场景下，语句执行时间因为达到了 3600s而自动终止运行
   ```
 
+## chk-pgxc-wlm-session-history-block-time-duration · pgxc_wlm_session_history · block_time / duration
+- layer: `db-system-view` · type: `metric`
+- method:
+  ```
+  pgxc_wlm_session_history
+  ```
+
+## chk-pgxc-wlm-session-history · pgxc_wlm_session_history · 同期并发作业数
+- layer: `db-system-view` · type: `metric`
+- method:
+  ```
+  pgxc_wlm_session_history
+  ```
+
+## chk-pgxc-wlm-session-history-min-dn-time-max-dn-time-average-dn- · pgxc_wlm_session_history · min_dn_time / max_dn_time / average_dn_time / dntime_skew_percent
+- layer: `db-system-view` · type: `metric`
+- method:
+  ```
+  pgxc_wlm_session_history
+  ```
+
+## chk-gs-wlm-instance-history-io-await-io-util-disk-read-disk-writ · GS_WLM_INSTANCE_HISTORY · io_await / io_util / disk_read / disk_write / process_read / process_write
+- layer: `db-system-view` · type: `metric`
+- method:
+  ```
+  GS_WLM_INSTANCE_HISTORY
+  ```
+
 ## chk-explain-performance-sql-streaming-redistribute · EXPLAIN PERFORMANCE · SQL自诊断信息（Streaming REDISTRIBUTE 计算倾斜）
 - layer: `db-interactive-cmd` · type: `metric`
 - method:
@@ -1980,6 +1929,13 @@ cat > "$OUTDIR/manual.md" <<'MANUAL_DOC_END'
   可通过pgxc_wlm_session_history或gs_wlm_session_history视图查看。
   ```
 
+## chk-dn · 各DN磁盘利用率
+- layer: `os` · type: `metric`
+- method:
+  ```
+  gs_ssh -c "df -h
+  ```
+
 ## chk-warning · 执行计划统计信息Warning
 - layer: `db-interactive-cmd` · type: `metric`
 - method:
@@ -2006,6 +1962,13 @@ cat > "$OUTDIR/manual.md" <<'MANUAL_DOC_END'
 - method:
   ```
   和客户收集几个典型的慢sql，分别打印执行计划。
+  ```
+
+## chk-vecnestloopruntime · 进程堆栈（VecNestLoopRuntime）
+- layer: `os` · type: `metric`
+- method:
+  ```
+  gstack 14104
   ```
 
 ## chk-max-process-memory-shared-buffers · 内存参数：max_process_memory, shared_buffers
@@ -2106,6 +2069,13 @@ cat > "$OUTDIR/manual.md" <<'MANUAL_DOC_END'
   通过查询视图pgxc_disk_cache_all_stats可以查看当前缓存的命中率以及各个DN磁盘的使用大小情况
   ```
 
+## chk-evs · EVS 磁盘空间占用百分比
+- layer: `log-grep` · type: `metric`
+- method:
+  ```
+  日志中会出现\"Disk usage on the node %u has reached the read-only threshold 90%\
+  ```
+
 ## chk-bucket · 入库分区数 / Bucket 数 / 攒批内存消耗
 - layer: `db-shell` · type: `metric`
 - method:
@@ -2148,6 +2118,20 @@ cat > "$OUTDIR/manual.md" <<'MANUAL_DOC_END'
   通过EXPLAIN VERBOSE执行query分析执行计划时会提示WARNING信息
   ```
 
+## chk-pgxc-wlm-session-info-duration-block-time-query-plan-sql-has · pgxc_wlm_session_info · duration / block_time / query_plan（按 sql_hash 比对历史）
+- layer: `db-system-view` · type: `metric`
+- method:
+  ```
+  SELECT start_time, block_time, duration, sql_hash, warning, max_peak_memory, max_spill_size, query_plan FROM pgxc_wlm_session_info were start_time > 'xxxx-xx-xx xx:xx' and sql_hash = 'xxx' ORDER BY start_time desc limit 10;
+  ```
+
+## chk-pgxc-stat-activity-state-waiting-enqueue · PGXC_STAT_ACTIVITY · state / waiting / enqueue
+- layer: `db-system-view` · type: `metric`
+- method:
+  ```
+  SELECT coorname, usename,client_addr,application_name,state,waiting,enqueue,pid FROM PGXC_STAT_ACTIVITY WHERE DATNAME='数据库名称';
+  ```
+
 ## chk-pg-locks · pg_locks · 阻塞会话与持锁会话关联
 - layer: `db-system-view` · type: `metric`
 - method:
@@ -2160,6 +2144,13 @@ cat > "$OUTDIR/manual.md" <<'MANUAL_DOC_END'
 - method:
   ```
   DWS-Connector默认超时时间connectionTimeOut为5min，可调大该值。
+  ```
+
+## chk-pg-stat-activity-pg-locks-sql-8-0-x · pg_stat_activity / pg_locks 阻塞SQL（8.0.x及之前版本）
+- layer: `db-system-view` · type: `metric`
+- method:
+  ```
+  - **abnormal_patterns**: ["NULL"]
   ```
 
 ## chk-null-012 · 写入方式
@@ -2225,6 +2216,13 @@ cat > "$OUTDIR/manual.md" <<'MANUAL_DOC_END'
   通过抓取问题SQL的执行信息，发现大部分的耗时都在\"CStore Scan\
   ```
 
+## chk-cudesc-cu-row-count · cudesc表中CU的row_count分布
+- layer: `db-system-view` · type: `metric`
+- method:
+  ```
+  - **abnormal_patterns**: ["row_count << 60000"]
+  ```
+
 ## chk-cu · 执行计划中CU扫描数量
 - layer: `db-interactive-cmd` · type: `metric`
 - method:
@@ -2279,6 +2277,13 @@ cat > "$OUTDIR/manual.md" <<'MANUAL_DOC_END'
 - method:
   ```
   对该表设计为分区表后没有走分区剪枝（Selected Partitions数量多），Scan花了701785ms，I/O效率极低。
+  ```
+
+## chk-pv-total-memory-detail-process-used-memory-vs-max-process-me · pv_total_memory_detail · process_used_memory vs max_process_memory
+- layer: `db-system-view` · type: `metric`
+- method:
+  ```
+  pv_total_memory_detail
   ```
 
 ## chk-null-016 · 列存表文件大小监控
@@ -2421,6 +2426,20 @@ cat > "$OUTDIR/manual.md" <<'MANUAL_DOC_END'
   参数vacuum_defer_cleanup_age不是0，该参数在老版本默认为8000，表示最近8000个事务产生的脏数据不进行回收。
   ```
 
+## chk-dn-warning · DN 间导入行数倾斜率(WARNING)
+- layer: `log-grep` · type: `metric`
+- method:
+  ```
+  WARNING:  Skewness occurs, table name: xxx, min value: xxx, max value: xxx, sum value: xxx, avg value: xxx, skew ratio: xxx
+  ```
+
+## chk-a-time-dn · 算子 A-time(在单 DN 上的运行耗时)
+- layer: `db-interactive-cmd` · type: `metric`
+- method:
+  ```
+  - **abnormal_patterns**: ["NULL"]
+  ```
+
 MANUAL_DOC_END
 
 # ── 8 个 NULL/空 method (蒸馏没抽到抓法 · 仅记录) ─────────────
@@ -2439,9 +2458,9 @@ SKIP_DOC_END
 
 echo ""
 echo "─────────────────────────────────────────────"
-echo "完成 · TOTAL=341 · auto=216 · manual=117 · skip=8"
+echo "完成 · TOTAL=341 · auto=180 · manual=153 · skip=8"
 echo "  报告:        $OUTDIR/report.tsv"
 echo "  stdout 目录: $OUTDIR/stdout/"
 echo "  stderr 目录: $OUTDIR/stderr/"
-echo "  人审 (117): $OUTDIR/manual.md"
+echo "  人审 (153): $OUTDIR/manual.md"
 echo "  空 method (8): $OUTDIR/skip.md"
