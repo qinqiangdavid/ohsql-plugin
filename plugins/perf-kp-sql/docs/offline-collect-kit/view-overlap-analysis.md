@@ -1,17 +1,45 @@
-# 视图查询重叠分析 (view-overlap-analysis.md)
+# 命令重叠分析全景版 (view-overlap-analysis.md)
 
 > 本地工程文件 · 由 `_analyze-view-overlap.mjs` 扫 `collect-precompiled.sh` (auto inline) +
 > `manual-audit.md` (manual 派生) 出。
 >
-> **目的**: 找出"查同一视图 N 次"的 hot view,验证"在环境查一次,本地过滤/聚合"
-> 这条优化路径的收益。**完整版 (precompiled / manual-audit) 不动**,这只是只读分析。
+> **目的**: 找出"重复采集"的合并空间,验证"在环境查一次,本地过滤/聚合"路径的收益。
+> **完整版 (precompiled / manual-audit) 不动**,这只是只读分析。
 
-## 总览
+## 总账 (404 命令的去向)
 
-- 命中的可信视图 (`pg_*` / `pgxc_*` / `gs_*` / `dbe_perf.*` / 已知 GaussDB 表): **42** 个
-- 合并前总查询次数 (auto + manual 派生): **134** 次
-- 合并后理论查询次数 (每视图 1 次): **42** 次
-- 可省 round-trip: **92** 次 (68.7%)
+```
+404 = 180 auto inline + 224 manual 派生
+
+180 auto:
+  38 引用可信视图 (pg/pgxc/gs/dbe_perf)  ← 纳入视图合并
+  62 引用文档示例表 (t1/customer/lineitem 等)  ⚠️ 应从 ndjson 剔除
+  56 SHOW guc                                ← 纳入 GUC 合并
+  54 EXPLAIN (固定 SQL · 跑得通)                        ← 不可合并 · 独立
+  其余 ≈ OS shell 杂项 / SET 等
+
+224 manual 派生:
+  96 sql/view 含 FROM trusted             ← 纳入视图合并
+  22 SHOW guc ([guc] + 混在 [sql] 里)      ← 纳入 GUC 合并
+  39 OS 命令 [os]                          ← 纳入 OS 去重
+  50 [sql-stub] EXPLAIN <你的 SQL> 模板                ← 不可合并 · 每条独立
+```
+
+## 三维合并总收益
+
+| 维度 | 合并前 | 合并后 | 省 | 占总省 |
+|---|---:|---:|---:|---:|
+| **视图查询** (SELECT * FROM v) | 134 | 42 | 92 | 46% |
+| **GUC 参数** (SHOW x → 1 把查 pg_settings) | 78 | 1 | 77 | 38% |
+| **OS 命令** (top/iostat/df 按命令头去重) | 41 | 9 | 32 | 16% |
+| **EXPLAIN stub** (每条 SQL 独立) | 50 | 50 | 0 | 0% |
+| **合计** | **303** | **102** | **201** | 100% |
+
+合并后总命令数: `auto 不变 180` + `视图 42` + `GUC 1` + `OS 9` (去重后) = 大幅压缩。
+
+注: auto 180 里很多命令本身已经是单次执行(不在三维合并范围),仍照跑;合并维度只针对 manual 派生命令重叠 + auto 内部 SHOW/视图重叠。
+
+## 视图维度
 
 ### Hot view (≥ 3 次命中) — 强合并候选
 
@@ -64,6 +92,178 @@
 | `pgxc_stat_table_dirty` | 1 | 0 / 1 |
 | `pgxc_total_memory_detail` | 1 | 1 / 0 |
 | `pgxc_wlm_session_statistics` | 1 | 1 / 0 |
+
+---
+
+## GUC 维度
+
+合并前: **78** 次 `SHOW xxx` 散落在 auto + manual 派生中,涉及 **59** 个独立 GUC。
+合并后: **1** 次 `SELECT name, setting, source, reset_val FROM pg_settings` 一把拉全量,本地按 GUC 名挑出对应 check。
+
+省 round-trip: **77** 次。
+
+### 命中频次
+
+| GUC | 总次数 | auto | manual |
+|---|---:|---:|---:|
+| `log_min_duration_statement` | 5 | 0 | 5 |
+| `max_dynamic_memory` | 5 | 0 | 5 |
+| `max_process_memory` | 3 | 1 | 2 |
+| `shared_buffers` | 3 | 1 | 2 |
+| `thread_pool_attr` | 3 | 1 | 2 |
+| `work_mem` | 3 | 1 | 2 |
+| `enable_fast_query_shipping` | 2 | 1 | 1 |
+| `max_connections` | 2 | 1 | 1 |
+| `psort_work_mem` | 2 | 2 | 0 |
+| `a_format_load_with_constraints_violation` | 1 | 1 | 0 |
+| `abnormal_check_general_task` | 1 | 1 | 0 |
+| `autovacuum` | 1 | 1 | 0 |
+| `autovacuum_max_workers` | 1 | 1 | 0 |
+| `autovacuum_max_workers_hstore` | 1 | 1 | 0 |
+| `autovacuum_naptime` | 1 | 1 | 0 |
+| `autovacuum_vacuum_cost_delay` | 1 | 1 | 0 |
+| `behavior_compat_options` | 1 | 1 | 0 |
+| `best_agg_plan` | 1 | 1 | 0 |
+| `comm_max_stream` | 1 | 1 | 0 |
+| `connect_timeout` | 1 | 0 | 1 |
+| `connectiontimeout` | 1 | 1 | 0 |
+| `cost_param` | 1 | 1 | 0 |
+| `cstore_buffers` | 1 | 1 | 0 |
+| `default_statistics_target` | 1 | 1 | 0 |
+| `disk_cache_dual_write_option` | 1 | 1 | 0 |
+| `disk_cache_max_size` | 1 | 1 | 0 |
+| `enable_codegen` | 1 | 1 | 0 |
+| `enable_delta` | 1 | 1 | 0 |
+| `enable_hashjoin` | 1 | 1 | 0 |
+| `enable_index_nestloop` | 1 | 1 | 0 |
+| `enable_indexscan` | 1 | 1 | 0 |
+| `enable_mergejoin` | 1 | 1 | 0 |
+| `enable_nestloop` | 1 | 1 | 0 |
+| `enable_numa_bind` | 1 | 1 | 0 |
+| `enable_sort` | 1 | 1 | 0 |
+| `enable_stream_operator` | 1 | 1 | 0 |
+| `enable_thread_pool` | 1 | 0 | 1 |
+| `fetchsize` | 1 | 1 | 0 |
+| `lockwait_timeout` | 1 | 1 | 0 |
+| `max_active_statements` | 1 | 1 | 0 |
+| `min_batch_rows` | 1 | 1 | 0 |
+| `period` | 1 | 1 | 0 |
+| `qrw_inlist2join_optmode` | 1 | 1 | 0 |
+| `query_dop` | 1 | 1 | 0 |
+| `recovery_parse_workers` | 1 | 1 | 0 |
+| `recovery_redo_workers` | 1 | 1 | 0 |
+| `resource_pool` | 1 | 1 | 0 |
+| `resource_track_level` | 1 | 1 | 0 |
+| `rewrite_rule` | 1 | 1 | 0 |
+| `sequence` | 1 | 1 | 0 |
+| `session_timeout` | 1 | 1 | 0 |
+| `skew_option` | 1 | 1 | 0 |
+| `table_skewness_warning_rows` | 1 | 1 | 0 |
+| `table_skewness_warning_threshold` | 1 | 1 | 0 |
+| `temp_file_limit` | 1 | 1 | 0 |
+| `track_activities` | 1 | 1 | 0 |
+| `ttl` | 1 | 1 | 0 |
+| `turbo_engine_version` | 1 | 1 | 0 |
+| `vacuum_defer_cleanup_age` | 1 | 1 | 0 |
+
+---
+
+## OS 命令维度
+
+合并前: **41** 次 OS 命令调用,涉及 **9** 个独立命令头。
+合并后: 每个独立命令头跑 **1** 次,本地按 cid 引用。
+
+省 round-trip: **32** 次。
+
+### 命令头分布
+
+| 命令头 | 总次数 | auto | manual |
+|---|---:|---:|---:|
+| `find` | 9 | 0 | 9 |
+| `top` | 9 | 1 | 8 |
+| `grep` | 7 | 0 | 7 |
+| `df` | 6 | 0 | 6 |
+| `iostat` | 5 | 1 | 4 |
+| `ls` | 2 | 0 | 2 |
+| `echo` | 1 | 0 | 1 |
+| `gstack` | 1 | 0 | 1 |
+| `pidstat` | 1 | 0 | 1 |
+
+**注意**: 同一命令头(如 `top`)在不同 check 里可能用不同参数(`top -b -n 1` vs `top -Hp <pid>`)。
+真合并时需进一步看参数 — 这里只是上限估算。
+
+---
+
+## 副产物 · ⚠️ auto 里 62 条引用文档示例表 (应从 ndjson 剔除)
+
+distill 阶段把 GaussDB 文档里的 EXPLAIN 案例代码块 (`SELECT * FROM t1` / `SELECT * FROM customer` 类) 抓进了 check.collection_method,部署到真客户 db 跑会全部 `relation does not exist`。
+
+这跟合并无关 — **是源数据问题**,正确做法是从 `checklist.ndjson` 源头剔除这些 check(它们不是真采集动作,是文档展示)。
+
+### 引用的示例表
+
+| 表名 | 命中次数 |
+|---|---:|
+| `t1` | 22 |
+| `t2` | 9 |
+| `store_sales` | 5 |
+| `get_last_changed_table` | 3 |
+| `skew` | 2 |
+| `table_name` | 2 |
+| `test` | 2 |
+| `lineitem` | 2 |
+| `t_ddw_f10_op_cust_asset_mon` | 2 |
+| `public.test` | 2 |
+| `bmsql_customer` | 1 |
+| `t` | 1 |
+| `test_table` | 1 |
+| `test_range_pt` | 1 |
+| `inventory` | 1 |
+| `tablename` | 1 |
+| `calc_empfyc_c1_result_tmp_t1` | 1 |
+| `orders` | 1 |
+| `orders_no_part` | 1 |
+| `orders_no_pck` | 1 |
+| `customer_address` | 1 |
+
+### 涉及的 check_id (前 30)
+
+| check_id | 引用表 |
+|---|---|
+| `chk-explain-analyze` | `bmsql_customer` |
+| `chk-explain-verbose-remotequery` | `t1` |
+| `chk-explain-verbose-subplan` | `t2` |
+| `chk-explain-verbose-subplan` | `t1` |
+| `chk-null-001` | `t` |
+| `chk-explain-analyze-a-time-rows-removed-by-filter` | `t1` |
+| `chk-explain-analyze-nested-loop-a-time` | `t2` |
+| `chk-explain-analyze-groupaggregate-a-time-vs-hashaggregate` | `t1` |
+| `chk-explain-analyze-a-time` | `store_sales` |
+| `chk-explain-verbose-streaming-vs-data-node-scan` | `t1` |
+| `chk-explain-verbose-subplan` | `t2` |
+| `chk-explain-verbose-subplan` | `t1` |
+| `chk-pg-stat-get-last-data-changed-time` | `get_last_changed_table` |
+| `chk-explain-analyze-seq-scan-a-time-total-runtime` | `test_table` |
+| `chk-explain-analyze-a-time-seqscan-vs-indexscan` | `t1` |
+| `chk-explain-analyze-a-time-nestloop` | `t1` |
+| `chk-explain-analyze-a-time-sort-groupagg-vs-hashagg` | `t1` |
+| `chk-explain-analyze` | `t1` |
+| `chk-explain-analyze-nestloop` | `t1` |
+| `chk-explain-analyze-sort-groupagg` | `t1` |
+| `chk-hashaggregate` | `t1` |
+| `chk-null-002` | `t1` |
+| `chk-null-002` | `t2` |
+| `chk-subplan` | `t2` |
+| `chk-subplan` | `t1` |
+| `chk-explain-analyze-total-runtime-partitionscan` | `test_range_pt` |
+| `chk-explain-agg` | `t1` |
+| `chk-explain-performance-dn` | `inventory` |
+| `chk-explain-analyze-streaming-redistribute-dn` | `skew` |
+| `chk-pg-stat-get-last-data-changed-time` | `get_last_changed_table` |
+
+... 还有 32 条 (略)
+
+→ TODO: 在 `extract-offline-checklist.mjs` 加过滤规则,识别"method 含未知 schema 表 + 起始词 EXPLAIN" 模式,标 `is_example=true` 不进 collector。
 
 ---
 

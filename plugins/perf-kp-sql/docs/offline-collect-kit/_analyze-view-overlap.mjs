@@ -47,6 +47,10 @@ for (const c of checks) {
 
 // ── parse auto inline commands: 找 run_check "<cid>" <<'EOF_X' ... EOF_X ───
 const autoUsage = new Map(); // view → [{cid, snippet}]
+const autoGuc  = new Map();  // guc_name → [cid]   (SHOW xxx)
+const autoOs   = new Map();  // os_cmd_head → [cid]
+const autoExplain = [];      // [{cid, snippet}] EXPLAIN 类
+const autoDocTable = [];     // [{cid, table}]  引用文档示例表 (t1 / customer / lineitem 等) 应剔除
 const sh = readFileSync(AUTO_SH, 'utf8');
 {
   const re = /run_check\s+"([^"]+)"\s+<<'(EOF_[A-Z0-9_]+)'\n([\s\S]*?)\n\2/g;
@@ -54,51 +58,108 @@ const sh = readFileSync(AUTO_SH, 'utf8');
   while ((mm = re.exec(sh))) {
     const cid = mm[1];
     const body = mm[3];
-    // 找所有 FROM <view> 出现
+    // 找所有 FROM/JOIN <view> 出现
     const viewRe = /\b(?:FROM|JOIN)\s+([a-zA-Z_][a-zA-Z0-9_.]*)/gi;
     let vm;
     const seenInThisCmd = new Set();
     while ((vm = viewRe.exec(body))) {
       const view = vm[1];
-      if (!isTrustedView(view)) continue;
       const key = canonView(view);
-      if (seenInThisCmd.has(key)) continue;  // 一条命令多次提到同视图 (alias / self-join) 只算 1
+      if (seenInThisCmd.has(key)) continue;
       seenInThisCmd.add(key);
-      if (!autoUsage.has(key)) autoUsage.set(key, []);
-      autoUsage.get(key).push({ cid, snippet: body.trim().slice(0, 200).replace(/\s+/g, ' ') });
+      if (isTrustedView(view)) {
+        if (!autoUsage.has(key)) autoUsage.set(key, []);
+        autoUsage.get(key).push({ cid, snippet: body.trim().slice(0, 200).replace(/\s+/g, ' ') });
+      } else {
+        autoDocTable.push({ cid, table: view });
+      }
+    }
+    // SHOW guc 提取
+    const gucRe = /\bSHOW\s+([a-zA-Z_][a-zA-Z0-9_]*)\b/gi;
+    let gm;
+    while ((gm = gucRe.exec(body))) {
+      const g = gm[1].toLowerCase();
+      if (!autoGuc.has(g)) autoGuc.set(g, []);
+      autoGuc.get(g).push(cid);
+    }
+    // OS 命令头提取 (top/iostat/df/free/vmstat/sar/netstat/perf/gstack/pidstat)
+    const firstWord = (body.trim().match(/^(\S+)/) || [])[1] || '';
+    const osHead = firstWord.match(/^(top|iostat|df|free|vmstat|sar|netstat|pidstat|perf|gstack|jstack|mpstat|nstat|ss|ps|cat)$/i);
+    if (osHead) {
+      const k = osHead[1].toLowerCase();
+      if (!autoOs.has(k)) autoOs.set(k, []);
+      autoOs.get(k).push(cid);
+    }
+    // EXPLAIN 类
+    if (/^\s*EXPLAIN\b/i.test(body.trim())) {
+      autoExplain.push({ cid, snippet: body.trim().slice(0, 100).replace(/\s+/g, ' ') });
     }
   }
 }
 
-// ── parse manual-audit.md: 每个 "## chk-XXX" 块下的 [sql]/[view] 派生命令 ──
+// ── parse manual-audit.md: 每个 "## chk-XXX" 块下的 [sql]/[view]/[guc]/[os] 派生 ──
 const manualUsage = new Map(); // view → [{cid, snippet, kind}]
+const manualGuc  = new Map();  // guc_name → [cid]
+const manualOs   = new Map();  // os_cmd_head → [cid]
+const manualStub = [];         // [sql-stub] EXPLAIN 模板 (不可合并)
 const md = readFileSync(MANUAL_MD, 'utf8');
 {
-  // split 成每个 chk 一段
-  const sections = md.split(/^## /m).slice(1);  // 第 0 段是总览,跳过
+  const sections = md.split(/^## /m).slice(1);
   for (const sec of sections) {
     const cidMatch = sec.match(/^(chk-[^\s·]+)/);
     if (!cidMatch) continue;
     const cid = cidMatch[1];
-    // 提 - `[sql]` `xxx` / `[view]` `xxx` 行
-    const cmdRe = /^\s*-\s+`\[(sql|view|sql-stub)\]`\s+`([^`]+)`/gm;
+    const cmdRe = /^\s*-\s+`\[(sql|view|sql-stub|guc|os)\]`\s+`([^`]+)`/gm;
     let cm;
     const seenInThisCmd = new Set();
     while ((cm = cmdRe.exec(sec))) {
       const kind = cm[1];
       const cmd = cm[2];
-      // 抽 FROM <view>
-      const viewRe = /\b(?:FROM|JOIN)\s+([a-zA-Z_][a-zA-Z0-9_.]*)/gi;
-      let vm;
-      while ((vm = viewRe.exec(cmd))) {
-        const view = vm[1];
-        if (!isTrustedView(view)) continue;
-        const key = canonView(view);
-        const dedupKey = `${cid}|${key}`;
-        if (seenInThisCmd.has(dedupKey)) continue;
-        seenInThisCmd.add(dedupKey);
-        if (!manualUsage.has(key)) manualUsage.set(key, []);
-        manualUsage.get(key).push({ cid, kind, snippet: cmd });
+      // FROM/JOIN 视图
+      if (kind === 'sql' || kind === 'view') {
+        const viewRe = /\b(?:FROM|JOIN)\s+([a-zA-Z_][a-zA-Z0-9_.]*)/gi;
+        let vm;
+        while ((vm = viewRe.exec(cmd))) {
+          const view = vm[1];
+          if (!isTrustedView(view)) continue;
+          const key = canonView(view);
+          const dedupKey = `${cid}|${key}`;
+          if (seenInThisCmd.has(dedupKey)) continue;
+          seenInThisCmd.add(dedupKey);
+          if (!manualUsage.has(key)) manualUsage.set(key, []);
+          manualUsage.get(key).push({ cid, kind, snippet: cmd });
+        }
+        // SHOW guc 也算 (混在 sql kind 里的)
+        const gucRe = /\bSHOW\s+([a-zA-Z_][a-zA-Z0-9_]*)\b/gi;
+        let gm;
+        while ((gm = gucRe.exec(cmd))) {
+          const g = gm[1].toLowerCase();
+          const dedupKey = `${cid}|guc:${g}`;
+          if (seenInThisCmd.has(dedupKey)) continue;
+          seenInThisCmd.add(dedupKey);
+          if (!manualGuc.has(g)) manualGuc.set(g, []);
+          manualGuc.get(g).push(cid);
+        }
+      }
+      if (kind === 'guc') {
+        const gm = cmd.match(/\bSHOW\s+([a-zA-Z_][a-zA-Z0-9_]*)\b/i);
+        if (gm) {
+          const g = gm[1].toLowerCase();
+          if (!manualGuc.has(g)) manualGuc.set(g, []);
+          manualGuc.get(g).push(cid);
+        }
+      }
+      if (kind === 'os') {
+        const head = (cmd.trim().match(/^(\S+)/) || [])[1] || '';
+        const osHead = head.match(/^(top|iostat|df|free|vmstat|sar|netstat|pidstat|perf|gstack|jstack|mpstat|nstat|ss|ps|cat|find|grep|ls|echo)$/i);
+        if (osHead) {
+          const k = osHead[1].toLowerCase();
+          if (!manualOs.has(k)) manualOs.set(k, []);
+          manualOs.get(k).push(cid);
+        }
+      }
+      if (kind === 'sql-stub') {
+        manualStub.push({ cid, snippet: cmd });
       }
     }
   }
@@ -126,21 +187,64 @@ const HOT_THRESHOLD = 3;
 const hotViews = stats.filter(s => s.total >= HOT_THRESHOLD);
 const coldViews = stats.filter(s => s.total < HOT_THRESHOLD);
 
+// ── GUC + OS 维度统计 ────────────────────────────────────────────────────
+const allGucs = new Set([...autoGuc.keys(), ...manualGuc.keys()]);
+const gucBefore = [...autoGuc.values(), ...manualGuc.values()].reduce((s, a) => s + a.length, 0);
+const gucAfter = 1;  // 合并为 SELECT name, setting FROM pg_settings 一把查
+const gucSaved = gucBefore - gucAfter;
+
+const allOs = new Set([...autoOs.keys(), ...manualOs.keys()]);
+const osBefore = [...autoOs.values(), ...manualOs.values()].reduce((s, a) => s + a.length, 0);
+const osAfter = allOs.size;  // 每个独立 OS 命令头跑 1 次
+const osSaved = osBefore - osAfter;
+
+const grandBefore = totalRoundtrips + gucBefore + osBefore + manualStub.length;
+const grandAfter = afterMerge + gucAfter + osAfter + manualStub.length;
+const grandSaved = grandBefore - grandAfter;
+
 // ── 生成报告 ────────────────────────────────────────────────────────────
-let out = `# 视图查询重叠分析 (view-overlap-analysis.md)
+let out = `# 命令重叠分析全景版 (view-overlap-analysis.md)
 
 > 本地工程文件 · 由 \`_analyze-view-overlap.mjs\` 扫 \`collect-precompiled.sh\` (auto inline) +
 > \`manual-audit.md\` (manual 派生) 出。
 >
-> **目的**: 找出"查同一视图 N 次"的 hot view,验证"在环境查一次,本地过滤/聚合"
-> 这条优化路径的收益。**完整版 (precompiled / manual-audit) 不动**,这只是只读分析。
+> **目的**: 找出"重复采集"的合并空间,验证"在环境查一次,本地过滤/聚合"路径的收益。
+> **完整版 (precompiled / manual-audit) 不动**,这只是只读分析。
 
-## 总览
+## 总账 (404 命令的去向)
 
-- 命中的可信视图 (\`pg_*\` / \`pgxc_*\` / \`gs_*\` / \`dbe_perf.*\` / 已知 GaussDB 表): **${stats.length}** 个
-- 合并前总查询次数 (auto + manual 派生): **${totalRoundtrips}** 次
-- 合并后理论查询次数 (每视图 1 次): **${afterMerge}** 次
-- 可省 round-trip: **${saved}** 次 (${savePct}%)
+\`\`\`
+404 = 180 auto inline + 224 manual 派生
+
+180 auto:
+  ${[...autoUsage.values()].reduce((s, a) => s + a.length, 0)} 引用可信视图 (pg/pgxc/gs/dbe_perf)  ← 纳入视图合并
+  ${autoDocTable.length} 引用文档示例表 (t1/customer/lineitem 等)  ⚠️ 应从 ndjson 剔除
+  ${[...autoGuc.values()].reduce((s, a) => s + a.length, 0)} SHOW guc                                ← 纳入 GUC 合并
+  ${autoExplain.length} EXPLAIN (固定 SQL · 跑得通)                        ← 不可合并 · 独立
+  其余 ≈ OS shell 杂项 / SET 等
+
+224 manual 派生:
+  ${[...manualUsage.values()].reduce((s, a) => s + a.length, 0)} sql/view 含 FROM trusted             ← 纳入视图合并
+  ${[...manualGuc.values()].reduce((s, a) => s + a.length, 0)} SHOW guc ([guc] + 混在 [sql] 里)      ← 纳入 GUC 合并
+  ${[...manualOs.values()].reduce((s, a) => s + a.length, 0)} OS 命令 [os]                          ← 纳入 OS 去重
+  ${manualStub.length} [sql-stub] EXPLAIN <你的 SQL> 模板                ← 不可合并 · 每条独立
+\`\`\`
+
+## 三维合并总收益
+
+| 维度 | 合并前 | 合并后 | 省 | 占总省 |
+|---|---:|---:|---:|---:|
+| **视图查询** (SELECT * FROM v) | ${totalRoundtrips} | ${afterMerge} | ${saved} | ${(saved/grandSaved*100).toFixed(0)}% |
+| **GUC 参数** (SHOW x → 1 把查 pg_settings) | ${gucBefore} | ${gucAfter} | ${gucSaved} | ${(gucSaved/grandSaved*100).toFixed(0)}% |
+| **OS 命令** (top/iostat/df 按命令头去重) | ${osBefore} | ${osAfter} | ${osSaved} | ${(osSaved/grandSaved*100).toFixed(0)}% |
+| **EXPLAIN stub** (每条 SQL 独立) | ${manualStub.length} | ${manualStub.length} | 0 | 0% |
+| **合计** | **${grandBefore}** | **${grandAfter}** | **${grandSaved}** | 100% |
+
+合并后总命令数: \`auto 不变 180\` + \`视图 ${afterMerge}\` + \`GUC 1\` + \`OS ${osAfter}\` (去重后) = 大幅压缩。
+
+注: auto 180 里很多命令本身已经是单次执行(不在三维合并范围),仍照跑;合并维度只针对 manual 派生命令重叠 + auto 内部 SHOW/视图重叠。
+
+## 视图维度
 
 ### Hot view (≥ ${HOT_THRESHOLD} 次命中) — 强合并候选
 
@@ -153,6 +257,77 @@ ${hotViews.map(s => `| \`${s.view}\` | ${s.total} | ${s.auto} | ${s.manual} | �
 | 视图 | 总次数 | auto / manual |
 |---|---:|---|
 ${coldViews.map(s => `| \`${s.view}\` | ${s.total} | ${s.auto} / ${s.manual} |`).join('\n')}
+
+---
+
+## GUC 维度
+
+合并前: **${gucBefore}** 次 \`SHOW xxx\` 散落在 auto + manual 派生中,涉及 **${allGucs.size}** 个独立 GUC。
+合并后: **1** 次 \`SELECT name, setting, source, reset_val FROM pg_settings\` 一把拉全量,本地按 GUC 名挑出对应 check。
+
+省 round-trip: **${gucSaved}** 次。
+
+### 命中频次
+
+| GUC | 总次数 | auto | manual |
+|---|---:|---:|---:|
+${[...allGucs].map(g => {
+  const a = (autoGuc.get(g) || []).length;
+  const m = (manualGuc.get(g) || []).length;
+  return { g, a, m, t: a + m };
+}).sort((a, b) => b.t - a.t || a.g.localeCompare(b.g))
+  .map(r => `| \`${r.g}\` | ${r.t} | ${r.a} | ${r.m} |`).join('\n')}
+
+---
+
+## OS 命令维度
+
+合并前: **${osBefore}** 次 OS 命令调用,涉及 **${allOs.size}** 个独立命令头。
+合并后: 每个独立命令头跑 **1** 次,本地按 cid 引用。
+
+省 round-trip: **${osSaved}** 次。
+
+### 命令头分布
+
+| 命令头 | 总次数 | auto | manual |
+|---|---:|---:|---:|
+${[...allOs].map(o => {
+  const a = (autoOs.get(o) || []).length;
+  const m = (manualOs.get(o) || []).length;
+  return { o, a, m, t: a + m };
+}).sort((a, b) => b.t - a.t || a.o.localeCompare(b.o))
+  .map(r => `| \`${r.o}\` | ${r.t} | ${r.a} | ${r.m} |`).join('\n')}
+
+**注意**: 同一命令头(如 \`top\`)在不同 check 里可能用不同参数(\`top -b -n 1\` vs \`top -Hp <pid>\`)。
+真合并时需进一步看参数 — 这里只是上限估算。
+
+---
+
+## 副产物 · ⚠️ auto 里 ${autoDocTable.length} 条引用文档示例表 (应从 ndjson 剔除)
+
+distill 阶段把 GaussDB 文档里的 EXPLAIN 案例代码块 (\`SELECT * FROM t1\` / \`SELECT * FROM customer\` 类) 抓进了 check.collection_method,部署到真客户 db 跑会全部 \`relation does not exist\`。
+
+这跟合并无关 — **是源数据问题**,正确做法是从 \`checklist.ndjson\` 源头剔除这些 check(它们不是真采集动作,是文档展示)。
+
+### 引用的示例表
+
+| 表名 | 命中次数 |
+|---|---:|
+${(() => {
+  const cnt = new Map();
+  for (const r of autoDocTable) cnt.set(r.table, (cnt.get(r.table) || 0) + 1);
+  return [...cnt].sort((a, b) => b[1] - a[1]).map(([t, n]) => `| \`${t}\` | ${n} |`).join('\n');
+})()}
+
+### 涉及的 check_id (前 30)
+
+| check_id | 引用表 |
+|---|---|
+${autoDocTable.slice(0, 30).map(r => `| \`${r.cid}\` | \`${r.table}\` |`).join('\n')}
+
+${autoDocTable.length > 30 ? `... 还有 ${autoDocTable.length - 30} 条 (略)` : ''}
+
+→ TODO: 在 \`extract-offline-checklist.mjs\` 加过滤规则,识别"method 含未知 schema 表 + 起始词 EXPLAIN" 模式,标 \`is_example=true\` 不进 collector。
 
 ---
 
