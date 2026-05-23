@@ -45,7 +45,10 @@ offline-collect-kit/
 ├── collect.py                   现场解析版 python · 读 ndjson · 纯 stdlib
 │
 ├── manual-audit.md              ★ 153 manual 人审清单 · 每条带 matched_rule + 派生命令 (98.7% 有派生)
-└── _build-precompiled.mjs       本地工具 · 重生成 precompiled.{sh,py} + manual-audit.md
+├── view-overlap-analysis.md     ★ 视图查询重叠分析 · 42 视图 / 134 → 42 round-trip · 可省 68.7%
+│
+├── _build-precompiled.mjs       本地工具 · 重生成 precompiled.{sh,py} + manual-audit.md
+└── _analyze-view-overlap.mjs    本地工具 · 重生成 view-overlap-analysis.md
 ```
 
 **precompiled.{sh,py} 是 user-facing**,部署一个文件就跑。  
@@ -197,6 +200,20 @@ build 时落 `manual-audit.md` (本地工程文件 · 不在 outdir),每条 manu
 ### 6.5 chk-iostat / chk-vecnestloopruntime 等真 OS 命令应该保留 auto
 
 `iostat` / `gstack <pid>` 都是真 OS 工具,只是当前环境没装/含真 PID 占位被 isManual 切走。可考虑这些**保留 auto + 给 hint** "需要装 sysstat" 类提示,而非进 manual。
+
+### 6.6 视图重叠 → 合并采集 (新)
+
+`view-overlap-analysis.md` 显示 17 个 hot view 被反复查 134 次,合并后只需 42 次 (省 68.7%)。
+特别是 `pg_stat_user_tables` (12 次)、`pg_stat_activity` (10 次)、`statement_history` (10 次)、
+`gs_wlm_session_history` (9 次) 等,适合"环境查一次 + 本地 filter/agg"。
+
+**修法 (TODO 没做)**: 写 `collect-merged.{sh,py}` 跟 precompiled 并列:
+- 服务器端: 每 hot view 只 `SELECT * FROM v` 一次,落 \`raw/<view>.tsv\`
+- 本地: \`post-process.{mjs,py}\` 读 raw/ · 按 check_id 的 filter/agg recipe 派生结果
+- 适用: 现场 round-trip 慢 / 想要跨 check 快照一致 / 本地做 ad-hoc 二次分析
+- 不适用: 大表 (\`statement_history\` 全表可能 GB 级,仍需 LIMIT/WHERE)
+
+完整版 (precompiled) 不动,两套并存,README 加决策矩阵。
 
 ---
 
