@@ -1,6 +1,6 @@
 # GaussDB 离线采集清单(指标 + 抓取方法)
 
-- 生成: 2026-05-22T03:04:58.281Z
+- 生成: 2026-05-24T03:44:14.088Z
 - 关联 case 范围: `cases/gaussdb/` (77 case) + `cases/gaussdb-dws/` (120 case) · 共 197 case_id
 - 数据源: `plugins/perf-kp-sql/data/cases/indices/by-check-item/CASES.md` (655 check 总,本清单是 gaussdb 关联子集)
 
@@ -16,161 +16,22 @@ GaussDB 在内网/无 SSH 直连场景 perf-kp-sql skill 不能远程采集,把�
 
 | | 数 |
 |---|---:|
-| **GaussDB 关联 check 合计** | **341** |
-| 其中 type=metric | 287 |
+| **GaussDB 关联 check 合计** | **298** |
+| 其中 type=metric | 244 |
 | 其中 type=parameter-current-value | 54 |
 
 ### 按 collection_layer 分布
 
 | collection_layer | check 数 |
 |---|---:|
-| `db-interactive-cmd` | 130 |
 | `db-system-view` | 96 |
+| `db-interactive-cmd` | 87 |
 | `gaussdb-guc-param` | 54 |
 | `db-shell` | 20 |
 | `db-internal-counter` | 15 |
 | `log-grep` | 13 |
 | `os` | 11 |
 | `flamegraph` | 2 |
-
----
-
-## collection_layer = `db-interactive-cmd` (130 check)
-
-### type=metric (130 个)
-
-| check_id | metric_name | collection_method | abnormal_patterns | 关联 case 数 |
-|---|---|---|---|---:|
-| `chk-a-time-dn` | 算子 A-time(在单 DN 上的运行耗时) | - **abnormal_patterns**: ["NULL"] | "NULL" | 1 |
-| `chk-analyze` | ANALYZE 后的查询性能 | "使用ANALYZE命令分析数据库。" | "\"如果此命令执行后性能恢复或者有所提升，则表明AUTOVACUUM未能很好的完成它的工作，有待进一步分析。\"" | 1 |
-| `chk-b-tree-explain-analyze` | 创建 B-tree 索引后再次 EXPLAIN ANALYZE | 添加索引后，通过与无索引时执行计划的对比，查询时间从原来的382.624ms缩短到0.293 ms。 | "查询时间从原来的382.624ms缩短到0.293 ms。" | 1 |
-| `chk-cstore-scan` | 执行计划算子：CStore Scan耗时占比 | "通过抓取问题SQL的执行信息，发现大部分的耗时都在\"CStore Scan\"" | "\"大部分的耗时都在\\\"CStore Scan\\\"\"" | 1 |
-| `chk-cu` | 执行计划中CU扫描数量 | "查看偶发慢业务慢时的执行计划信息，慢在cstore scan，且扫描数据量不大但扫描CU个数较多" | "CU数量 >> 数据行数/60000" | 1 |
-| `chk-data-node-scan` | 执行计划下推标识（Data Node Scan） | "将GUC参数enable_fast_query_shipping设置为off，使查询优化器使用分布式框架策略。查看执行计划。如果执行计划中有Data Node Scan节点，那么此执行计划是发送语句的分布式执行计划，为不可下推的执行计划；如果执行计划中有Streaming节点，那么计划是可以下推的。" | "\"可见，func_percent_2并没有被下推，而是将ss_sales_price和ss_list_price收到CN上，再进行计算，消耗大量CN的资源，而且" | 1 |
-| `chk-dn` | 各 DN 数据条数分布 | `SELECT a.count,b.node_name FROM (SELECT count(*) AS count,xc_node_id FROM table_name GROUP BY xc_node_id) a, pgxc_node b WHERE a.xc_node_id=b.node_id ORDER BY  | ">= 10%" | 1 |
-| `chk-enable-hashjoin` | enable_hashjoin 关闭后执行计划 | `SET enable_hashjoin = off;` | "`分析上述执行计划，发现执行了Hash Join，对大表b_zyk_wbswxx（网吧上网信息）建立了Hash Table。由于该表数据量大，创建过程耗时较长。" | 1 |
-| `chk-explain` | EXPLAIN 执行计划算子估算行数 | `EXPLAIN` | "第11层算子估算行数为2140，比实际行数严重低估" | 1 |
-| `chk-explain` | EXPLAIN · 计划与实际行数比对 | `导致执行计划选择不优` | "`统计信息不是最新的情况`" | 1 |
-| `chk-explain` | EXPLAIN执行计划耗时分布 | NULL | "\"打印执行计划，分析出耗时主要在index scan上，可能是I/O争抢导致\"" | 1 |
-| `chk-explain` | EXPLAIN · 执行计划顺序扫描阶段耗时 | `EXPLAIN` 查看多表 JOIN 执行计划 | "\"分析执行计划可知，在顺序扫描阶段耗时较多\"" | 1 |
-| `chk-explain-agg` | EXPLAIN 执行计划 Agg 算子模式 | `explain select b,count(1) from t1 group by b;` | "代价估算，尤其是中间结果集的代价估算一般会有比较大的偏差，这种比较大的偏差就可能会导致agg的计算方式出现比较大的偏差" | 1 |
-| `chk-explain-agg-hashagg-gather-vs-redistribute-hashagg` | EXPLAIN · Agg 计划形态（hashagg+gather vs redistribute+hashagg） | `explain select b,count(1) from t1 group by b` | "\"通常优化器总会选择最优的执行计划，但是众所周知代价估算，尤其是中间结果集的代价估算一般会有比较大的偏差，这种比较大的偏差就可能会导致agg的计算方式出现比较大" | 1 |
-| `chk-explain-analyze` | explain analyze 执行计划分析 | `explain analyze SELECT c_id FROM bmsql_customer WHERE c_w_id = 1 AND c_d_id = 1 AND c_last = 'ABLEABLEABLE' ORDER BY c_first;` | "\"结合SQL的执行计划，分析SQL性能的瓶颈点，再进行性能优化\"" | 1 |
-| `chk-explain-analyze` | EXPLAIN ANALYZE 算子落盘标志 | "为了优化性能，可以查看SQL的执行计划，如果算子存在落盘的情况，可适当调整work_mem参数值。" | "\"如果算子存在落盘的情况\"" | 1 |
-| `chk-explain-analyze` | EXPLAIN ANALYZE 执行计划 · 算子耗时 | `explain (analyze on, costs off) select * from t1 where c1=10004;` | "\"全表扫描返回7条数据，过滤掉大量数据\"" | 1 |
-| `chk-explain-analyze` | EXPLAIN ANALYZE 顺序扫描耗时 | `EXPLAIN` | "在顺序扫描阶段耗时较多" | 1 |
-| `chk-explain-analyze` | EXPLAIN ANALYZE 执行计划耗时与过滤行数 | `explain (analyze on, costs off) select * from store_sales where ss_sold_date_sk = 2450944;` | "过滤行数数量级远大于返回行数" | 1 |
-| `chk-explain-analyze` | EXPLAIN ANALYZE · 基表扫描算子类型及执行时间 | `explain (analyze on, costs off) select * from store_sales where ss_sold_date_sk = 2450944` | "\"Seq Scan on store_sales [3594.611,3594.611 | 1 |
-| `chk-explain-analyze-a-time` | EXPLAIN ANALYZE A-time 瓶颈算子识别 | `gaussdb=# explain analyze select avg(netpaid) from (select c_last_name,c_first_name,s_store_name,ca_state,s_state,i_color,i_current_price,i_manager_id,i_units, | "\"通用的优化手段是EXPLAIN ANALYZE/PERFORMANCE命令查看执行过程的瓶颈算子，然后进行针对性优化。\"" | 1 |
-| `chk-explain-analyze-a-time-nestloop` | EXPLAIN ANALYZE A-time · NestLoop算子耗时 | `gaussdb=#  explain analyze select count(*) from t1,t2 where t1.c1=t2.c2;` | "\"NestLoop耗时27秒\" (A-time: 27544.545ms for Nested Loop)" | 1 |
-| `chk-explain-analyze-a-time-rows-removed-by-filter` | explain analyze · A-time / Rows Removed by Filter | `gaussdb=#  explain (analyze on,costs off) select * from t1 where c2=10004;` | "`全表扫描返回5条数据，过滤掉大量数据，在c2列上建立索引后，使用IndexScan扫描效率显著提高，从20毫秒降低到3毫秒。`" | 1 |
-| `chk-explain-analyze-a-time-seqscan-vs-indexscan` | EXPLAIN ANALYZE A-time · SeqScan vs IndexScan | `gaussdb=#  explain (analyze on, costs off) select * from t1 where c1=10004;` | "\"全表扫描返回7条数据，过滤掉大量数据\" (A-time: 2053.069ms, Rows Removed by Filter: 110000)" | 1 |
-| `chk-explain-analyze-a-time-sort-groupagg-vs-hashagg` | EXPLAIN ANALYZE A-time · Sort+GroupAgg vs HashAgg | `gaussdb=#  explain analyze select count(*) from t1 group by c1;` | "\"GroupAggregate A-time: 2417.004ms，Sort A-time: 2304.329ms，Peak Memory: 26466KB\"" | 1 |
-| `chk-explain-analyze-agg` | EXPLAIN ANALYZE Agg 算子类型 | `EXPLAIN ANALYZE` | "如果大结果集选择了Sort+GroupAgg" | 1 |
-| `chk-explain-analyze-agg` | EXPLAIN ANALYZE · Agg 算子类型及执行时间 | `EXPLAIN ANALYZE` 查看聚合操作算子选择 | "\"如果大结果集选择了Sort+GroupAgg，则需要设置enable_sort=off，HashAgg耗时明显优于Sort+GroupAgg\"" | 1 |
-| `chk-explain-analyze-groupaggregate-a-time-vs-hashaggregate` | explain analyze · GroupAggregate A-time vs HashAggregate | `gaussdb=#  explain analyze select count(*) from t1 group by c2;` | "`Sort+GroupAgg，则需要设置enable_sort=off，HashAgg耗时优于Sort+GroupAgg。`" | 1 |
-| `chk-explain-analyze-hashjoin-dn` | EXPLAIN ANALYZE HashJoin 各 DN 执行时间范围 | `EXPLAIN ANALYZE` | "HashJoin的执行时间信息[2657.406,93339.924 | 1 |
-| `chk-explain-analyze-join` | EXPLAIN ANALYZE Join 算子类型与耗时 | `EXPLAIN ANALYZE` | "> 100s" | 1 |
-| `chk-explain-analyze-join` | EXPLAIN ANALYZE · JOIN 算子类型及执行时间 | `EXPLAIN ANALYZE` 查看两表 JOIN 的算子类型 | "\"NestLoop耗时181秒\"" | 1 |
-| `chk-explain-analyze-nested-loop-a-time` | explain analyze · Nested Loop A-time | `gaussdb=#  explain analyze select count(*) from t2,t1 where t1.c1=t2.c2;` | "NestLoop A-time > 5000ms" | 1 |
-| `chk-explain-analyze-nestloop` | EXPLAIN ANALYZE · NestLoop 算子耗时 | `explain analyze select count(*) from t1,t2 where t1.c1=t2.c2;` | "\"NestLoop耗时27秒\"" | 1 |
-| `chk-explain-analyze-seq-scan-a-time-total-runtime` | EXPLAIN ANALYZE Seq Scan A-time / Total runtime | `EXPLAIN ANALYZE SELECT * FROM test_table WHERE email = 'user_500000@example.com';` |  | 1 |
-| `chk-explain-analyze-sort-groupagg` | EXPLAIN ANALYZE · Sort+GroupAgg 算子耗时 | `explain analyze select count(*) from t1 group by c1;` | "NULL" | 1 |
-| `chk-explain-analyze-startup-vs-total` | EXPLAIN ANALYZE · 路径代价 (Startup vs Total) | "把explain_perf_mode设置为normal，查看原Nest Loop的启动代价" | "\"红框中的两个cost，分别是启动代价和总代价，在看Hash Join的cost，明显Hash Join的启动代价比Nest Loop的大很多（启动代价代表了输" | 1 |
-| `chk-explain-analyze-stream` | EXPLAIN ANALYZE · Stream算子类型 | "GaussDB计划中常见的主要Stream算子包括Redistribute、Broadcast和Gather。" | "\"优化器认为适合做Broadcast。于是最终选择了一边Broadcast的计划。\"" | 1 |
-| `chk-explain-analyze-streaming-redistribute-dn` | EXPLAIN ANALYZE Streaming(REDISTRIBUTE) 各 DN 输出行数 | `openGauss=# explain select * from skew s,test t where s.x = t.x order by s.a limit 1;` | "6 --Streaming(type: REDISTRIBUTE) datanode1 (rows=5050368) datanode2 (rows=15276" | 1 |
-| `chk-explain-analyze-total-runtime-partitionscan` | EXPLAIN ANALYZE Total runtime / 是否走 PartitionScan | `EXPLAIN ANALYZE SELECT min(b) FROM test_range_pt;` | "Partitioned Seq Scan on test_range_pt  (cost=0.00..139.00 rows=10000 width=4) (a" | 1 |
-| `chk-explain-analyze-verbose-partition-iterator-iterations` | EXPLAIN ANALYZE VERBOSE · 改写后 Partition Iterator Iterations | `EXPLAIN (analyze ON, verbose ON) SELECT count(1) FROM t_ddw_f10_op_cust_asset_mon b1 WHERE b1.year_mth < substr('20200722',1 ,6 ) AND b1.year_mth >= cast(subst | "\"不剪枝告警已经消除，剪枝后需要扫描分区数为1，执行时间从10s提升至3s\"" | 1 |
-| `chk-explain-analyze-verbose-sql-partition-iterator` | EXPLAIN ANALYZE VERBOSE · SQL 自诊断信息 + Partition Iterator 扫描分区数 | `EXPLAIN (ANALYZE ON, VERBOSE ON) SELECT count(1) FROM t_ddw_f10_op_cust_asset_mon b1 WHERE b1.year_mth < substr('20200722',1 ,6 ) AND b1.year_mth + 1 >= cast(s | "\"Partitioned table unprunable Qual table public.t_ddw_f10_op_cust_asset_mon b1: " | 1 |
-| `chk-explain-cn-vs-dn` | EXPLAIN 执行计划算子位置（CN vs DN） | `EXPLAIN` | "可以看到window agg和sort全部在CN端执行，耗时非常严重" | 1 |
-| `chk-explain-cstore-scan-cusome-cunone` | EXPLAIN 执行计划 · Cstore Scan CUSome / CUNone 计数 | `分析计划主要耗时在Cstore Scan。Cstore Scan的详细信息中，每个DN扫描出2w左右的数据，但是扫描了有数据的CU（CUSome）155079个，没有数据的CU（CUNone）156375个` | "`说明当前小CU、未命中数据的CU极多，即CU膨胀严重。`" | 1 |
-| `chk-explain-data-node-scan` | EXPLAIN · 是否含 Data Node Scan 节点 | `如果执行计划中有Data Node Scan节点，那么此执行计划为不可下推的执行计划；如果执行计划中有Streaming节点，那么计划是可以下推的。` | "`Data Node Scan on store_sales \"_REMOTE_TABLE_QUERY_\"`" | 1 |
-| `chk-explain-data-node-scan-on` | EXPLAIN 输出中 "Data Node Scan on" 是否在第一行 | "通常而言explain语句后没有显示具体的执行计划算子，执行计划中关键字\"Data Node Scan on\"出现在第一行（不包含计划格式）则说明语句已下推给DN去执行。" | "\"在第3种策略中，要将大量中间结果从DN发送到CN，并且要在CN运行不能下推的部分语句，会导致CN成为性能瓶颈\"" | 1 |
-| `chk-explain-filter` | EXPLAIN 执行计划 Filter 条件分析 | `EXPLAIN` | "Filter条件中存在表达式to_char(add_months(to_date(''20170222'','yyyymmdd'), -11),'yyyymm'" | 1 |
-| `chk-explain-groupagg-sort` | EXPLAIN · 算子(GroupAgg+Sort) | `计划中包含GroupAgg+Sort算子` | "`计划中包含GroupAgg+Sort算子，导致性能较差`" | 1 |
-| `chk-explain-in-join` | EXPLAIN · in 条件是否转为 join | "打印语句的执行计划" | "执行计划中 in 仍作为 Filter 而非 Hash Join" | 1 |
-| `chk-explain-index-scan` | EXPLAIN 执行计划 · 是否使用Index Scan | `explain verbose select * from test where a = 101;` | "\"结果集 > 70% 全表数据\"" | 1 |
-| `chk-explain-indexscan` | EXPLAIN 执行计划 · 是否选择IndexScan | "对表执行ANALYZE更新统计信息。" | "\"如果表未执行ANALYZE或最近一次执行完ANALYZE后表进行过数据量较大的增删操作，会导致统计信息不准，该场景下也可能导致查询表时没有使用索引。\"" | 1 |
-| `chk-explain-join` | EXPLAIN 执行计划 · Join 算子类型及耗时 | `分析该执行计划发现，扫描节点已使用Index Scan，耗时主要在最外层Nest Loop Join的Join Filter计算中，且该计算执行了字符串的加减法和不等值比较。` | "`分析上述执行计划，发现执行了Hash Join，对大表b_zyk_wbswxx（网吧上网信息）建立了Hash Table。由于该表数据量大，创建过程耗时较长。" | 1 |
-| `chk-explain-join` | EXPLAIN 执行计划 Join 类型 | `EXPLAIN` | "join-condition实质上是一个不等式，这种不等值的join操作必须走nestloop" | 1 |
-| `chk-explain-join-nestloop-vs-hashjoin` | EXPLAIN · JOIN 算子类型 (NestLoop vs HashJoin) | `EXPLAIN SELECT ls_pid_cusr1,COALESCE(max(round((current_date-bthdate)/365)),0) FROM calc_empfyc_c1_result_tmp_t1 t1,p10_md_tmp_t2 t2 WHERE t1.ls_pid_cusr1 = an | "\"因此join-condition实质上是一个不等式，这种不等值的join操作必须走nestloop\"" | 1 |
-| `chk-explain-nest-loop-join` | EXPLAIN 执行计划 · Nest Loop Join 耗时 | `分析该执行计划发现，扫描节点已使用Index Scan，耗时主要在最外层Nest Loop Join的Join Filter计算中，且该计算执行了字符串的加减法和不等值比较。` | "> 12s" | 1 |
-| `chk-explain-or-filter` | EXPLAIN 执行计划 · 系统视图权限OR filter | "通过执行计划可以看到系统视图中的权限判断中多用or条件判断：pg_has_role(c.relowner, 'USAGE'::text) OR has_table_privilege(c.oid, 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGG | "\"普通用户的or条件需要逐一判断，如果数据库中表个数比较多，最终会导致普通用户比dbadmin需要更长的执行时间。\"" | 1 |
-| `chk-explain-partitioned-cstore-scan-selected-partitions` | EXPLAIN 执行计划 · Partitioned CStore Scan Selected Partitions 数量 | `收集几个典型的慢SQL语句，分别打印执行计划。从执行计划中可以看出来，两条SQL的耗时都集中在Partitioned CStore Scan on public.tb_motor_vehicle列存表的分区扫描上。` | "`慢SQL过滤条件中未涉及分区字段，导致执行计划未分区剪枝，进行了全表扫描，性能严重劣化。`" | 1 |
-| `chk-explain-performance` | EXPLAIN PERFORMANCE 算子耗时 | `EXPLAIN PERFORMANCE` | "分析发现如图红框标识的两个性能瓶颈点均为表Scan动作" | 1 |
-| `chk-explain-performance` | EXPLAIN PERFORMANCE · 基表扫描方式及执行时间 | `EXPLAIN PERFORMANCE SELECT * FROM orders WHERE o_custkey = '1106459'` | "\"发现执行时间为48毫秒\"" | 1 |
-| `chk-explain-performance` | explain performance 执行时间 | explain performance select a.ca_state state, count(*) cnt from customer_address a ,customer c ,store_sales s ,date_dim d ,item i where a.ca_address_sk = c.c_cur | "store_sales和item表join后未过滤掉任何数据，所以这两个表join并生成hash表的时间都比较长。" | 1 |
-| `chk-explain-performance` | EXPLAIN PERFORMANCE · 执行计划是否走向量化（列执行引擎）算子 | `EXPLAIN PERFORMANCE` 查看是否有 Vector 前缀算子 | "\"经过分析发现计划走了行引擎。根本原因是：临时计划表input_acct_id_tbl和中间结果转储表row_unlogged_table使用了行存表。\"" | 1 |
-| `chk-explain-performance` | EXPLAIN PERFORMANCE 改写后执行计划 · 排序下推验证 | `EXPLAIN PERFORMANCE SELECT COUNT(1) over() AS DATACNT, IMSI_IMSI, TOTAL_VOLUME_KPIID FROM (SELECT IMSI AS IMSI_IMSI, CAST(TRUNC(((SUM(L4_UL_THROUGHPUT) + SUM(L | "\"经过SQL改写，性能由2.862s提升0.955s，优化效果明显\"" | 1 |
-| `chk-explain-performance` | EXPLAIN PERFORMANCE · 算子分布 | `explain performance` | "`执行计划中出现Sort和WindowAgg，第3~6步集中在一个DN上进行，使SQL非常缓慢`" | 1 |
-| `chk-explain-performance-cpu-io` | EXPLAIN PERFORMANCE · 算子瓶颈维度判别(CPU/IO/内存/网络) | `通过执行态信息，我们可以分析出算子为单位的性能，也可以分析出算子内部各步骤的性能，进一步为诊断性能的瓶颈打下了基础。` | "NULL" | 1 |
-| `chk-explain-performance-cstore-scan-cu` | EXPLAIN PERFORMANCE · CStore Scan CU 加载数量 | `EXPLAIN PERFORMANCE SELECT sum(l_extendedprice * l_discount) as revenue FROM lineitem WHERE l_shipdate >= '1994-01-01'::date and l_shipdate < '1994-01-01'::dat | "\"使用partial cluster key后，5-- CStore Scan on public.lineitem的时间减少了1.2s，得益于有84个CU被过" | 1 |
-| `chk-explain-performance-cunone-filter` | EXPLAIN PERFORMANCE · CUNone 比例及 filter 耗时 | `EXPLAIN PERFORMANCE SELECT * FROM orders_no_pck WHERE o_orderkey = '13095143' ORDER BY o_orderdate` | "CUNone比例 = 0" | 1 |
-| `chk-explain-performance-dn` | explain performance 各 DN 实际行数 | `openGauss=# explain performance select count(*) from inventory;` | "> 4x` 倍数差距" | 1 |
-| `chk-explain-performance-dn` | explain performance · DN 行数与耗时分布 | `explain performance select avg(ss_wholesale_cost) from store_sales;` | "`基表scan的时间：最快的DN耗时5ms，最慢的DN耗时1173ms。数据分布情况：某些DN有22831616行，其他DN都是0行，数据有严重倾斜。`" | 1 |
-| `chk-explain-performance-dn-scan` | EXPLAIN PERFORMANCE 各 DN 基表 scan 行数及时间分布 | `explain performance select avg(ss_wholesale_cost) from store_sales` | "\"基表scan的时间：最快的DN耗时5ms，最慢的DN耗时1173ms。数据分布情况：某些DN有22831616行，其他DN都是0行，数据有严重倾斜。\"" | 1 |
-| `chk-explain-performance-partition-iterator-iterations` | EXPLAIN PERFORMANCE · 全表扫描时间及 Partition Iterator Iterations | `EXPLAIN PERFORMANCE SELECT count(*) FROM orders_no_part WHERE o_orderdate >= '1996-01-01 00:00:00'::timestamp(0)` | "\"执行时间为73毫秒，其中全表扫描的时间为44~45毫秒\"" | 1 |
-| `chk-explain-performance-rows-hint` | EXPLAIN PERFORMANCE · rows hint 修正后各算子行数及整体耗时 | `select avg(netpaid) from (select /*+rows(store_sales store_returns * 11270)*/ c_last_name ...` | "\"最终计划如下图所示，运行时间94s，完成调优\"" | 1 |
-| `chk-explain-performance-spill-written-disk-temp-file-num` | EXPLAIN PERFORMANCE · spill / written disk / temp file num 关键字 | `performance中出现spill、written disk、temp file num等关键字时，说明对应的算子出现了下盘。` | "`performance中出现spill、written disk、temp file num等关键字时，说明对应的算子出现了下盘。`" | 1 |
-| `chk-explain-performance-sql-streaming-redistribute` | EXPLAIN PERFORMANCE · SQL自诊断信息（Streaming REDISTRIBUTE 计算倾斜） | `SQL自诊断信息显示在做row_number()函数计算前的PARTITION BY T.ORDER_LINE_ID引入的重分布算子(Streaming(type: REDISTRIBUTE))有计算倾斜` | "`Streaming(type: REDISTRIBUTE)有计算倾斜`" | 1 |
-| `chk-explain-performance-stream-dn` | EXPLAIN PERFORMANCE · Stream 算子各 DN 行数分布 | `select * from skew s,test t where s.x = t.x order by s.a limit 1` | "\"6 --Streaming(type: REDISTRIBUTE) datanode1 (rows=5050368) datanode2 (rows=1527" | 1 |
-| `chk-explain-performance-vector-windowagg` | EXPLAIN PERFORMANCE 执行计划 · Vector WindowAgg 耗时及位置 | `EXPLAIN PERFORMANCE SELECT COUNT(1) over() AS DATACNT, IMSI AS IMSI_IMSI, CAST(TRUNC(((SUM(L4_UL_THROUGHPUT) + SUM(L4_DW_THROUGHPUT))), 0) AS DECIMAL(20)) AS T | "\"window agg和sort全部在CN端执行，耗时非常严重\"" | 1 |
-| `chk-explain-performance-vs-a-rows-vs-e-rows` | EXPLAIN PERFORMANCE · 各算子行数估算 vs 实际行数（A-rows vs E-rows） | `EXPLAIN PERFORMANCE` 查看 TPC-DS Q24 部分语句执行计划 | "\"第11层算子估算行数为2140，比实际行数严重低估\"" | 1 |
-| `chk-explain-performance-windowagg-sort` | EXPLAIN PERFORMANCE 执行计划 · WindowAgg/Sort 算子耗时 | `explain performance` | "\"执行计划中出现Sort和WindowAgg，第3~6步集中在一个DN上进行，使SQL非常缓慢。\"" | 1 |
-| `chk-explain-remotequery-data-node-scan` | EXPLAIN · 是否含 RemoteQuery / Data Node Scan | - **abnormal_patterns**: ["`Data Node Scan on t1 \"_REMOTE_TABLE_QUERY_\"`"] | "`Data Node Scan on t1 \"_REMOTE_TABLE_QUERY_\"`" | 1 |
-| `chk-explain-scan-a-time-max-min-dn` | EXPLAIN 执行计划 · Scan A-time max/min DN 耗时比 | `表Scan的A-time中，max time DN执行耗时6554ms，min time DN耗时0s，DN之间扫描差异超过10倍以上` | "> 10倍" | 1 |
-| `chk-explain-scan-vs` | EXPLAIN 执行计划 · Scan 实际过滤行数 vs 符合行数 | `某业务SQL总执行时间2.519s，其中Scan占了2.516s，同时该表的扫描最终只扫描到0条符合条件数据，过滤了20480条数据` | "`扫描时间与扫描数据量严重不符，此现象可判断为由于脏数据多从而影响扫描和I/O效率。`" | 1 |
-| `chk-explain-selected-partitions` | EXPLAIN 执行计划 · Selected Partitions 数量 | `对该表设计为分区表后没有走分区剪枝（Selected Partitions数量多），Scan花了701785ms，I/O效率极低。` | "`没有走分区剪枝（Selected Partitions数量多），Scan花了701785ms`" | 1 |
-| `chk-explain-seq-scan-vs-index-scan` | EXPLAIN 执行计划 · 扫描算子类型（Seq Scan vs Index Scan） | `Seq Scan扫描需要3767ms，因涉及从4096000条数据中获取8240条数据，符合索引扫描的场景（海量数据中寻找少量数据），在对过滤条件列增加索引后，计划依然是Seq Scan而没有走Index Scan。` | "`计划依然是Seq Scan而没有走Index Scan。`" | 1 |
-| `chk-explain-seqscan-vs-indexscan` | EXPLAIN · 算子(seqscan vs indexscan) | `在优化前，没有创建places.place_id和states.state_id索引，执行计划如下` | "NULL" | 1 |
-| `chk-explain-stream` | EXPLAIN 执行计划 Stream 算子类型 | `EXPLAIN` | "劣化的原因主要为lineitem和part表join时stream类型由BroadCast变更为Redistribute导致" | 1 |
-| `chk-explain-streaming` | EXPLAIN 计划是否含 Streaming | CREATE TABLE t1 (a int, b int) DISTRIBUTE BY HASH (a); CREATE TABLE t2 (a int, b int) DISTRIBUTE BY HASH (a); | "则执行计划将存在\"Streaming\"，导致DN之间存在较大通信数据量。" | 1 |
-| `chk-explain-streaming` | 调整后 EXPLAIN 是否消除 Streaming | CREATE TABLE t1 (a int, b int) DISTRIBUTE BY HASH (a); CREATE TABLE t2 (a int, b int) DISTRIBUTE BY HASH (b); | "则执行计划将不包含\"Streaming\"，减少DN之间存在的通信数据量，从而提升查询性能。" | 1 |
-| `chk-explain-streaming-type-redistribute` | EXPLAIN · Streaming(type: REDISTRIBUTE) 算子是否出现 | `EXPLAIN SELECT * FROM t1, t2 WHERE t1.a = t2.b` | "\"执行计划存在\\\"Streaming(type: REDISTRIBUTE)\\\"，即DN根据选定的列把数据重分布到所有的DN，这将导致DN之间存在较大通信数据量" | 1 |
-| `chk-explain-subplan` | EXPLAIN 执行计划 SubPlan 存在 | `EXPLAIN` | "此SQL性能较差，查看发现执行计划中存在SubPlan" | 1 |
-| `chk-explain-verbose` | EXPLAIN VERBOSE 统计信息警告 | "通过explain verbose执行query分析执行计划时会提示WARNING信息，如下所示：WARNING:Statistics in some tables or columns(public.lineitem.l_receiptdate, public.lineitem.l_commitdate, publ | "\"WARNING:Statistics in some tables or columns(...) are not collected.\"" | 1 |
-| `chk-explain-verbose-anti-join` | EXPLAIN VERBOSE Anti Join 行数估算 | `explain verbose` | "估算Anti Join的行数与实际行数相差很大" | 1 |
-| `chk-explain-verbose-anti-join` | EXPLAIN VERBOSE · Anti Join 执行计划及行数估算 | `explain verbose select count(*) as numwait from lineitem l1, orders where o_orderkey = l1.l_orderkey and o_orderstatus = 'F' and l1.l_receiptdate > l1.l_commit | "\"估算Anti Join的行数与实际行数相差很大，导致查询性能下降\"" | 1 |
-| `chk-explain-verbose-hashjoin` | EXPLAIN VERBOSE hashjoin 行数估算 | `set cost_param=2; explain verbose` | "实际是将AND的两个过滤条件分别计算的2个选择率的值相乘来得到hashjoin条件的选择率，导致行数估算不准确，查询性能较差" | 1 |
-| `chk-explain-verbose-hashjoin` | EXPLAIN VERBOSE · HashJoin 行数估算偏差 | `set cost_param=2; explain verbose select nation, sum(amount) as sum_profit from (...) as profit group by nation order by nation` | "\"导致行数估算不准确，查询性能较差\"" | 1 |
-| `chk-explain-verbose-index-scan-vs-seq-scan` | EXPLAIN VERBOSE · Index Scan vs Seq Scan | `explain verbose select * from test where a  = 101;` | "\"where a = 101，where a = 102 - 1都使用了a列上的索引，但是where a + 1 = 102没有使用索引。\"" | 1 |
-| `chk-explain-verbose-not-exists` | EXPLAIN VERBOSE · NOT EXISTS 执行计划算子类型验证 | `EXPLAIN VERBOSE SELECT * FROM t1 WHERE NOT EXISTS (SELECT 1 FROM t2 WHERE t2.c = t1.c)` | "NULL" | 1 |
-| `chk-explain-verbose-not-in` | EXPLAIN VERBOSE · NOT IN 执行计划算子类型 | `EXPLAIN VERBOSE SELECT * FROM t1 WHERE t1.c NOT IN (SELECT t2.c FROM t2)` | "\"从返回结果可知执行计划走NestLoop\"" | 1 |
-| `chk-explain-verbose-remote` | EXPLAIN VERBOSE · __REMOTE 关键字 | "通过EXPLAIN VERBOSE打印语句执行计划。上述执行计划中出现__REMOTE关键字，表示当前的语句为不下推执行。" | "\"上述执行计划中出现__REMOTE关键字，表示当前的语句为不下推执行。\"" | 1 |
-| `chk-explain-verbose-remotequery` | explain verbose · RemoteQuery 计划 | `yshen=# set rewrite_rule='none'; SET yshen=# explain (verbose on, costs off)  select two_sum(tt.c1, tt.c2) from (select t1.c1,t2.c2 from t1,t2 where t1.c1=t2.c | "`该计划很慢，原因是网络传输了大量数据，然后在CN上执行HASH JOIN，不能充分利用集群资源。`" | 1 |
-| `chk-explain-verbose-streaming-vs-data-node-scan` | EXPLAIN VERBOSE · 执行计划是否含 Streaming 节点 vs Data Node Scan | `gaussdb=# set rewrite_rule='none'; SET gaussdb=# explain (verbose on, costs off)  select group_concat(tt.c1, tt.c2) from (select t1.c1,t2.c2 from t1,t2 where t | "`该计划很慢，原因是网络传输了大量数据，然后在CN上执行HASH JOIN，不能充分利用集群资源。`" | 1 |
-| `chk-explain-verbose-subplan` | explain verbose · SubPlan 执行方式 | `yshen=# set rewrite_rule='none'; SET yshen=# explain (verbose on, costs off) select c1,(select avg(c2) from t2 where t2.c2=t1.c2) from t1 where t1.c1<100 order | "`由于目标列中的相关子查询(select avg(c2) from t2 where t2.c2=t1.c2)无法提升的缘故，导致每扫描t1的一行数据，就会触发" | 1 |
-| `chk-explain-verbose-subplan` | EXPLAIN VERBOSE · SubPlan 算子出现在目标列 | `gaussdb=# set rewrite_rule='none'; SET gaussdb=# explain (verbose on, costs off) select c1,(select avg(c2) from t2 where t2.c2=t1.c2) from t1 where t1.c1<100 o | "`导致每扫描t1的一行数据，就会触发子查询的一次执行，效率低下。`" | 1 |
-| `chk-explain-verbose-warning` | explain verbose WARNING · 统计信息缺失提示 | `通过explain verbose执行query分析执行计划时会提示WARNING信息，如下所示：WARNING:Statistics in some tables or columns(public.lineitem.l_receiptdate, ...) are not collected. HINT:Do an | "`WARNING:Statistics in some tables or columns(public.lineitem.l_receiptdate, pub" | 1 |
-| `chk-explain-verbose-warning` | EXPLAIN VERBOSE WARNING · 未收集统计信息的表/列列表 | `通过explain verbose执行query分析执行计划时会提示WARNING信息，如下所示：WARNING:Statistics in some tables or columns(public.lineitem.l_receiptdate, public.lineitem.l_commitdate, publ | "`Statistics in some tables or columns(...) are not collected.`" | 1 |
-| `chk-explain-verbose-warning` | EXPLAIN VERBOSE 执行计划 Warning | `explain verbose` | "\"WARNING:Statistics in some tables or columns(public.lineitem.l_receiptdate, pub","\"执行计划中会有语句未收集统计信息的告警，并且通常E-rows估算非常小。\"" | 2 |
-| `chk-explain-verbose-warning` | EXPLAIN VERBOSE WARNING信息 · 统计信息缺失 | "通过EXPLAIN VERBOSE执行query分析执行计划时会提示WARNING信息" | "\"WARNING:Statistics in some tables or columns(public.lineitem.l_receiptdate, pub" | 1 |
-| `chk-group-by-groupagg-sort` | GROUP BY 查询计划中是否包含 GroupAgg+Sort | "查询语句中如果存在GROUP BY条件则生成的计划（Plan）中可能存在排序操作，即计划中包含GroupAgg+Sort算子，导致性能较差。" | "\"查询语句中如果存在GROUP BY条件则生成的计划（Plan）中可能存在排序操作，即计划中包含GroupAgg+Sort算子，导致性能较差。\"" | 1 |
-| `chk-hashaggregate` | 执行计划中双层HashAggregate | `gaussdb=# EXPLAIN (costs off) SELECT t.c2, sum(cc) FROM (SELECT c2, sum(c3) AS cc FROM t1 GROUP BY c2) s1, t WHERE s1.c2=t.c2 GROUP BY t.c2 ORDER BY 1,2;` | "\"Subquery Scan on s1 -> HashAggregate Group By Key: t1.c2 -> Seq Scan on t1\"" | 1 |
-| `chk-in` | 执行计划in条件处理方式 | "打印语句的执行计划" | "\"执行计划中，in条件还是作为普通的过滤条件存在。这种场景下，最优的执行计划应该是将\\\"in 常量\\\"转化为join操作性能更好。\"" | 1 |
-| `chk-leading-hint` | 加 leading hint 后执行时间 | select /*+ leading((s d)) */ a.ca_state state, count(*) cnt ... | "34268.322ms → 11095.046ms" | 1 |
-| `chk-leading-no-nestloop-hint` | 加 leading + no nestloop hint 后执行时间 | select /*+ leading((s d)) no nestloop(s d) */ a.ca_state state, count(*) cnt ... | "11095.046ms → 4644.409ms" | 1 |
-| `chk-local-explain-analyze-total-runtime` | 创建 LOCAL 索引后 EXPLAIN ANALYZE Total runtime | `CREATE INDEX idx_range_b ON test_range_pt(b) LOCAL;` | "优化后时间消耗远小于优化前。" | 1 |
-| `chk-memory-information-dn` | Memory Information 各 DN 内存消耗分布 | `EXPLAIN ANALYZE` (Memory Information 段) | "各个节点的内存资源消耗也存在极为严重的偏斜" | 1 |
-| `chk-nestloop` | 语句执行时间 / 执行计划中 NestLoop 算子 | `该问题发生在实时场景下，语句执行时间因为达到了 3600s而自动终止运行` | ">= 3600s" | 1 |
-| `chk-nestloop` | 执行计划算子类型（NestLoop） | "首先观察SQL语句中有not in 语法；执行计划中有NestLoop" | "\"NestLoop是导致语句性能慢的主要原因。\"" | 1 |
-| `chk-nestloop` | 执行计划算子类型（NestLoop出现） | "通过EXPLAIN VERBOSE打印语句执行计划，查看执行计划发现SQL语句中存在not in语句" | "\"NestLoop是导致语句性能慢的主要原因\"" | 1 |
-| `chk-not-in` | 含 NOT IN 子查询的执行计划 | "gaussdb=# EXPLAIN SELECT * FROM t1 WHERE c1 NOT IN (SELECT d2 FROM t2);" | "\"NOT IN语句需要使用NESTLOOP ANTI JOIN来实现\"" | 1 |
-| `chk-null-001` | 执行计划下推标识 | `gaussdb=# explain select * from t where c1 > 1;` | "\"通常而言explain语句后没有显示具体的执行计划算子，仅存在类似关键字\\\"Data Node Scan on\\\"则说明语句已下推给DN去执行\"","\"可见，func_percent_2并没有被下推，而是将ss_sales_price和ss_list_price收到CN上，再进行计算，消耗大量CN的资 | 2 |
-| `chk-null-002` | 执行计划子查询关联方式 | `gaussdb=# EXPLAIN (costs off) SELECT t1 FROM t1 WHERE t1.c2 = 10 AND t1.c3 < (SELECT sum(c3) FROM t2 WHERE t1.c1 = t2.c1);` | "\"先针对子查询的关联字段进行分组聚集，再和主查询进行关联，减少相关子链接的重复扫描\"" | 1 |
-| `chk-null-005` | 执行计划子查询处理方式 | `explain verbose select t1.c1 from t1 where t1.c1 = (select t2.c1 from t2 where t1.c1=t2.c1);` | "\"Hash Join ... Hash Cond: (t1.c1 = subquery.\\\"?column?\\\") ... Unique Check Requi" | 1 |
-| `chk-null-009` | 查询返回行数 | "检查查询语句是否返回了多余的数据信息。" | "\"对于包含50条记录的表，查询起来是很快的；但是，当表中包含的记录达到50000，查询效率将会有所下降。\"" | 1 |
-| `chk-null-010` | 主机负载下查询单独运行时延 | "尝试在数据库没有其他查询或查询较少的时候运行查询语句，并观察运行效率。" | "\"如果效率较高，则说明可能是由于之前运行数据库系统的主机负载过大导致查询低效。\"" | 1 |
-| `chk-null-011` | 重复执行同一查询语句的执行时间 | "重复执行相同的查询语句，如果后续执行的查询语句效率提升，则可能是由于上述原因导致。" | "\"查询效率低的一个重要原因是查询所需信息没有缓存在内存中，这可能是由于内存资源紧张，缓存信息被其他查询处理覆盖。\"" | 1 |
-| `chk-partitioned-cstore-scan` | 执行计划：Partitioned CStore Scan分区扫描范围 | "和客户收集几个典型的慢sql，分别打印执行计划。" | "\"从执行计划中可以看出来，两条sql的耗时都集中在Partitioned CStore Scan on public.tb_motor_vehicle列存表的分" | 1 |
-| `chk-remote` | 执行计划下推标识（__REMOTE关键字） | "通过explain verbose打印语句执行计划" | "\"上述执行计划中有__REMOTE关键字，这就表明当前的语句是不下推执行的。\"" | 1 |
-| `chk-rows-hint` | rows hint 后执行时间 | select /*+ rows(s #2880404) */ a.ca_state state, count(*) cnt ... | "34268.322ms → 1991.843ms (17x)" | 1 |
-| `chk-scan-filter` | Scan filter 条件分析 | `EXPLAIN PERFORMANCE` | "进一步分析表Scan的filter条件发现两个表存在acct_id = 'A012709548'::bpchar这样的filter条件" | 1 |
-| `chk-seq-scan-dn` | Seq Scan 各 DN 扫描时间 | `EXPLAIN ANALYZE` | "进一步向HashJoin算子的下层分析发现Seq Scan on s_riskrate_setting也存在极为严重的计算倾斜[38.885,2940.983 | 1 |
-| `chk-skew-hint-agg` | skew hint 后双层 Agg 计划 | select /*+ skew(store_returns(sr_store_sk sr_customer_sk)) */sr_customer_sk as ctr_customer_sk ... | "对于HashAgg，由于其重分布存在倾斜，所以优化为双层Agg。" | 1 |
-| `chk-sql-case-when` | SQL 中 CASE WHEN 分支数量与执行次数 | "在业务查询中，CASE WHEN语句常用来进行条件判断，但如果在SQL查询中存在大量冗余的CASE WHEN" | "\"该语句冗长，执行时每个分支的CASE WHEN均需执行，导致查询时间成倍增加\"" | 1 |
-| `chk-subplan` | 执行计划中SubPlan节点 | `gaussdb=#  EXPLAIN (verbose on, costs off) SELECT c1,(SELECT avg(c2) FROM t2 WHERE t2.c2=t1.c2) FROM t1 WHERE t1.c1<100 ORDER BY t1.c2;` | "\"SubPlan 1 -> Aggregate Output: avg(t2.c2) -> Seq Scan on public.t2 Output: t2.c","\"SubPlan 1 -> Aggregate ... -> Seq Scan on public.t2 Filter: (t2.c2 = t1.c | 2 |
-| `chk-warning` | 执行计划统计信息Warning | "通过explain verbose/explain performance打印语句的执行计划" | "\"执行计划中会有语句未收集统计信息的告警，并且通常E-rows估算非常小。\"" | 1 |
 
 ---
 
@@ -204,13 +65,13 @@ GaussDB 在内网/无 SSH 直连场景 perf-kp-sql skill 不能远程采集,把�
 | `chk-guc-shared-buffers-work-mem-thread-pool-attr` | GUC 参数 shared_buffers / work_mem / thread_pool_attr 当前值 | "常见的可能情况有：1. shared_buffers配置过小，导致buffer淘汰频繁。" | "\"shared_buffers配置过小，导致buffer淘汰频繁。\"" | 1 |
 | `chk-hstore-delta-vs-cu` | HStore Delta表大小 vs 主表CU数据 | NULL | "\"Delta表空间复用受oldestXmin影响。长时间运行的事务可能导致空间复用延迟和膨胀。\"" | 1 |
 | `chk-max-process-memory-shared-buffers-work-mem` | max_process_memory / shared_buffers / work_mem 内存参数 | NULL | "\"max_process_memory为12GB，设置过小。shared_buffers为32MB，设置过小。\"" | 1 |
-| `chk-null-006` | 线程等待状态 | `select * from pg_thread_wait_status where query_id='149181737656737395';` | "\"根据线程等待状态，并没有出现都在等待某个DN的情况，初步排除中间结果集偏斜到了同一个DN的情况。\"" | 1 |
-| `chk-null-007` | 表数据倾斜 | `select table_skewness('ioc_dm.m_ss_index_event');` | "NULL" | 1 |
-| `chk-null-008` | 系统表/用户表膨胀情况 | "用户可在管控面执行全库Vacuum/Vacuum Full，以定期进行空间回收" | "\"用户数据膨胀严重，磁盘空间不足，性能低。\"" | 1 |
-| `chk-null-013` | 各节点磁盘使用率均衡性 | `登录DWS控制台。在"集群列表"页面，找到需要查看监控的集群。在指定集群所在行的"操作"列，单击"监控面板"。选择"监控 > 节点监控 > 磁盘"，查看磁盘使用率。` | "> 5% 差值" | 1 |
-| `chk-null-015` | 表脏页率 | `查看表脏页率为99%，VACUUM FULL后性能优化到100ms左右。` | "= 99%" | 1 |
-| `chk-null-016` | 列存表文件大小监控 | "列存表数据按列存储，一列的每60000行存储为一个CU，同一列的CU连续存储在一个文件中，当该文件大于1GB时，切换到新文件中。CU文件数据不能更改只能追加写。" | "\"列存表多次执行INSERT后，发现表膨胀。\"" | 1 |
-| `chk-null-017` | 活跃事务列表 | `SELECT txid_current_snapshot(); ` | "活跃事务列表中有 XID < 当前事务 XID" | 1 |
+| `chk-null-003` | 线程等待状态 | `select * from pg_thread_wait_status where query_id='149181737656737395';` | "\"根据线程等待状态，并没有出现都在等待某个DN的情况，初步排除中间结果集偏斜到了同一个DN的情况。\"" | 1 |
+| `chk-null-004` | 表数据倾斜 | `select table_skewness('ioc_dm.m_ss_index_event');` | "NULL" | 1 |
+| `chk-null-005` | 系统表/用户表膨胀情况 | "用户可在管控面执行全库Vacuum/Vacuum Full，以定期进行空间回收" | "\"用户数据膨胀严重，磁盘空间不足，性能低。\"" | 1 |
+| `chk-null-010` | 各节点磁盘使用率均衡性 | `登录DWS控制台。在"集群列表"页面，找到需要查看监控的集群。在指定集群所在行的"操作"列，单击"监控面板"。选择"监控 > 节点监控 > 磁盘"，查看磁盘使用率。` | "> 5% 差值" | 1 |
+| `chk-null-012` | 表脏页率 | `查看表脏页率为99%，VACUUM FULL后性能优化到100ms左右。` | "= 99%" | 1 |
+| `chk-null-013` | 列存表文件大小监控 | "列存表数据按列存储，一列的每60000行存储为一个CU，同一列的CU连续存储在一个文件中，当该文件大于1GB时，切换到新文件中。CU文件数据不能更改只能追加写。" | "\"列存表多次执行INSERT后，发现表膨胀。\"" | 1 |
+| `chk-null-014` | 活跃事务列表 | `SELECT txid_current_snapshot(); ` | "活跃事务列表中有 XID < 当前事务 XID" | 1 |
 | `chk-order-line-id-null` | 列统计信息 · ORDER_LINE_ID NULL 比例 | `查看对应T表的统计信息发现表fin_dwb_isc.dwb_isc_so_delivery_dtl_f的列ORDER_LINE_ID上87.6^%左右都是NULL值` | "> 50% NULL" | 1 |
 | `chk-pg-locks` | pg_locks · 阻塞会话与持锁会话关联 | - **abnormal_patterns**: ["`该查询返回会话ID、CN名称、用户信息、查询状态，以及导致阻塞的表、模式信息。`"] | "`该查询返回会话ID、CN名称、用户信息、查询状态，以及导致阻塞的表、模式信息。`" | 1 |
 | `chk-pg-partition` | pg_partition 各表分区数 | `SELECT relname,reloptions,partcount FROM pg_class c INNER JOIN ( SELECT parentid,count(*) AS partcount FROM pg_partition GROUP BY parentid ) s ON c.oid = s.par | "> 3000分区" | 1 |
@@ -276,6 +137,102 @@ GaussDB 在内网/无 SSH 直连场景 perf-kp-sql skill 不能远程采集,把�
 | `chk-wdr-top-sql-order-by-cpu-time` | WDR 报告 Top SQL order by CPU Time | "可直接使用WDR报告中SQL ordered by CPU Time部分，尝试优化分析相关语句" | "\"如果CPU一直较高，方法一：可直接使用WDR报告中SQL ordered by CPU Time部分，尝试优化分析相关语句\"" | 1 |
 | `chk-xc-node-id` | 按 xc_node_id 分组的表数据行数 | `SELECT a.count,b.node_name         FROM             (SELECT count(*) AS count,xc_node_id FROM tablename GROUP BY xc_node_id) a,               pgxc_node b       | "DN 间数据量差异 >= 10%" | 1 |
 | `chk-xid` | 当前事务 XID | `SELECT txid_current();` | "\"执行以下命令查询当前的事务XID。\"" | 1 |
+
+---
+
+## collection_layer = `db-interactive-cmd` (87 check)
+
+### type=metric (87 个)
+
+| check_id | metric_name | collection_method | abnormal_patterns | 关联 case 数 |
+|---|---|---|---|---:|
+| `chk-a-time-dn` | 算子 A-time(在单 DN 上的运行耗时) | - **abnormal_patterns**: ["NULL"] | "NULL" | 1 |
+| `chk-analyze` | ANALYZE 后的查询性能 | "使用ANALYZE命令分析数据库。" | "\"如果此命令执行后性能恢复或者有所提升，则表明AUTOVACUUM未能很好的完成它的工作，有待进一步分析。\"" | 1 |
+| `chk-b-tree-explain-analyze` | 创建 B-tree 索引后再次 EXPLAIN ANALYZE | 添加索引后，通过与无索引时执行计划的对比，查询时间从原来的382.624ms缩短到0.293 ms。 | "查询时间从原来的382.624ms缩短到0.293 ms。" | 1 |
+| `chk-cstore-scan` | 执行计划算子：CStore Scan耗时占比 | "通过抓取问题SQL的执行信息，发现大部分的耗时都在\"CStore Scan\"" | "\"大部分的耗时都在\\\"CStore Scan\\\"\"" | 1 |
+| `chk-cu` | 执行计划中CU扫描数量 | "查看偶发慢业务慢时的执行计划信息，慢在cstore scan，且扫描数据量不大但扫描CU个数较多" | "CU数量 >> 数据行数/60000" | 1 |
+| `chk-data-node-scan` | 执行计划下推标识（Data Node Scan） | "将GUC参数enable_fast_query_shipping设置为off，使查询优化器使用分布式框架策略。查看执行计划。如果执行计划中有Data Node Scan节点，那么此执行计划是发送语句的分布式执行计划，为不可下推的执行计划；如果执行计划中有Streaming节点，那么计划是可以下推的。" | "\"可见，func_percent_2并没有被下推，而是将ss_sales_price和ss_list_price收到CN上，再进行计算，消耗大量CN的资源，而且" | 1 |
+| `chk-dn` | 各 DN 数据条数分布 | `SELECT a.count,b.node_name FROM (SELECT count(*) AS count,xc_node_id FROM table_name GROUP BY xc_node_id) a, pgxc_node b WHERE a.xc_node_id=b.node_id ORDER BY  | ">= 10%" | 1 |
+| `chk-enable-hashjoin` | enable_hashjoin 关闭后执行计划 | `SET enable_hashjoin = off;` | "`分析上述执行计划，发现执行了Hash Join，对大表b_zyk_wbswxx（网吧上网信息）建立了Hash Table。由于该表数据量大，创建过程耗时较长。" | 1 |
+| `chk-explain` | EXPLAIN 执行计划算子估算行数 | `EXPLAIN` | "第11层算子估算行数为2140，比实际行数严重低估" | 1 |
+| `chk-explain` | EXPLAIN · 计划与实际行数比对 | `导致执行计划选择不优` | "`统计信息不是最新的情况`" | 1 |
+| `chk-explain` | EXPLAIN执行计划耗时分布 | NULL | "\"打印执行计划，分析出耗时主要在index scan上，可能是I/O争抢导致\"" | 1 |
+| `chk-explain` | EXPLAIN · 执行计划顺序扫描阶段耗时 | `EXPLAIN` 查看多表 JOIN 执行计划 | "\"分析执行计划可知，在顺序扫描阶段耗时较多\"" | 1 |
+| `chk-explain-analyze` | EXPLAIN ANALYZE 算子落盘标志 | "为了优化性能，可以查看SQL的执行计划，如果算子存在落盘的情况，可适当调整work_mem参数值。" | "\"如果算子存在落盘的情况\"" | 1 |
+| `chk-explain-analyze` | EXPLAIN ANALYZE 顺序扫描耗时 | `EXPLAIN` | "在顺序扫描阶段耗时较多" | 1 |
+| `chk-explain-analyze-agg` | EXPLAIN ANALYZE Agg 算子类型 | `EXPLAIN ANALYZE` | "如果大结果集选择了Sort+GroupAgg" | 1 |
+| `chk-explain-analyze-agg` | EXPLAIN ANALYZE · Agg 算子类型及执行时间 | `EXPLAIN ANALYZE` 查看聚合操作算子选择 | "\"如果大结果集选择了Sort+GroupAgg，则需要设置enable_sort=off，HashAgg耗时明显优于Sort+GroupAgg\"" | 1 |
+| `chk-explain-analyze-hashjoin-dn` | EXPLAIN ANALYZE HashJoin 各 DN 执行时间范围 | `EXPLAIN ANALYZE` | "HashJoin的执行时间信息[2657.406,93339.924 | 1 |
+| `chk-explain-analyze-join` | EXPLAIN ANALYZE Join 算子类型与耗时 | `EXPLAIN ANALYZE` | "> 100s" | 1 |
+| `chk-explain-analyze-join` | EXPLAIN ANALYZE · JOIN 算子类型及执行时间 | `EXPLAIN ANALYZE` 查看两表 JOIN 的算子类型 | "\"NestLoop耗时181秒\"" | 1 |
+| `chk-explain-analyze-startup-vs-total` | EXPLAIN ANALYZE · 路径代价 (Startup vs Total) | "把explain_perf_mode设置为normal，查看原Nest Loop的启动代价" | "\"红框中的两个cost，分别是启动代价和总代价，在看Hash Join的cost，明显Hash Join的启动代价比Nest Loop的大很多（启动代价代表了输" | 1 |
+| `chk-explain-analyze-stream` | EXPLAIN ANALYZE · Stream算子类型 | "GaussDB计划中常见的主要Stream算子包括Redistribute、Broadcast和Gather。" | "\"优化器认为适合做Broadcast。于是最终选择了一边Broadcast的计划。\"" | 1 |
+| `chk-explain-cn-vs-dn` | EXPLAIN 执行计划算子位置（CN vs DN） | `EXPLAIN` | "可以看到window agg和sort全部在CN端执行，耗时非常严重" | 1 |
+| `chk-explain-cstore-scan-cusome-cunone` | EXPLAIN 执行计划 · Cstore Scan CUSome / CUNone 计数 | `分析计划主要耗时在Cstore Scan。Cstore Scan的详细信息中，每个DN扫描出2w左右的数据，但是扫描了有数据的CU（CUSome）155079个，没有数据的CU（CUNone）156375个` | "`说明当前小CU、未命中数据的CU极多，即CU膨胀严重。`" | 1 |
+| `chk-explain-data-node-scan` | EXPLAIN · 是否含 Data Node Scan 节点 | `如果执行计划中有Data Node Scan节点，那么此执行计划为不可下推的执行计划；如果执行计划中有Streaming节点，那么计划是可以下推的。` | "`Data Node Scan on store_sales \"_REMOTE_TABLE_QUERY_\"`" | 1 |
+| `chk-explain-data-node-scan-on` | EXPLAIN 输出中 "Data Node Scan on" 是否在第一行 | "通常而言explain语句后没有显示具体的执行计划算子，执行计划中关键字\"Data Node Scan on\"出现在第一行（不包含计划格式）则说明语句已下推给DN去执行。" | "\"在第3种策略中，要将大量中间结果从DN发送到CN，并且要在CN运行不能下推的部分语句，会导致CN成为性能瓶颈\"" | 1 |
+| `chk-explain-filter` | EXPLAIN 执行计划 Filter 条件分析 | `EXPLAIN` | "Filter条件中存在表达式to_char(add_months(to_date(''20170222'','yyyymmdd'), -11),'yyyymm'" | 1 |
+| `chk-explain-groupagg-sort` | EXPLAIN · 算子(GroupAgg+Sort) | `计划中包含GroupAgg+Sort算子` | "`计划中包含GroupAgg+Sort算子，导致性能较差`" | 1 |
+| `chk-explain-in-join` | EXPLAIN · in 条件是否转为 join | "打印语句的执行计划" | "执行计划中 in 仍作为 Filter 而非 Hash Join" | 1 |
+| `chk-explain-indexscan` | EXPLAIN 执行计划 · 是否选择IndexScan | "对表执行ANALYZE更新统计信息。" | "\"如果表未执行ANALYZE或最近一次执行完ANALYZE后表进行过数据量较大的增删操作，会导致统计信息不准，该场景下也可能导致查询表时没有使用索引。\"" | 1 |
+| `chk-explain-join` | EXPLAIN 执行计划 · Join 算子类型及耗时 | `分析该执行计划发现，扫描节点已使用Index Scan，耗时主要在最外层Nest Loop Join的Join Filter计算中，且该计算执行了字符串的加减法和不等值比较。` | "`分析上述执行计划，发现执行了Hash Join，对大表b_zyk_wbswxx（网吧上网信息）建立了Hash Table。由于该表数据量大，创建过程耗时较长。" | 1 |
+| `chk-explain-join` | EXPLAIN 执行计划 Join 类型 | `EXPLAIN` | "join-condition实质上是一个不等式，这种不等值的join操作必须走nestloop" | 1 |
+| `chk-explain-nest-loop-join` | EXPLAIN 执行计划 · Nest Loop Join 耗时 | `分析该执行计划发现，扫描节点已使用Index Scan，耗时主要在最外层Nest Loop Join的Join Filter计算中，且该计算执行了字符串的加减法和不等值比较。` | "> 12s" | 1 |
+| `chk-explain-or-filter` | EXPLAIN 执行计划 · 系统视图权限OR filter | "通过执行计划可以看到系统视图中的权限判断中多用or条件判断：pg_has_role(c.relowner, 'USAGE'::text) OR has_table_privilege(c.oid, 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGG | "\"普通用户的or条件需要逐一判断，如果数据库中表个数比较多，最终会导致普通用户比dbadmin需要更长的执行时间。\"" | 1 |
+| `chk-explain-partitioned-cstore-scan-selected-partitions` | EXPLAIN 执行计划 · Partitioned CStore Scan Selected Partitions 数量 | `收集几个典型的慢SQL语句，分别打印执行计划。从执行计划中可以看出来，两条SQL的耗时都集中在Partitioned CStore Scan on public.tb_motor_vehicle列存表的分区扫描上。` | "`慢SQL过滤条件中未涉及分区字段，导致执行计划未分区剪枝，进行了全表扫描，性能严重劣化。`" | 1 |
+| `chk-explain-performance` | EXPLAIN PERFORMANCE 算子耗时 | `EXPLAIN PERFORMANCE` | "分析发现如图红框标识的两个性能瓶颈点均为表Scan动作" | 1 |
+| `chk-explain-performance` | EXPLAIN PERFORMANCE · 执行计划是否走向量化（列执行引擎）算子 | `EXPLAIN PERFORMANCE` 查看是否有 Vector 前缀算子 | "\"经过分析发现计划走了行引擎。根本原因是：临时计划表input_acct_id_tbl和中间结果转储表row_unlogged_table使用了行存表。\"" | 1 |
+| `chk-explain-performance` | EXPLAIN PERFORMANCE · 算子分布 | `explain performance` | "`执行计划中出现Sort和WindowAgg，第3~6步集中在一个DN上进行，使SQL非常缓慢`" | 1 |
+| `chk-explain-performance-cpu-io` | EXPLAIN PERFORMANCE · 算子瓶颈维度判别(CPU/IO/内存/网络) | `通过执行态信息，我们可以分析出算子为单位的性能，也可以分析出算子内部各步骤的性能，进一步为诊断性能的瓶颈打下了基础。` | "NULL" | 1 |
+| `chk-explain-performance-rows-hint` | EXPLAIN PERFORMANCE · rows hint 修正后各算子行数及整体耗时 | `select avg(netpaid) from (select /*+rows(store_sales store_returns * 11270)*/ c_last_name ...` | "\"最终计划如下图所示，运行时间94s，完成调优\"" | 1 |
+| `chk-explain-performance-spill-written-disk-temp-file-num` | EXPLAIN PERFORMANCE · spill / written disk / temp file num 关键字 | `performance中出现spill、written disk、temp file num等关键字时，说明对应的算子出现了下盘。` | "`performance中出现spill、written disk、temp file num等关键字时，说明对应的算子出现了下盘。`" | 1 |
+| `chk-explain-performance-sql-streaming-redistribute` | EXPLAIN PERFORMANCE · SQL自诊断信息（Streaming REDISTRIBUTE 计算倾斜） | `SQL自诊断信息显示在做row_number()函数计算前的PARTITION BY T.ORDER_LINE_ID引入的重分布算子(Streaming(type: REDISTRIBUTE))有计算倾斜` | "`Streaming(type: REDISTRIBUTE)有计算倾斜`" | 1 |
+| `chk-explain-performance-stream-dn` | EXPLAIN PERFORMANCE · Stream 算子各 DN 行数分布 | `select * from skew s,test t where s.x = t.x order by s.a limit 1` | "\"6 --Streaming(type: REDISTRIBUTE) datanode1 (rows=5050368) datanode2 (rows=1527" | 1 |
+| `chk-explain-performance-vs-a-rows-vs-e-rows` | EXPLAIN PERFORMANCE · 各算子行数估算 vs 实际行数（A-rows vs E-rows） | `EXPLAIN PERFORMANCE` 查看 TPC-DS Q24 部分语句执行计划 | "\"第11层算子估算行数为2140，比实际行数严重低估\"" | 1 |
+| `chk-explain-performance-windowagg-sort` | EXPLAIN PERFORMANCE 执行计划 · WindowAgg/Sort 算子耗时 | `explain performance` | "\"执行计划中出现Sort和WindowAgg，第3~6步集中在一个DN上进行，使SQL非常缓慢。\"" | 1 |
+| `chk-explain-remotequery-data-node-scan` | EXPLAIN · 是否含 RemoteQuery / Data Node Scan | - **abnormal_patterns**: ["`Data Node Scan on t1 \"_REMOTE_TABLE_QUERY_\"`"] | "`Data Node Scan on t1 \"_REMOTE_TABLE_QUERY_\"`" | 1 |
+| `chk-explain-scan-a-time-max-min-dn` | EXPLAIN 执行计划 · Scan A-time max/min DN 耗时比 | `表Scan的A-time中，max time DN执行耗时6554ms，min time DN耗时0s，DN之间扫描差异超过10倍以上` | "> 10倍" | 1 |
+| `chk-explain-scan-vs` | EXPLAIN 执行计划 · Scan 实际过滤行数 vs 符合行数 | `某业务SQL总执行时间2.519s，其中Scan占了2.516s，同时该表的扫描最终只扫描到0条符合条件数据，过滤了20480条数据` | "`扫描时间与扫描数据量严重不符，此现象可判断为由于脏数据多从而影响扫描和I/O效率。`" | 1 |
+| `chk-explain-selected-partitions` | EXPLAIN 执行计划 · Selected Partitions 数量 | `对该表设计为分区表后没有走分区剪枝（Selected Partitions数量多），Scan花了701785ms，I/O效率极低。` | "`没有走分区剪枝（Selected Partitions数量多），Scan花了701785ms`" | 1 |
+| `chk-explain-seq-scan-vs-index-scan` | EXPLAIN 执行计划 · 扫描算子类型（Seq Scan vs Index Scan） | `Seq Scan扫描需要3767ms，因涉及从4096000条数据中获取8240条数据，符合索引扫描的场景（海量数据中寻找少量数据），在对过滤条件列增加索引后，计划依然是Seq Scan而没有走Index Scan。` | "`计划依然是Seq Scan而没有走Index Scan。`" | 1 |
+| `chk-explain-seqscan-vs-indexscan` | EXPLAIN · 算子(seqscan vs indexscan) | `在优化前，没有创建places.place_id和states.state_id索引，执行计划如下` | "NULL" | 1 |
+| `chk-explain-stream` | EXPLAIN 执行计划 Stream 算子类型 | `EXPLAIN` | "劣化的原因主要为lineitem和part表join时stream类型由BroadCast变更为Redistribute导致" | 1 |
+| `chk-explain-streaming` | EXPLAIN 计划是否含 Streaming | CREATE TABLE t1 (a int, b int) DISTRIBUTE BY HASH (a); CREATE TABLE t2 (a int, b int) DISTRIBUTE BY HASH (a); | "则执行计划将存在\"Streaming\"，导致DN之间存在较大通信数据量。" | 1 |
+| `chk-explain-streaming` | 调整后 EXPLAIN 是否消除 Streaming | CREATE TABLE t1 (a int, b int) DISTRIBUTE BY HASH (a); CREATE TABLE t2 (a int, b int) DISTRIBUTE BY HASH (b); | "则执行计划将不包含\"Streaming\"，减少DN之间存在的通信数据量，从而提升查询性能。" | 1 |
+| `chk-explain-subplan` | EXPLAIN 执行计划 SubPlan 存在 | `EXPLAIN` | "此SQL性能较差，查看发现执行计划中存在SubPlan" | 1 |
+| `chk-explain-verbose` | EXPLAIN VERBOSE 统计信息警告 | "通过explain verbose执行query分析执行计划时会提示WARNING信息，如下所示：WARNING:Statistics in some tables or columns(public.lineitem.l_receiptdate, public.lineitem.l_commitdate, publ | "\"WARNING:Statistics in some tables or columns(...) are not collected.\"" | 1 |
+| `chk-explain-verbose-anti-join` | EXPLAIN VERBOSE Anti Join 行数估算 | `explain verbose` | "估算Anti Join的行数与实际行数相差很大" | 1 |
+| `chk-explain-verbose-hashjoin` | EXPLAIN VERBOSE hashjoin 行数估算 | `set cost_param=2; explain verbose` | "实际是将AND的两个过滤条件分别计算的2个选择率的值相乘来得到hashjoin条件的选择率，导致行数估算不准确，查询性能较差" | 1 |
+| `chk-explain-verbose-hashjoin` | EXPLAIN VERBOSE · HashJoin 行数估算偏差 | `set cost_param=2; explain verbose select nation, sum(amount) as sum_profit from (...) as profit group by nation order by nation` | "\"导致行数估算不准确，查询性能较差\"" | 1 |
+| `chk-explain-verbose-remote` | EXPLAIN VERBOSE · __REMOTE 关键字 | "通过EXPLAIN VERBOSE打印语句执行计划。上述执行计划中出现__REMOTE关键字，表示当前的语句为不下推执行。" | "\"上述执行计划中出现__REMOTE关键字，表示当前的语句为不下推执行。\"" | 1 |
+| `chk-explain-verbose-remotequery` | explain verbose · RemoteQuery 计划 | `yshen=# set rewrite_rule='none'; SET yshen=# explain (verbose on, costs off)  select two_sum(tt.c1, tt.c2) from (select t1.c1,t2.c2 from t1,t2 where t1.c1=t2.c | "`该计划很慢，原因是网络传输了大量数据，然后在CN上执行HASH JOIN，不能充分利用集群资源。`" | 1 |
+| `chk-explain-verbose-streaming-vs-data-node-scan` | EXPLAIN VERBOSE · 执行计划是否含 Streaming 节点 vs Data Node Scan | `gaussdb=# set rewrite_rule='none'; SET gaussdb=# explain (verbose on, costs off)  select group_concat(tt.c1, tt.c2) from (select t1.c1,t2.c2 from t1,t2 where t | "`该计划很慢，原因是网络传输了大量数据，然后在CN上执行HASH JOIN，不能充分利用集群资源。`" | 1 |
+| `chk-explain-verbose-subplan` | explain verbose · SubPlan 执行方式 | `yshen=# set rewrite_rule='none'; SET yshen=# explain (verbose on, costs off) select c1,(select avg(c2) from t2 where t2.c2=t1.c2) from t1 where t1.c1<100 order | "`由于目标列中的相关子查询(select avg(c2) from t2 where t2.c2=t1.c2)无法提升的缘故，导致每扫描t1的一行数据，就会触发" | 1 |
+| `chk-explain-verbose-subplan` | EXPLAIN VERBOSE · SubPlan 算子出现在目标列 | `gaussdb=# set rewrite_rule='none'; SET gaussdb=# explain (verbose on, costs off) select c1,(select avg(c2) from t2 where t2.c2=t1.c2) from t1 where t1.c1<100 o | "`导致每扫描t1的一行数据，就会触发子查询的一次执行，效率低下。`" | 1 |
+| `chk-explain-verbose-warning` | explain verbose WARNING · 统计信息缺失提示 | `通过explain verbose执行query分析执行计划时会提示WARNING信息，如下所示：WARNING:Statistics in some tables or columns(public.lineitem.l_receiptdate, ...) are not collected. HINT:Do an | "`WARNING:Statistics in some tables or columns(public.lineitem.l_receiptdate, pub" | 1 |
+| `chk-explain-verbose-warning` | EXPLAIN VERBOSE WARNING · 未收集统计信息的表/列列表 | `通过explain verbose执行query分析执行计划时会提示WARNING信息，如下所示：WARNING:Statistics in some tables or columns(public.lineitem.l_receiptdate, public.lineitem.l_commitdate, publ | "`Statistics in some tables or columns(...) are not collected.`" | 1 |
+| `chk-explain-verbose-warning` | EXPLAIN VERBOSE 执行计划 Warning | `explain verbose` | "\"WARNING:Statistics in some tables or columns(public.lineitem.l_receiptdate, pub","\"执行计划中会有语句未收集统计信息的告警，并且通常E-rows估算非常小。\"" | 2 |
+| `chk-explain-verbose-warning` | EXPLAIN VERBOSE WARNING信息 · 统计信息缺失 | "通过EXPLAIN VERBOSE执行query分析执行计划时会提示WARNING信息" | "\"WARNING:Statistics in some tables or columns(public.lineitem.l_receiptdate, pub" | 1 |
+| `chk-group-by-groupagg-sort` | GROUP BY 查询计划中是否包含 GroupAgg+Sort | "查询语句中如果存在GROUP BY条件则生成的计划（Plan）中可能存在排序操作，即计划中包含GroupAgg+Sort算子，导致性能较差。" | "\"查询语句中如果存在GROUP BY条件则生成的计划（Plan）中可能存在排序操作，即计划中包含GroupAgg+Sort算子，导致性能较差。\"" | 1 |
+| `chk-in` | 执行计划in条件处理方式 | "打印语句的执行计划" | "\"执行计划中，in条件还是作为普通的过滤条件存在。这种场景下，最优的执行计划应该是将\\\"in 常量\\\"转化为join操作性能更好。\"" | 1 |
+| `chk-leading-hint` | 加 leading hint 后执行时间 | select /*+ leading((s d)) */ a.ca_state state, count(*) cnt ... | "34268.322ms → 11095.046ms" | 1 |
+| `chk-leading-no-nestloop-hint` | 加 leading + no nestloop hint 后执行时间 | select /*+ leading((s d)) no nestloop(s d) */ a.ca_state state, count(*) cnt ... | "11095.046ms → 4644.409ms" | 1 |
+| `chk-local-explain-analyze-total-runtime` | 创建 LOCAL 索引后 EXPLAIN ANALYZE Total runtime | `CREATE INDEX idx_range_b ON test_range_pt(b) LOCAL;` | "优化后时间消耗远小于优化前。" | 1 |
+| `chk-memory-information-dn` | Memory Information 各 DN 内存消耗分布 | `EXPLAIN ANALYZE` (Memory Information 段) | "各个节点的内存资源消耗也存在极为严重的偏斜" | 1 |
+| `chk-nestloop` | 语句执行时间 / 执行计划中 NestLoop 算子 | `该问题发生在实时场景下，语句执行时间因为达到了 3600s而自动终止运行` | ">= 3600s" | 1 |
+| `chk-nestloop` | 执行计划算子类型（NestLoop） | "首先观察SQL语句中有not in 语法；执行计划中有NestLoop" | "\"NestLoop是导致语句性能慢的主要原因。\"" | 1 |
+| `chk-nestloop` | 执行计划算子类型（NestLoop出现） | "通过EXPLAIN VERBOSE打印语句执行计划，查看执行计划发现SQL语句中存在not in语句" | "\"NestLoop是导致语句性能慢的主要原因\"" | 1 |
+| `chk-null-006` | 查询返回行数 | "检查查询语句是否返回了多余的数据信息。" | "\"对于包含50条记录的表，查询起来是很快的；但是，当表中包含的记录达到50000，查询效率将会有所下降。\"" | 1 |
+| `chk-null-007` | 主机负载下查询单独运行时延 | "尝试在数据库没有其他查询或查询较少的时候运行查询语句，并观察运行效率。" | "\"如果效率较高，则说明可能是由于之前运行数据库系统的主机负载过大导致查询低效。\"" | 1 |
+| `chk-null-008` | 重复执行同一查询语句的执行时间 | "重复执行相同的查询语句，如果后续执行的查询语句效率提升，则可能是由于上述原因导致。" | "\"查询效率低的一个重要原因是查询所需信息没有缓存在内存中，这可能是由于内存资源紧张，缓存信息被其他查询处理覆盖。\"" | 1 |
+| `chk-partitioned-cstore-scan` | 执行计划：Partitioned CStore Scan分区扫描范围 | "和客户收集几个典型的慢sql，分别打印执行计划。" | "\"从执行计划中可以看出来，两条sql的耗时都集中在Partitioned CStore Scan on public.tb_motor_vehicle列存表的分" | 1 |
+| `chk-remote` | 执行计划下推标识（__REMOTE关键字） | "通过explain verbose打印语句执行计划" | "\"上述执行计划中有__REMOTE关键字，这就表明当前的语句是不下推执行的。\"" | 1 |
+| `chk-rows-hint` | rows hint 后执行时间 | select /*+ rows(s #2880404) */ a.ca_state state, count(*) cnt ... | "34268.322ms → 1991.843ms (17x)" | 1 |
+| `chk-scan-filter` | Scan filter 条件分析 | `EXPLAIN PERFORMANCE` | "进一步分析表Scan的filter条件发现两个表存在acct_id = 'A012709548'::bpchar这样的filter条件" | 1 |
+| `chk-seq-scan-dn` | Seq Scan 各 DN 扫描时间 | `EXPLAIN ANALYZE` | "进一步向HashJoin算子的下层分析发现Seq Scan on s_riskrate_setting也存在极为严重的计算倾斜[38.885,2940.983 | 1 |
+| `chk-skew-hint-agg` | skew hint 后双层 Agg 计划 | select /*+ skew(store_returns(sr_store_sk sr_customer_sk)) */sr_customer_sk as ctr_customer_sk ... | "对于HashAgg，由于其重分布存在倾斜，所以优化为双层Agg。" | 1 |
+| `chk-sql-case-when` | SQL 中 CASE WHEN 分支数量与执行次数 | "在业务查询中，CASE WHEN语句常用来进行条件判断，但如果在SQL查询中存在大量冗余的CASE WHEN" | "\"该语句冗长，执行时每个分支的CASE WHEN均需执行，导致查询时间成倍增加\"" | 1 |
+| `chk-warning` | 执行计划统计信息Warning | "通过explain verbose/explain performance打印语句的执行计划" | "\"执行计划中会有语句未收集统计信息的告警，并且通常E-rows估算非常小。\"" | 1 |
 
 ---
 
@@ -372,9 +329,9 @@ GaussDB 在内网/无 SSH 直连场景 perf-kp-sql skill 不能远程采集,把�
 | `chk-enable-codegen` | enable_codegen 参数状态 | `SHOW turbo_engine_version;` | "NULL" | 1 |
 | `chk-exception` | 存储过程 EXCEPTION 块使用频率与上下文创建/销毁开销 | "每次异常处理都涉及上下文的创建和销毁，这会消耗额外的内存和资源。" | "\"频繁地捕获和处理异常可能会导致性能下降。每次异常处理都涉及上下文的创建和销毁，这会消耗额外的内存和资源。\"" | 1 |
 | `chk-max-process-memory-shared-buffers` | 内存参数：max_process_memory, shared_buffers | "检查内存相关参数，设置不合理" | "\"单节点总内存大小为256G，max_process_memory为12G，设置过小，shared_buffers为32M，设置过小\"" | 1 |
-| `chk-null-004` | 存储过程默认权限模式 | "存储过程默认具有SECURITYINVOKER权限。" | "\"切换test_user2执行test_user1创建的存储过程，执行报错，对表user1_tb没有权限，因为执行存储过程默认使用调用者的权限。\"" | 1 |
-| `chk-null-012` | 写入方式 | "如果通过单条INSERT INTO语句的方式单并发写数据入库，客户端很可能会出现瓶颈" | "\"如果通过单条INSERT INTO语句的方式单并发写数据入库，客户端很可能会出现瓶颈\"" | 1 |
-| `chk-null-014` | 表倾斜情况 | `SELECT table_skewness('table name');` | "NULL" | 1 |
+| `chk-null-002` | 存储过程默认权限模式 | "存储过程默认具有SECURITYINVOKER权限。" | "\"切换test_user2执行test_user1创建的存储过程，执行报错，对表user1_tb没有权限，因为执行存储过程默认使用调用者的权限。\"" | 1 |
+| `chk-null-009` | 写入方式 | "如果通过单条INSERT INTO语句的方式单并发写数据入库，客户端很可能会出现瓶颈" | "\"如果通过单条INSERT INTO语句的方式单并发写数据入库，客户端很可能会出现瓶颈\"" | 1 |
+| `chk-null-011` | 表倾斜情况 | `SELECT table_skewness('table name');` | "NULL" | 1 |
 | `chk-pck` | 表定义是否存在PCK | `SELECT * FROM pg_get_tabledef('table name');` | "\"回显中存在\\\"PARTIAL CLUSTER KEY\\\"信息，表示存在PCK。\"" | 1 |
 | `chk-period-ttl` | 分区表 period / ttl 参数设置 | "CREATE TABLE CPU1(...) with (TTL='7 days',PERIOD='1 day', TIME_FORMAT='YYYYMMDD')" | "\"普通分区表无法自动创建新分区或清理过期分区，需维护人员定期手动操作\"" | 1 |
 | `chk-psort-work-mem` | psort_work_mem 参数值 | `show psort_work_mem;` | "\"查看psort_work_mem是否设置过小\"" | 1 |
@@ -459,6 +416,6 @@ GaussDB 在内网/无 SSH 直连场景 perf-kp-sql skill 不能远程采集,把�
 | check_id | metric_name | collection_method | abnormal_patterns | 关联 case 数 |
 |---|---|---|---|---:|
 | `chk-gaussdb` | GaussDB内置火焰图 · 时区加载线程占比 | "GaussDB在内核505版本中内置了火焰图工具，默认每5分钟会自动采集一次，保存在$GAUSSLOG/gs_flamegraph/{datanode}路径下，详细信息可参考GaussDB产品文档《内置perf工具》章节。" | "> 40%" | 1 |
-| `chk-null-003` | 内核代码热点函数火焰图 | "如果仍然无法分析出CPU消耗原因，可以生成异常时间段内的火焰图，找到内核代码函数的瓶颈点" | "\"如果仍然无法分析出CPU消耗原因，可以生成异常时间段内的火焰图，找到内核代码函数的瓶颈点\"" | 1 |
+| `chk-null-001` | 内核代码热点函数火焰图 | "如果仍然无法分析出CPU消耗原因，可以生成异常时间段内的火焰图，找到内核代码函数的瓶颈点" | "\"如果仍然无法分析出CPU消耗原因，可以生成异常时间段内的火焰图，找到内核代码函数的瓶颈点\"" | 1 |
 
 ---

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """GaussDB 离线采集 · 预编译版 · 自包含 · python 纯 stdlib.
 
-所有 180 个 auto 命令已 inline 在 CHECKS list 里 (不解析 ndjson).
+所有 137 个 auto 命令已 inline 在 CHECKS list 里 (不解析 ndjson).
 
-生成时间: 2026-05-23T09:08:35.407Z
-数据: auto=180 · manual=153 · skip=8 · total=341
+生成时间: 2026-05-24T03:45:30.713Z
+数据: auto=137 · manual=153 · skip=8 · total=298
 
 用法:
   source ~/gauss_env_file
@@ -54,43 +54,23 @@ DEPLOY_FORM = detect_deploy_form()
 print(f'部署形态自识别: {DEPLOY_FORM}', file=sys.stderr, flush=True)
 (OUTDIR / 'deploy.txt').write_text(DEPLOY_FORM + '\n')
 
-# (check_id, name, layer, method) · 180 条 auto · 直接跑
+# (check_id, name, layer, method) · 137 条 auto · 直接跑
 CHECKS = [
     ("chk-dbe-perf-statement-cpu-time", "dbe_perf.statement.cpu_time", "db-system-view", "select unique_sql_id,substr(query,1,50) as query ,n_calls,round(total_elapse_time/n_calls/1000,2) avg_time,round(total_elapse_time/1000,2) as total_time,round(cpu_time/1000,2) as cup_time from dbe_perf.statement t where  n_calls>10 and avg_time>3  and user_name='root'  order by cpu_time desc limit 5;"),
-    ("chk-explain-analyze", "explain analyze 执行计划分析", "db-interactive-cmd", "explain analyze SELECT c_id FROM bmsql_customer WHERE c_w_id = 1 AND c_d_id = 1 AND c_last = 'ABLEABLEABLE' ORDER BY c_first;"),
     ("chk-explain-verbose-remotequery", "explain verbose · RemoteQuery 计划", "db-interactive-cmd", "set rewrite_rule='none'; SET explain (verbose on, costs off)  select two_sum(tt.c1, tt.c2) from (select t1.c1,t2.c2 from t1,t2 where t1.c1=t2.c2) tt(c1,c2);"),
     ("chk-explain-verbose-subplan", "explain verbose · SubPlan 执行方式", "db-interactive-cmd", "set rewrite_rule='none'; SET explain (verbose on, costs off) select c1,(select avg(c2) from t2 where t2.c2=t1.c2) from t1 where t1.c1<100 order by t1.c2;"),
-    ("chk-null-001", "执行计划下推标识", "db-interactive-cmd", "explain select * from t where c1 > 1;"),
     ("chk-enable-hashjoin", "enable_hashjoin 关闭后执行计划", "db-interactive-cmd", "SET enable_hashjoin = off;"),
-    ("chk-explain-analyze-a-time-rows-removed-by-filter", "explain analyze · A-time / Rows Removed by Filter", "db-interactive-cmd", "explain (analyze on,costs off) select * from t1 where c2=10004;"),
-    ("chk-explain-analyze-nested-loop-a-time", "explain analyze · Nested Loop A-time", "db-interactive-cmd", "explain analyze select count(*) from t2,t1 where t1.c1=t2.c2;"),
-    ("chk-explain-analyze-groupaggregate-a-time-vs-hashaggregate", "explain analyze · GroupAggregate A-time vs HashAggregate", "db-interactive-cmd", "explain analyze select count(*) from t1 group by c2;"),
-    ("chk-explain-analyze-a-time", "EXPLAIN ANALYZE A-time 瓶颈算子识别", "db-interactive-cmd", "explain analyze select avg(netpaid) from (select c_last_name,c_first_name,s_store_name,ca_state,s_state,i_color,i_current_price,i_manager_id,i_units,i_size,sum(ss_sales_price) netpaid from store_sales,store_returns,store,item,customer,customer_address where ss_ticket_number = sr_ticket_number and ss_item_sk = sr_item_sk and ss_customer_sk = c_customer_sk and ss_item_sk = i_item_sk and ss_store_sk = s_store_sk and c_birth_country = upper(ca_country) and s_zip = ca_zip ..."),
     ("chk-explain-verbose-streaming-vs-data-node-scan", "EXPLAIN VERBOSE · 执行计划是否含 Streaming 节点 vs Data Node Scan", "db-interactive-cmd", "set rewrite_rule='none'; SET explain (verbose on, costs off)  select group_concat(tt.c1, tt.c2) from (select t1.c1,t2.c2 from t1,t2 where t1.c1=t2.c2) tt(c1,c2);"),
     ("chk-explain-verbose-subplan", "EXPLAIN VERBOSE · SubPlan 算子出现在目标列", "db-interactive-cmd", "set rewrite_rule='none'; SET explain (verbose on, costs off) select c1,(select avg(c2) from t2 where t2.c2=t1.c2) from t1 where t1.c1<100 order by t1.c2;"),
     ("chk-pg-stat-get-last-data-changed-time", "近期数据变更表列表（pg_stat_get_last_data_changed_time）", "db-system-view", "SELECT table_distribution(schemaname,relname) FROM get_last_changed_table();"),
     ("chk-pgxc-get-table-skewness", "PGXC_GET_TABLE_SKEWNESS", "db-system-view", "SELECT * FROM pgxc_get_table_skewness ORDER BY totalsize DESC;"),
     ("chk-table-distribution-dn-1w", "table_distribution() 各DN空间（大表个数超1W场景）", "db-system-view", "SELECT schemaname,tablename,max(dnsize) AS maxsize, min(dnsize) AS minsize FROM pg_catalog.pg_class c INNER JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace INNER JOIN pg_catalog.table_distribution() s ON s.schemaname = n.nspname AND s.tablename = c.relname INNER JOIN pg_catalog.pgxc_class x ON c.oid = x.pcrelid AND x.pclocatortype = 'H' GROUP BY schemaname,tablename;"),
-    ("chk-explain-analyze-seq-scan-a-time-total-runtime", "EXPLAIN ANALYZE Seq Scan A-time / Total runtime", "db-interactive-cmd", "EXPLAIN ANALYZE SELECT * FROM test_table WHERE email = 'user_500000@example.com';"),
     ("chk-explain-verbose-warning", "EXPLAIN VERBOSE 执行计划 Warning", "db-interactive-cmd", "explain verbose"),
-    ("chk-explain-analyze-a-time-seqscan-vs-indexscan", "EXPLAIN ANALYZE A-time · SeqScan vs IndexScan", "db-interactive-cmd", "explain (analyze on, costs off) select * from t1 where c1=10004;"),
-    ("chk-explain-analyze-a-time-nestloop", "EXPLAIN ANALYZE A-time · NestLoop算子耗时", "db-interactive-cmd", "explain analyze select count(*) from t1,t2 where t1.c1=t2.c2;"),
-    ("chk-explain-analyze-a-time-sort-groupagg-vs-hashagg", "EXPLAIN ANALYZE A-time · Sort+GroupAgg vs HashAgg", "db-interactive-cmd", "explain analyze select count(*) from t1 group by c1;"),
-    ("chk-explain-analyze", "EXPLAIN ANALYZE 执行计划 · 算子耗时", "db-interactive-cmd", "explain (analyze on, costs off) select * from t1 where c1=10004;"),
-    ("chk-explain-analyze-nestloop", "EXPLAIN ANALYZE · NestLoop 算子耗时", "db-interactive-cmd", "explain analyze select count(*) from t1,t2 where t1.c1=t2.c2;"),
-    ("chk-explain-analyze-sort-groupagg", "EXPLAIN ANALYZE · Sort+GroupAgg 算子耗时", "db-interactive-cmd", "explain analyze select count(*) from t1 group by c1;"),
-    ("chk-hashaggregate", "执行计划中双层HashAggregate", "db-interactive-cmd", "EXPLAIN (costs off) SELECT t.c2, sum(cc) FROM (SELECT c2, sum(c3) AS cc FROM t1 GROUP BY c2) s1, t WHERE s1.c2=t.c2 GROUP BY t.c2 ORDER BY 1,2;"),
-    ("chk-null-002", "执行计划子查询关联方式", "db-interactive-cmd", "EXPLAIN (costs off) SELECT t1 FROM t1 WHERE t1.c2 = 10 AND t1.c3 < (SELECT sum(c3) FROM t2 WHERE t1.c1 = t2.c1);"),
-    ("chk-subplan", "执行计划中SubPlan节点", "db-interactive-cmd", "EXPLAIN (verbose on, costs off) SELECT c1,(SELECT avg(c2) FROM t2 WHERE t2.c2=t1.c2) FROM t1 WHERE t1.c1<100 ORDER BY t1.c2;"),
-    ("chk-explain-analyze-total-runtime-partitionscan", "EXPLAIN ANALYZE Total runtime / 是否走 PartitionScan", "db-interactive-cmd", "EXPLAIN ANALYZE SELECT min(b) FROM test_range_pt;"),
     ("chk-local-explain-analyze-total-runtime", "创建 LOCAL 索引后 EXPLAIN ANALYZE Total runtime", "db-interactive-cmd", "CREATE INDEX idx_range_b ON test_range_pt(b) LOCAL;"),
-    ("chk-explain-agg", "EXPLAIN 执行计划 Agg 算子模式", "db-interactive-cmd", "explain select b,count(1) from t1 group by b;"),
     ("chk-copy", "COPY 导入是否存在约束冲突类容错需求", "db-shell", "SET a_format_load_with_constraints_violation = 's2';"),
     ("chk-explain-verbose-anti-join", "EXPLAIN VERBOSE Anti Join 行数估算", "db-interactive-cmd", "explain verbose"),
     ("chk-explain-verbose-hashjoin", "EXPLAIN VERBOSE hashjoin 行数估算", "db-interactive-cmd", "set cost_param=2; explain verbose"),
-    ("chk-explain-performance-dn", "explain performance 各 DN 实际行数", "db-interactive-cmd", "explain performance select count(*) from inventory;"),
     ("chk-table-skewness-dn", "table_skewness() 各 DN 数据分布比例", "db-system-view", "select table_skewness('inventory');"),
-    ("chk-explain-analyze-streaming-redistribute-dn", "EXPLAIN ANALYZE Streaming(REDISTRIBUTE) 各 DN 输出行数", "db-interactive-cmd", "explain select * from skew s,test t where s.x = t.x order by s.a limit 1;"),
     ("chk-pg-stat-get-last-data-changed-time", "pg_stat_get_last_data_changed_time 最近变更的表", "db-system-view", "SELECT table_distribution(schemaname,relname) FROM get_last_changed_table();"),
     ("chk-table-distribution-dn", "table_distribution() 各 DN 存储空间分布", "db-system-view", "SELECT table_distribution(schemaname,relname) FROM get_last_changed_table();"),
     ("chk-xc-node-id", "按 xc_node_id 分组的表数据行数", "db-system-view", "SELECT a.count,b.node_name         FROM             (SELECT count(*) AS count,xc_node_id FROM tablename GROUP BY xc_node_id) a,               pgxc_node b         WHERE a.xc_node_id=b.node_id ORDER BY a.count DESC;"),
@@ -99,26 +79,21 @@ CHECKS = [
     ("chk-explain-analyze-hashjoin-dn", "EXPLAIN ANALYZE HashJoin 各 DN 执行时间范围", "db-interactive-cmd", "EXPLAIN ANALYZE"),
     ("chk-memory-information-dn", "Memory Information 各 DN 内存消耗分布", "db-interactive-cmd", "EXPLAIN ANALYZE` (Memory Information 段)"),
     ("chk-seq-scan-dn", "Seq Scan 各 DN 扫描时间", "db-interactive-cmd", "EXPLAIN ANALYZE"),
-    ("chk-explain-analyze", "EXPLAIN ANALYZE 执行计划耗时与过滤行数", "db-interactive-cmd", "explain (analyze on, costs off) select * from store_sales where ss_sold_date_sk = 2450944;"),
     ("chk-explain-analyze-join", "EXPLAIN ANALYZE Join 算子类型与耗时", "db-interactive-cmd", "EXPLAIN ANALYZE"),
     ("chk-explain-analyze-agg", "EXPLAIN ANALYZE Agg 算子类型", "db-interactive-cmd", "EXPLAIN ANALYZE"),
     ("chk-iostat-util-r-await-w-await", "iostat 中 %util / r_await / w_await", "os", "iostat"),
     ("chk-top-sar-gaussdb-cpu", "top / sar 中 gaussdb 进程 CPU 占用", "os", "top -b -n 1"),
     ("chk-explain-performance", "EXPLAIN PERFORMANCE 算子耗时", "db-interactive-cmd", "EXPLAIN PERFORMANCE"),
     ("chk-scan-filter", "Scan filter 条件分析", "db-interactive-cmd", "EXPLAIN PERFORMANCE"),
-    ("chk-not-in", "含 NOT IN 子查询的执行计划", "db-interactive-cmd", "EXPLAIN SELECT * FROM t1 WHERE c1 NOT IN (SELECT d2 FROM t2);"),
-    ("chk-null-005", "执行计划子查询处理方式", "db-interactive-cmd", "explain verbose select t1.c1 from t1 where t1.c1 = (select t2.c1 from t2 where t1.c1=t2.c1);"),
     ("chk-explain-performance-windowagg-sort", "EXPLAIN PERFORMANCE 执行计划 · WindowAgg/Sort 算子耗时", "db-interactive-cmd", "explain performance"),
     ("chk-pgxc-thread-wait-status-wait-status", "pgxc_thread_wait_status.wait_status", "db-system-view", "Select wait_status, count(*) cnt from pgxc_thread_wait_status where wait_status not like '%cmd%' and wait_status not like '%none%' and wait_status not like '%quit%' group by 1 order by 2 desc;"),
     ("chk-table-skewness-table-distribution", "table_skewness / table_distribution", "db-system-view", "select table_skewness('store_sales');"),
-    ("chk-null-006", "线程等待状态", "db-system-view", "select * from pg_thread_wait_status where query_id='149181737656737395';"),
+    ("chk-null-003", "线程等待状态", "db-system-view", "select * from pg_thread_wait_status where query_id='149181737656737395';"),
     ("chk-sql-create-index", "活跃SQL及CREATE INDEX语句", "db-system-view", "select * from pg_stat_activity where state !='idle' and usename !='omm';"),
-    ("chk-null-007", "表数据倾斜", "db-system-view", "select table_skewness('ioc_dm.m_ss_index_event');"),
+    ("chk-null-004", "表数据倾斜", "db-system-view", "select table_skewness('ioc_dm.m_ss_index_event');"),
     ("chk-dn-xc-node-id", "各 DN 数据量分布 (xc_node_id 分组)", "db-system-view", "SELECT a.count,b.node_name FROM (SELECT count(*) AS count,xc_node_id FROM table_name GROUP BY xc_node_id) a, pgxc_node b WHERE a.xc_node_id=b.node_id ORDER BY a.count desc;"),
     ("chk-period-ttl", "分区表 period / ttl 参数设置", "db-shell", "CREATE TABLE CPU1(...) with (TTL='7 days',PERIOD='1 day', TIME_FORMAT='YYYYMMDD')"),
     ("chk-pgxc-get-stat-all-tables-dirty-page-rate", "PGXC_GET_STAT_ALL_TABLES.dirty_page_rate", "db-system-view", "SELECT schemaname AS schema, relname AS table_name, n_live_tup AS analyze_count, pg_size_pretty(pg_table_size(relid)) as table_size, dirty_page_rate FROM PGXC_GET_STAT_ALL_TABLES WHERE schemaName NOT IN ('pg_toast', 'pg_catalog', 'information_schema', 'cstore', 'pmk') AND dirty_page_rate > 30 ORDER BY table_size DESC, dirty_page_rate DESC;"),
-    ("chk-explain-index-scan", "EXPLAIN 执行计划 · 是否使用Index Scan", "db-interactive-cmd", "explain verbose select * from test where a = 101;"),
-    ("chk-explain-verbose-index-scan-vs-seq-scan", "EXPLAIN VERBOSE · Index Scan vs Seq Scan", "db-interactive-cmd", "explain verbose select * from test where a  = 101;"),
     ("chk-dn", "各DN数据量分布", "db-shell", "SELECT pg_get_tabledef('customer_t1');"),
     ("chk-enable-codegen", "enable_codegen 参数状态", "db-shell", "SHOW turbo_engine_version;"),
     ("chk-pgxc-wlm-session-info-streaming-stream-count", "pgxc_wlm_session_info · Streaming 算子数（stream_count）", "db-system-view", "SELECT *,(length(query_plan) - length(replace(query_plan, 'Streaming', ''))) / length('Streaming') AS stream_count FROM pgxc_wlm_session_info ORDER BY stream_count DESC limit 100;"),
@@ -131,12 +106,11 @@ CHECKS = [
     ("chk-pgxc-total-memory-detail-dynamic-used-memory-vs-max-dynamic-", "pgxc_total_memory_detail · dynamic_used_memory vs max_dynamic_memory", "db-system-view", "SELECT * FROM pgxc_total_memory_detail;"),
     ("chk-pgxc-wlm-session-statistics-max-peak-memory-memory-skew-perc", "pgxc_wlm_session_statistics · max_peak_memory / memory_skew_percent", "db-system-view", "SELECT nodename,pid,dbname,username,application_name,min_peak_memory,max_peak_memory,average_peak_memory,memory_skew_percent,substr(query,0,50) as query FROM pgxc_wlm_session_statistics;"),
     ("chk-pgxc-thread-wait-status-dn", "pgxc_thread_wait_status · 作业等待 DN 分布", "db-system-view", "SELECT wait_status, count(*) as cnt FROM pgxc_thread_wait_status WHERE wait_status not like '%cmd%' AND wait_status not like '%none%' and wait_status not like '%quit%' group by 1 order by 2 desc;"),
-    ("chk-explain-performance-dn", "explain performance · DN 行数与耗时分布", "db-interactive-cmd", "explain performance select avg(ss_wholesale_cost) from store_sales;"),
     ("chk-table-skewness", "table_skewness · 数据倾斜率", "db-system-view", "SELECT table_skewness('store_sales');"),
     ("chk-pgxc-get-table-skewness", "pgxc_get_table_skewness · 全库倾斜视图", "db-system-view", "SELECT * FROM pgxc_get_table_skewness ORDER BY totalsize DESC;"),
     ("chk-pg-thread-wait-status", "pg_thread_wait_status · 线程等待状态", "db-system-view", "SELECT * FROM pg_thread_wait_status WHERE query_id='149181737656737395';"),
     ("chk-pg-stat-activity-sql", "pg_stat_activity 活跃SQL", "db-system-view", "SELECT * from pg_stat_activity where state !='idle' and usename !='Ruby';"),
-    ("chk-null-014", "表倾斜情况", "db-shell", "SELECT table_skewness('table name');"),
+    ("chk-null-011", "表倾斜情况", "db-shell", "SELECT table_skewness('table name');"),
     ("chk-pg-session-wlmstat-status-statement-mem", "pg_session_wlmstat · status / statement_mem", "db-system-view", "SELECT usename,substr(query,0,20),threadid,status,statement_mem FROM pg_session_wlmstat where usename not in ('omm','Ruby') order by statement_mem,status desc;"),
     ("chk-pgxc-thread-wait-status-wait-status-wait-event", "pgxc_thread_wait_status · wait_status / wait_event", "db-system-view", "SELECT wait_status,wait_event,count(*) AS cnt FROM pgxc_thread_wait_status WHERE wait_status <> 'wait cmd' AND wait_status <> 'synchronize quit' AND wait_status <> 'none'  GROUP BY 1,2 ORDER BY 3 DESC limit 50;"),
     ("chk-pg-partition", "pg_partition 各表分区数", "db-system-view", "SELECT relname,reloptions,partcount FROM pg_class c INNER JOIN ( SELECT parentid,count(*) AS partcount FROM pg_partition GROUP BY parentid ) s ON c.oid = s.parentid ORDER BY partcount DESC;"),
@@ -146,38 +120,21 @@ CHECKS = [
     ("chk-pck", "表定义是否存在PCK", "db-shell", "SELECT * FROM pg_get_tabledef('table name');"),
     ("chk-psort-work-mem", "psort_work_mem 参数值", "db-shell", "show psort_work_mem;"),
     ("chk-dn", "各 DN 数据条数分布", "db-interactive-cmd", "SELECT a.count,b.node_name FROM (SELECT count(*) AS count,xc_node_id FROM table_name GROUP BY xc_node_id) a, pgxc_node b WHERE a.xc_node_id=b.node_id ORDER BY a.count desc;"),
-    ("chk-explain-agg-hashagg-gather-vs-redistribute-hashagg", "EXPLAIN · Agg 计划形态（hashagg+gather vs redistribute+hashagg）", "db-interactive-cmd", "explain select b,count(1) from t1 group by b"),
-    ("chk-explain-verbose-anti-join", "EXPLAIN VERBOSE · Anti Join 执行计划及行数估算", "db-interactive-cmd", "explain verbose select count(*) as numwait from lineitem l1, orders where o_orderkey = l1.l_orderkey and o_orderstatus = 'F' and l1.l_receiptdate > l1.l_commitdate and not exists (select * from lineitem l3 where l3.l_orderkey = l1.l_orderkey and l3.l_suppkey <> l1.l_suppkey and l3.l_receiptdate > l3.l_commitdate) order by numwait desc"),
     ("chk-explain-verbose-hashjoin", "EXPLAIN VERBOSE · HashJoin 行数估算偏差", "db-interactive-cmd", "set cost_param=2; explain verbose select nation, sum(amount) as sum_profit from (...) as profit group by nation order by nation"),
     ("chk-dn", "磁盘利用率各 DN 差异", "db-shell", "SELECT wait_status, count(*) as cnt FROM pgxc_thread_wait_status WHERE wait_status not like '%cmd%' AND wait_status not like '%none%' and wait_status not like '%quit%' group by 1 order by 2 desc"),
-    ("chk-explain-performance-dn-scan", "EXPLAIN PERFORMANCE 各 DN 基表 scan 行数及时间分布", "db-interactive-cmd", "explain performance select avg(ss_wholesale_cost) from store_sales"),
     ("chk-table-skewness-table-distribution", "table_skewness / table_distribution · 表数据倾斜率", "db-shell", "SELECT table_skewness('store_sales')"),
     ("chk-explain-performance-stream-dn", "EXPLAIN PERFORMANCE · Stream 算子各 DN 行数分布", "db-interactive-cmd", "select * from skew s,test t where s.x = t.x order by s.a limit 1"),
-    ("chk-explain-streaming-type-redistribute", "EXPLAIN · Streaming(type: REDISTRIBUTE) 算子是否出现", "db-interactive-cmd", "EXPLAIN SELECT * FROM t1, t2 WHERE t1.a = t2.b"),
     ("chk-pgxc-stat-activity-state", "pgxc_stat_activity state 字段", "db-system-view", "SELECT state, query, query_id FROM pgxc_stat_activity;"),
     ("chk-cn-savepoint-release", "各 CN 上 SAVEPOINT/RELEASE 语句分布", "db-system-view", "SELECT coorname,pid,query_id,state,query,usename FROM pgxc_stat_activity WHERE usename='jack';"),
-    ("chk-explain-join-nestloop-vs-hashjoin", "EXPLAIN · JOIN 算子类型 (NestLoop vs HashJoin)", "db-interactive-cmd", "EXPLAIN SELECT ls_pid_cusr1,COALESCE(max(round((current_date-bthdate)/365)),0) FROM calc_empfyc_c1_result_tmp_t1 t1,p10_md_tmp_t2 t2 WHERE t1.ls_pid_cusr1 = any(values(id),(id15)) GROUP BY ls_pid_cusr1"),
-    ("chk-explain-performance", "EXPLAIN PERFORMANCE · 基表扫描方式及执行时间", "db-interactive-cmd", "EXPLAIN PERFORMANCE SELECT * FROM orders WHERE o_custkey = '1106459"),
-    ("chk-explain-verbose-not-in", "EXPLAIN VERBOSE · NOT IN 执行计划算子类型", "db-interactive-cmd", "EXPLAIN VERBOSE SELECT * FROM t1 WHERE t1.c NOT IN (SELECT t2.c FROM t2)"),
-    ("chk-explain-verbose-not-exists", "EXPLAIN VERBOSE · NOT EXISTS 执行计划算子类型验证", "db-interactive-cmd", "EXPLAIN VERBOSE SELECT * FROM t1 WHERE NOT EXISTS (SELECT 1 FROM t2 WHERE t2.c = t1.c)"),
-    ("chk-explain-analyze", "EXPLAIN ANALYZE · 基表扫描算子类型及执行时间", "db-interactive-cmd", "explain (analyze on, costs off) select * from store_sales where ss_sold_date_sk = 2450944"),
-    ("chk-explain-analyze-verbose-sql-partition-iterator", "EXPLAIN ANALYZE VERBOSE · SQL 自诊断信息 + Partition Iterator 扫描分区数", "db-interactive-cmd", "EXPLAIN (ANALYZE ON, VERBOSE ON) SELECT count(1) FROM t_ddw_f10_op_cust_asset_mon b1 WHERE b1.year_mth < substr('20200722',1 ,6 ) AND b1.year_mth + 1 >= cast(substr('20200722',1 ,6 ) AS int)"),
-    ("chk-explain-analyze-verbose-partition-iterator-iterations", "EXPLAIN ANALYZE VERBOSE · 改写后 Partition Iterator Iterations", "db-interactive-cmd", "EXPLAIN (analyze ON, verbose ON) SELECT count(1) FROM t_ddw_f10_op_cust_asset_mon b1 WHERE b1.year_mth < substr('20200722',1 ,6 ) AND b1.year_mth >= cast(substr('20200722',1 ,6 ) AS int) - 1"),
-    ("chk-explain-performance-partition-iterator-iterations", "EXPLAIN PERFORMANCE · 全表扫描时间及 Partition Iterator Iterations", "db-interactive-cmd", "EXPLAIN PERFORMANCE SELECT count(*) FROM orders_no_part WHERE o_orderdate >= '1996-01-01 00:00:00'::timestamp(0)"),
-    ("chk-explain-performance-cunone-filter", "EXPLAIN PERFORMANCE · CUNone 比例及 filter 耗时", "db-interactive-cmd", "EXPLAIN PERFORMANCE SELECT * FROM orders_no_pck WHERE o_orderkey = '13095143' ORDER BY o_orderdate"),
-    ("chk-explain-performance-cstore-scan-cu", "EXPLAIN PERFORMANCE · CStore Scan CU 加载数量", "db-interactive-cmd", "EXPLAIN PERFORMANCE SELECT sum(l_extendedprice * l_discount) as revenue FROM lineitem WHERE l_shipdate >= '1994-01-01'::date and l_shipdate < '1994-01-01'::date + interval '1 year' and l_discount between 0.06 - 0.01 and 0.06 + 0.01 and l_quantity < 24"),
-    ("chk-explain-performance", "explain performance 执行时间", "db-interactive-cmd", "explain performance select a.ca_state state, count(*) cnt from customer_address a ,customer c ,store_sales s ,date_dim d ,item i where a.ca_address_sk = c.c_current_addr_sk ..."),
     ("chk-leading-hint", "加 leading hint 后执行时间", "db-interactive-cmd", "select /*+ leading((s d)) */ a.ca_state state, count(*) cnt ..."),
     ("chk-leading-no-nestloop-hint", "加 leading + no nestloop hint 后执行时间", "db-interactive-cmd", "select /*+ leading((s d)) no nestloop(s d) */ a.ca_state state, count(*) cnt ..."),
     ("chk-rows-hint", "rows hint 后执行时间", "db-interactive-cmd", "select /*+ rows(s #2880404) */ a.ca_state state, count(*) cnt ..."),
     ("chk-skew-hint-agg", "skew hint 后双层 Agg 计划", "db-interactive-cmd", "select /*+ skew(store_returns(sr_store_sk sr_customer_sk)) */sr_customer_sk as ctr_customer_sk ..."),
     ("chk-explain-performance-rows-hint", "EXPLAIN PERFORMANCE · rows hint 修正后各算子行数及整体耗时", "db-interactive-cmd", "select avg(netpaid) from (select /*+rows(store_sales store_returns * 11270)*/ c_last_name ..."),
-    ("chk-explain-performance-vector-windowagg", "EXPLAIN PERFORMANCE 执行计划 · Vector WindowAgg 耗时及位置", "db-interactive-cmd", "EXPLAIN PERFORMANCE SELECT COUNT(1) over() AS DATACNT, IMSI AS IMSI_IMSI, CAST(TRUNC(((SUM(L4_UL_THROUGHPUT) + SUM(L4_DW_THROUGHPUT))), 0) AS DECIMAL(20)) AS TOTAL_VOLUME_KPIID FROM public.test AS test GROUP BY IMSI ORDER BY TOTAL_VOLUME_KPIID DESC LIMIT 10"),
-    ("chk-explain-performance", "EXPLAIN PERFORMANCE 改写后执行计划 · 排序下推验证", "db-interactive-cmd", "EXPLAIN PERFORMANCE SELECT COUNT(1) over() AS DATACNT, IMSI_IMSI, TOTAL_VOLUME_KPIID FROM (SELECT IMSI AS IMSI_IMSI, CAST(TRUNC(((SUM(L4_UL_THROUGHPUT) + SUM(L4_DW_THROUGHPUT))), 0) AS DECIMAL(20)) AS TOTAL_VOLUME_KPIID FROM public.test AS test GROUP BY IMSI ORDER BY TOTAL_VOLUME_KPIID DESC LIMIT 10)"),
     ("chk-gs-wlm-session-history-warning-sql", "GS_WLM_SESSION_HISTORY.warning · SQL 自诊断信息", "db-system-view", "SELECT query,warning FROM GS_WLM_SESSION_HISTORY ORDER BY start_time DESC"),
     ("chk-gs-wlm-session-history-warning", "GS_WLM_SESSION_HISTORY.warning · 统计信息未收集告警", "db-system-view", "SELECT query,warning FROM GS_WLM_SESSION_STATISTICS ORDER BY start_time DESC"),
     ("chk-xid", "当前事务 XID", "db-system-view", "SELECT txid_current();"),
-    ("chk-null-017", "活跃事务列表", "db-system-view", "SELECT txid_current_snapshot();"),
+    ("chk-null-014", "活跃事务列表", "db-system-view", "SELECT txid_current_snapshot();"),
     ("chk-gtm-snapshot-oldestxmin-xid", "GTM snapshot · oldestxmin 与 xid 差值", "db-system-view", "SELECT * FROM pgxc_gtm_snapshot_status();"),
     ("chk-pgxc-running-xacts", "老事务列表 (pgxc_running_xacts)", "db-system-view", "SELECT * FROM pgxc_running_xacts where xmin::text::bigint < $base+$min and xmin::text::bigint > 0;"),
     ("chk-pg-stat-activity-idle", "pg_stat_activity · idle 连接数", "db-system-view", "SELECT PG_TERMINATE_BACKEND(pid) from pg_stat_activity WHERE state='idle';"),
@@ -289,7 +246,7 @@ MANUAL = [
     ("chk-pidstat-iotop-i-o", "pidstat / iotop 显示线程 I/O 消耗", "os", "pidstat -dt -p gaussdb进程号"),
     ("chk-pg-thread-wait-status-pg-stat-activity-i-o-sql", "pg_thread_wait_status + pg_stat_activity 中 I/O 高的 SQL", "db-system-view", "通过查询pg_thread_wait_status视图的lwtid为上一步内的TID，获取对应的tid和sessionid。"),
     ("chk-wdr-top-sql-order-by-cpu-time", "WDR 报告 Top SQL order by CPU Time", "db-system-view", "可直接使用WDR报告中SQL ordered by CPU Time部分，尝试优化分析相关语句"),
-    ("chk-null-003", "内核代码热点函数火焰图", "flamegraph", "如果仍然无法分析出CPU消耗原因，可以生成异常时间段内的火焰图，找到内核代码函数的瓶颈点"),
+    ("chk-null-001", "内核代码热点函数火焰图", "flamegraph", "如果仍然无法分析出CPU消耗原因，可以生成异常时间段内的火焰图，找到内核代码函数的瓶颈点"),
     ("chk-guc-shared-buffers-work-mem-thread-pool-attr", "GUC 参数 shared_buffers / work_mem / thread_pool_attr 当前值", "db-system-view", "常见的可能情况有：1. shared_buffers配置过小，导致buffer淘汰频繁。"),
     ("chk-session-package", "SESSION 中 PACKAGE 变量数量与内存占用", "db-shell", "PACKAGE变量是在PACKAGE内定义的全局变量，其生命周期覆盖整个数据库会话（SESSION）。"),
     ("chk-explain-filter", "EXPLAIN 执行计划 Filter 条件分析", "db-interactive-cmd", "EXPLAIN"),
@@ -297,7 +254,7 @@ MANUAL = [
     ("chk-explain", "EXPLAIN 执行计划算子估算行数", "db-interactive-cmd", "EXPLAIN"),
     ("chk-explain-stream", "EXPLAIN 执行计划 Stream 算子类型", "db-interactive-cmd", "EXPLAIN"),
     ("chk-exception", "存储过程 EXCEPTION 块使用频率与上下文创建/销毁开销", "db-shell", "每次异常处理都涉及上下文的创建和销毁，这会消耗额外的内存和资源。"),
-    ("chk-null-004", "存储过程默认权限模式", "db-shell", "存储过程默认具有SECURITYINVOKER权限。"),
+    ("chk-null-002", "存储过程默认权限模式", "db-shell", "存储过程默认具有SECURITYINVOKER权限。"),
     ("chk-explain-remotequery-data-node-scan", "EXPLAIN · 是否含 RemoteQuery / Data Node Scan", "db-interactive-cmd", "- **abnormal_patterns**: [\"`Data Node Scan on t1 \\\"_REMOTE_TABLE_QUERY_\\\"`\"]"),
     ("chk-explain-cn-vs-dn", "EXPLAIN 执行计划算子位置（CN vs DN）", "db-interactive-cmd", "EXPLAIN"),
     ("chk-group-by-groupagg-sort", "GROUP BY 查询计划中是否包含 GroupAgg+Sort", "db-interactive-cmd", "查询语句中如果存在GROUP BY条件则生成的计划（Plan）中可能存在排序操作，即计划中包含GroupAgg+Sort算子，导致性能较差。"),
@@ -329,16 +286,16 @@ MANUAL = [
     ("chk-max-process-memory-shared-buffers", "内存参数：max_process_memory, shared_buffers", "db-shell", "检查内存相关参数，设置不合理"),
     ("chk-in", "执行计划in条件处理方式", "db-interactive-cmd", "打印语句的执行计划"),
     ("chk-sql-case-when", "SQL 中 CASE WHEN 分支数量与执行次数", "db-interactive-cmd", "在业务查询中，CASE WHEN语句常用来进行条件判断，但如果在SQL查询中存在大量冗余的CASE WHEN"),
-    ("chk-null-008", "系统表/用户表膨胀情况", "db-system-view", "用户可在管控面执行全库Vacuum/Vacuum Full，以定期进行空间回收"),
+    ("chk-null-005", "系统表/用户表膨胀情况", "db-system-view", "用户可在管控面执行全库Vacuum/Vacuum Full，以定期进行空间回收"),
     ("chk-pgxc-stat-table-dirty", "表脏页率 (PGXC_STAT_TABLE_DIRTY)", "db-system-view", "DWS提供了查询脏页率的系统视图，具体使用请参见PGXC_STAT_TABLE_DIRTY。"),
     ("chk-gds", "GDS导入作业日志", "log-grep", "检测GDS导入作业的日志，查看是否有执行失败的现象。"),
     ("chk-fe-sync-be-parsecomplete", "FE=>Sync 与 <=BE ParseComplete 日志时间间隔", "log-grep", "用户可查看FE=> Syncr日志和<=BE ParseComplete日志之间的时间间隔"),
     ("chk-be-datarow-select-count", "<=BE DataRow 日志出现次数 / SELECT count(*) 结果集大小", "log-grep", "查看日志，如果<=BE DataRow日志出现次数过多，或直接执行SELECT count(*);"),
     ("chk-modifyjdbccall-createparameterizedquery", "modifyJdbcCall / createParameterizedQuery 阶段耗时", "log-grep", "如果主要耗时在modifyJdbcCall阶段（校验传入的SQL是否符合规范）和createParameterizedQuery阶段（将传入的SQL解析为preparedQuery，以获取由simplequery组成的subqueries），则需要确认是否传入的SQL过长导致。"),
     ("chk-analyze", "ANALYZE 后的查询性能", "db-interactive-cmd", "使用ANALYZE命令分析数据库。"),
-    ("chk-null-009", "查询返回行数", "db-interactive-cmd", "检查查询语句是否返回了多余的数据信息。"),
-    ("chk-null-010", "主机负载下查询单独运行时延", "db-interactive-cmd", "尝试在数据库没有其他查询或查询较少的时候运行查询语句，并观察运行效率。"),
-    ("chk-null-011", "重复执行同一查询语句的执行时间", "db-interactive-cmd", "重复执行相同的查询语句，如果后续执行的查询语句效率提升，则可能是由于上述原因导致。"),
+    ("chk-null-006", "查询返回行数", "db-interactive-cmd", "检查查询语句是否返回了多余的数据信息。"),
+    ("chk-null-007", "主机负载下查询单独运行时延", "db-interactive-cmd", "尝试在数据库没有其他查询或查询较少的时候运行查询语句，并观察运行效率。"),
+    ("chk-null-008", "重复执行同一查询语句的执行时间", "db-interactive-cmd", "重复执行相同的查询语句，如果后续执行的查询语句效率提升，则可能是由于上述原因导致。"),
     ("chk-disk-cache-pgxc-disk-cache-all-stats", "Disk Cache 命中率与磁盘使用大小 (pgxc_disk_cache_all_stats)", "db-system-view", "通过查询视图pgxc_disk_cache_all_stats可以查看当前缓存的命中率以及各个DN磁盘的使用大小情况"),
     ("chk-evs", "EVS 磁盘空间占用百分比", "log-grep", "日志中会出现\\\"Disk usage on the node %u has reached the read-only threshold 90%\\"),
     ("chk-bucket", "入库分区数 / Bucket 数 / 攒批内存消耗", "db-shell", "单并发攒批消耗： #Np * #Nb * #Nr 单并发攒批内存消耗： partition_max_cache_size， 默认2GB"),
@@ -352,8 +309,8 @@ MANUAL = [
     ("chk-pg-locks", "pg_locks · 阻塞会话与持锁会话关联", "db-system-view", "- **abnormal_patterns**: [\"`该查询返回会话ID、CN名称、用户信息、查询状态，以及导致阻塞的表、模式信息。`\"]"),
     ("chk-dws-connector-connectiontimeout", "DWS-Connector connectionTimeOut 默认值", "db-shell", "DWS-Connector默认超时时间connectionTimeOut为5min，可调大该值。"),
     ("chk-pg-stat-activity-pg-locks-sql-8-0-x", "pg_stat_activity / pg_locks 阻塞SQL（8.0.x及之前版本）", "db-system-view", "- **abnormal_patterns**: [\"NULL\"]"),
-    ("chk-null-012", "写入方式", "db-shell", "如果通过单条INSERT INTO语句的方式单并发写数据入库，客户端很可能会出现瓶颈"),
-    ("chk-null-013", "各节点磁盘使用率均衡性", "db-system-view", "登录DWS控制台。在\"集群列表\"页面，找到需要查看监控的集群。在指定集群所在行的\"操作\"列，单击\"监控面板\"。选择\"监控 > 节点监控 > 磁盘\"，查看磁盘使用率。"),
+    ("chk-null-009", "写入方式", "db-shell", "如果通过单条INSERT INTO语句的方式单并发写数据入库，客户端很可能会出现瓶颈"),
+    ("chk-null-010", "各节点磁盘使用率均衡性", "db-system-view", "登录DWS控制台。在\"集群列表\"页面，找到需要查看监控的集群。在指定集群所在行的\"操作\"列，单击\"监控面板\"。选择\"监控 > 节点监控 > 磁盘\"，查看磁盘使用率。"),
     ("chk-explain-verbose-remote", "EXPLAIN VERBOSE · __REMOTE 关键字", "db-interactive-cmd", "通过EXPLAIN VERBOSE打印语句执行计划。上述执行计划中出现__REMOTE关键字，表示当前的语句为不下推执行。"),
     ("chk-cn", "CN日志 · 不下推原因", "log-grep", "不下推语句在pg_log中会打印不下推的原因，上述语句在CN的日志中会找到类似以下的日志。"),
     ("chk-nestloop", "执行计划算子类型（NestLoop出现）", "db-interactive-cmd", "通过EXPLAIN VERBOSE打印语句执行计划，查看执行计划发现SQL语句中存在not in语句"),
@@ -365,13 +322,13 @@ MANUAL = [
     ("chk-cu", "执行计划中CU扫描数量", "db-interactive-cmd", "查看偶发慢业务慢时的执行计划信息，慢在cstore scan，且扫描数据量不大但扫描CU个数较多"),
     ("chk-explain-cstore-scan-cusome-cunone", "EXPLAIN 执行计划 · Cstore Scan CUSome / CUNone 计数", "db-interactive-cmd", "分析计划主要耗时在Cstore Scan。Cstore Scan的详细信息中，每个DN扫描出2w左右的数据，但是扫描了有数据的CU（CUSome）155079个，没有数据的CU（CUNone）156375个"),
     ("chk-explain-scan-vs", "EXPLAIN 执行计划 · Scan 实际过滤行数 vs 符合行数", "db-interactive-cmd", "某业务SQL总执行时间2.519s，其中Scan占了2.516s，同时该表的扫描最终只扫描到0条符合条件数据，过滤了20480条数据"),
-    ("chk-null-015", "表脏页率", "db-system-view", "查看表脏页率为99%，VACUUM FULL后性能优化到100ms左右。"),
+    ("chk-null-012", "表脏页率", "db-system-view", "查看表脏页率为99%，VACUUM FULL后性能优化到100ms左右。"),
     ("chk-explain-scan-a-time-max-min-dn", "EXPLAIN 执行计划 · Scan A-time max/min DN 耗时比", "db-interactive-cmd", "表Scan的A-time中，max time DN执行耗时6554ms，min time DN耗时0s，DN之间扫描差异超过10倍以上"),
     ("chk-table-distribution-dn", "table_distribution 各DN数据行数", "db-system-view", "通过table_distribution发现所有数据倾斜到了dn_6009单个DN"),
     ("chk-explain-seq-scan-vs-index-scan", "EXPLAIN 执行计划 · 扫描算子类型（Seq Scan vs Index Scan）", "db-interactive-cmd", "Seq Scan扫描需要3767ms，因涉及从4096000条数据中获取8240条数据，符合索引扫描的场景（海量数据中寻找少量数据），在对过滤条件列增加索引后，计划依然是Seq Scan而没有走Index Scan。"),
     ("chk-explain-selected-partitions", "EXPLAIN 执行计划 · Selected Partitions 数量", "db-interactive-cmd", "对该表设计为分区表后没有走分区剪枝（Selected Partitions数量多），Scan花了701785ms，I/O效率极低。"),
     ("chk-pv-total-memory-detail-process-used-memory-vs-max-process-me", "pv_total_memory_detail · process_used_memory vs max_process_memory", "db-system-view", "pv_total_memory_detail"),
-    ("chk-null-016", "列存表文件大小监控", "db-system-view", "列存表数据按列存储，一列的每60000行存储为一个CU，同一列的CU连续存储在一个文件中，当该文件大于1GB时，切换到新文件中。CU文件数据不能更改只能追加写。"),
+    ("chk-null-013", "列存表文件大小监控", "db-system-view", "列存表数据按列存储，一列的每60000行存储为一个CU，同一列的CU连续存储在一个文件中，当该文件大于1GB时，切换到新文件中。CU文件数据不能更改只能追加写。"),
     ("chk-pgxc-get-table-skewness", "PGXC_GET_TABLE_SKEWNESS 视图", "db-system-view", "分布差可以通过视图[PGXC_GET_TABLE_SKEWNESS]查看。"),
     ("chk-dms", "DMS 监控 · 节点磁盘使用率", "db-system-view", "选择“监控 > 节点监控 > 磁盘”，单击“磁盘使用率”右侧的![](https://support.huaweicloud.com/trouble-dws/figure/zh-cn_image_0000001393399197.png)进行排序，可查看当前集群各个节点的磁盘使用率。"),
     ("chk-dms-max-min", "DMS · 节点磁盘使用率排序 (max - min)", "db-system-view", "选择“监控 > 节点监控 > 磁盘”，单击“磁盘使用率”右侧的![](https://support.huaweicloud.com/trouble-dws/figure/zh-cn_image_0000001393399197.png)进行排序，可查看当前集群各个节点的磁盘使用率。"),
@@ -443,7 +400,18 @@ with open(report, 'w', encoding='utf-8') as rf:
             rc = r.returncode
             (OUTDIR / 'stdout' / f'{cid}.txt').write_bytes(r.stdout)
             (OUTDIR / 'stderr' / f'{cid}.txt').write_bytes(r.stderr)
-            status = 'ok' if rc == 0 else f'error-rc{rc}'
+            # ghost-ok detector: gsql -f 默认 batch · SQL 报错也 exit 0
+            # rc=0 且 sql 类时 grep stderr 含 ERROR/FATAL/PANIC → ghost-ok-sql-error
+            if rc == 0 and is_sql and r.stderr:
+                import re as _re2
+                if _re2.search(rb'(?m)^(gsql:.+:\s*)?(ERROR|FATAL|PANIC):', r.stderr):
+                    status = 'ghost-ok-sql-error'
+                else:
+                    status = 'ok'
+            elif rc == 0:
+                status = 'ok'
+            else:
+                status = f'error-rc{rc}'
         except subprocess.TimeoutExpired as e:
             rc = 124
             status = 'timeout'

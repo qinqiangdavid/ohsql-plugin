@@ -571,7 +571,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql]` `SELECT generate_wdr_report(<begin_snap_id>, <end_snap_id>, 1, 'all', 'all');`  — 按"WDR 报告生成 (需 snap id)"派生
 
-## chk-null-003 · 内核代码热点函数火焰图
+## chk-null-001 · 内核代码热点函数火焰图
 - layer: `flamegraph` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -654,7 +654,7 @@
   - `[os]` `grep -E 'SAVEPOINT|RELEASE|EXCEPTION' $GAUSSLOG/pg_log/*.log | tail -100`  — 按"SAVEPOINT / EXCEPTION 日志"派生
   - `[os]` `grep -E 'EXCEPTION|SQLERRM' $GAUSSLOG/pg_log/*.log | tail -50`  — 按"EXCEPTION 块日志"派生
 
-## chk-null-004 · 存储过程默认权限模式
+## chk-null-002 · 存储过程默认权限模式
 - layer: `db-shell` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -990,7 +990,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql-stub]` `EXPLAIN <你的含 CASE WHEN 的 SQL>;`  — 按"CASE WHEN 执行计划"派生
 
-## chk-null-008 · 系统表/用户表膨胀情况
+## chk-null-005 · 系统表/用户表膨胀情况
 - layer: `db-system-view` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -1064,7 +1064,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql-stub]` `ANALYZE <schema.table>;  -- 或 ANALYZE; 收集全库统计`  — 按"ANALYZE 命令"派生
 
-## chk-null-009 · 查询返回行数
+## chk-null-006 · 查询返回行数
 - layer: `db-interactive-cmd` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -1074,7 +1074,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql]` `SELECT query_id, n_tuples_returned FROM statement_history ORDER BY n_tuples_returned DESC NULLS LAST LIMIT 20;`  — 按"返回行数"派生
 
-## chk-null-010 · 主机负载下查询单独运行时延
+## chk-null-007 · 主机负载下查询单独运行时延
 - layer: `db-interactive-cmd` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -1083,7 +1083,7 @@
   ```
 - 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
 
-## chk-null-011 · 重复执行同一查询语句的执行时间
+## chk-null-008 · 重复执行同一查询语句的执行时间
 - layer: `db-interactive-cmd` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -1228,7 +1228,7 @@
   - `[view]` `SELECT * FROM pg_stat_activity LIMIT 50;`  — 从 name 提取视图 pg_stat_activity
   - `[view]` `SELECT * FROM pg_locks LIMIT 50;`  — 从 name 提取视图 pg_locks
 
-## chk-null-012 · 写入方式
+## chk-null-009 · 写入方式
 - layer: `db-shell` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -1238,7 +1238,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql]` `SELECT n_tup_ins, n_tup_upd, n_tup_del, last_vacuum FROM pg_stat_user_tables ORDER BY n_tup_ins DESC LIMIT 20;`  — 按"写入操作分布"派生
 
-## chk-null-013 · 各节点磁盘使用率均衡性
+## chk-null-010 · 各节点磁盘使用率均衡性
 - layer: `db-system-view` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -1361,7 +1361,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql-stub]` `EXPLAIN <你的 SQL>;`  — 从 name 提取 · 需填实际 SQL
 
-## chk-null-015 · 表脏页率
+## chk-null-012 · 表脏页率
 - layer: `db-system-view` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -1423,7 +1423,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[guc]` `SHOW max_process_memory;`  — 从 name 提取 GUC max_process_memory
 
-## chk-null-016 · 列存表文件大小监控
+## chk-null-013 · 列存表文件大小监控
 - layer: `db-system-view` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:

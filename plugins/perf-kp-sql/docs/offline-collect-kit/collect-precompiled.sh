@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # GaussDB 离线采集 · 预编译版 · 完全自包含
-# 所有 180 个 auto 命令已 inline 为 heredoc (不解析 ndjson · 不需 jq).
+# 所有 137 个 auto 命令已 inline 为 heredoc (不解析 ndjson · 不需 jq).
 #
-# 生成时间: 2026-05-23T09:08:35.405Z
-# 数据: auto=180 · manual=153 · skip=8 · total=341
+# 生成时间: 2026-05-24T03:45:30.712Z
+# 数据: auto=137 · manual=153 · skip=8 · total=298
 #
 # 用法:
 #   source ~/gauss_env_file              # 先 source gsql env (如需要)
@@ -93,11 +93,19 @@ run_check() {
   rm -f "$tmpf"
   local s
   case $rc in 0) s=ok;; 124) s=timeout;; *) s="error-rc$rc";; esac
+  # ghost-ok detector: gsql -f 默认 batch · SQL 报错也 exit 0
+  # rc=0 时 grep stderr 含 ERROR/FATAL/PANIC → 标 ghost-ok-sql-error 而非 ok
+  # 只在 sql 类生效 (shell 类 stderr 含 ERROR 是正常输出 · 不算 ghost-ok)
+  if [ "$s" = "ok" ] && [ "$cmd_kind" = "sql" ] && [ -s "$OUTDIR/stderr/$cid.txt" ]; then
+    if LC_ALL=C grep -qE '^(gsql:.+:[[:space:]]*)?(ERROR|FATAL|PANIC):' "$OUTDIR/stderr/$cid.txt" 2>/dev/null; then
+      s=ghost-ok-sql-error
+    fi
+  fi
   printf '%s\t%s\t%s\n' "$cid" "$rc" "$s" >> "$OUTDIR/report.tsv"
 }
 
 i=0
-TOTAL=180
+TOTAL=137
 echo "开始: $TOTAL 个 auto 命令 · timeout ${TIMEOUT}s · outdir $OUTDIR"
 echo ""
 
@@ -107,13 +115,6 @@ i=$((i+1))
 run_check "chk-dbe-perf-statement-cpu-time" <<'EOF_CHK_DBE_PERF_STATEMENT_CPU_TIME'
 select unique_sql_id,substr(query,1,50) as query ,n_calls,round(total_elapse_time/n_calls/1000,2) avg_time,round(total_elapse_time/1000,2) as total_time,round(cpu_time/1000,2) as cup_time from dbe_perf.statement t where  n_calls>10 and avg_time>3  and user_name='root'  order by cpu_time desc limit 5;
 EOF_CHK_DBE_PERF_STATEMENT_CPU_TIME
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-analyze · explain analyze 执行计划分析 · layer=db-interactive-cmd
-run_check "chk-explain-analyze" <<'EOF_CHK_EXPLAIN_ANALYZE'
-explain analyze SELECT c_id FROM bmsql_customer WHERE c_w_id = 1 AND c_d_id = 1 AND c_last = 'ABLEABLEABLE' ORDER BY c_first;
-EOF_CHK_EXPLAIN_ANALYZE
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -131,45 +132,10 @@ EOF_CHK_EXPLAIN_VERBOSE_SUBPLAN
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-null-001 · 执行计划下推标识 · layer=db-interactive-cmd
-run_check "chk-null-001" <<'EOF_CHK_NULL_001'
-explain select * from t where c1 > 1;
-EOF_CHK_NULL_001
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-enable-hashjoin · enable_hashjoin 关闭后执行计划 · layer=db-interactive-cmd
 run_check "chk-enable-hashjoin" <<'EOF_CHK_ENABLE_HASHJOIN'
 SET enable_hashjoin = off;
 EOF_CHK_ENABLE_HASHJOIN
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-analyze-a-time-rows-removed-by-filter · explain analyze · A-time / Rows Removed by Filter · layer=db-interactive-cmd
-run_check "chk-explain-analyze-a-time-rows-removed-by-filter" <<'EOF_CHK_EXPLAIN_ANALYZE_A_TIME_ROWS_REMOVED_BY_FILTER'
-explain (analyze on,costs off) select * from t1 where c2=10004;
-EOF_CHK_EXPLAIN_ANALYZE_A_TIME_ROWS_REMOVED_BY_FILTER
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-analyze-nested-loop-a-time · explain analyze · Nested Loop A-time · layer=db-interactive-cmd
-run_check "chk-explain-analyze-nested-loop-a-time" <<'EOF_CHK_EXPLAIN_ANALYZE_NESTED_LOOP_A_TIME'
-explain analyze select count(*) from t2,t1 where t1.c1=t2.c2;
-EOF_CHK_EXPLAIN_ANALYZE_NESTED_LOOP_A_TIME
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-analyze-groupaggregate-a-time-vs-hashaggregate · explain analyze · GroupAggregate A-time vs HashAggregate · layer=db-interactive-cmd
-run_check "chk-explain-analyze-groupaggregate-a-time-vs-hashaggregate" <<'EOF_CHK_EXPLAIN_ANALYZE_GROUPAGGREGATE_A_TIME_VS_HASHAGGREGATE'
-explain analyze select count(*) from t1 group by c2;
-EOF_CHK_EXPLAIN_ANALYZE_GROUPAGGREGATE_A_TIME_VS_HASHAGGREGATE
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-analyze-a-time · EXPLAIN ANALYZE A-time 瓶颈算子识别 · layer=db-interactive-cmd
-run_check "chk-explain-analyze-a-time" <<'EOF_CHK_EXPLAIN_ANALYZE_A_TIME'
-explain analyze select avg(netpaid) from (select c_last_name,c_first_name,s_store_name,ca_state,s_state,i_color,i_current_price,i_manager_id,i_units,i_size,sum(ss_sales_price) netpaid from store_sales,store_returns,store,item,customer,customer_address where ss_ticket_number = sr_ticket_number and ss_item_sk = sr_item_sk and ss_customer_sk = c_customer_sk and ss_item_sk = i_item_sk and ss_store_sk = s_store_sk and c_birth_country = upper(ca_country) and s_zip = ca_zip ...
-EOF_CHK_EXPLAIN_ANALYZE_A_TIME
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -208,13 +174,6 @@ EOF_CHK_TABLE_DISTRIBUTION_DN_1W
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-analyze-seq-scan-a-time-total-runtime · EXPLAIN ANALYZE Seq Scan A-time / Total runtime · layer=db-interactive-cmd
-run_check "chk-explain-analyze-seq-scan-a-time-total-runtime" <<'EOF_CHK_EXPLAIN_ANALYZE_SEQ_SCAN_A_TIME_TOTAL_RUNTIME'
-EXPLAIN ANALYZE SELECT * FROM test_table WHERE email = 'user_500000@example.com';
-EOF_CHK_EXPLAIN_ANALYZE_SEQ_SCAN_A_TIME_TOTAL_RUNTIME
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-explain-verbose-warning · EXPLAIN VERBOSE 执行计划 Warning · layer=db-interactive-cmd
 run_check "chk-explain-verbose-warning" <<'EOF_CHK_EXPLAIN_VERBOSE_WARNING'
 explain verbose
@@ -222,87 +181,10 @@ EOF_CHK_EXPLAIN_VERBOSE_WARNING
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-analyze-a-time-seqscan-vs-indexscan · EXPLAIN ANALYZE A-time · SeqScan vs IndexScan · layer=db-interactive-cmd
-run_check "chk-explain-analyze-a-time-seqscan-vs-indexscan" <<'EOF_CHK_EXPLAIN_ANALYZE_A_TIME_SEQSCAN_VS_INDEXSCAN'
-explain (analyze on, costs off) select * from t1 where c1=10004;
-EOF_CHK_EXPLAIN_ANALYZE_A_TIME_SEQSCAN_VS_INDEXSCAN
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-analyze-a-time-nestloop · EXPLAIN ANALYZE A-time · NestLoop算子耗时 · layer=db-interactive-cmd
-run_check "chk-explain-analyze-a-time-nestloop" <<'EOF_CHK_EXPLAIN_ANALYZE_A_TIME_NESTLOOP'
-explain analyze select count(*) from t1,t2 where t1.c1=t2.c2;
-EOF_CHK_EXPLAIN_ANALYZE_A_TIME_NESTLOOP
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-analyze-a-time-sort-groupagg-vs-hashagg · EXPLAIN ANALYZE A-time · Sort+GroupAgg vs HashAgg · layer=db-interactive-cmd
-run_check "chk-explain-analyze-a-time-sort-groupagg-vs-hashagg" <<'EOF_CHK_EXPLAIN_ANALYZE_A_TIME_SORT_GROUPAGG_VS_HASHAGG'
-explain analyze select count(*) from t1 group by c1;
-EOF_CHK_EXPLAIN_ANALYZE_A_TIME_SORT_GROUPAGG_VS_HASHAGG
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-analyze · EXPLAIN ANALYZE 执行计划 · 算子耗时 · layer=db-interactive-cmd
-run_check "chk-explain-analyze" <<'EOF_CHK_EXPLAIN_ANALYZE'
-explain (analyze on, costs off) select * from t1 where c1=10004;
-EOF_CHK_EXPLAIN_ANALYZE
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-analyze-nestloop · EXPLAIN ANALYZE · NestLoop 算子耗时 · layer=db-interactive-cmd
-run_check "chk-explain-analyze-nestloop" <<'EOF_CHK_EXPLAIN_ANALYZE_NESTLOOP'
-explain analyze select count(*) from t1,t2 where t1.c1=t2.c2;
-EOF_CHK_EXPLAIN_ANALYZE_NESTLOOP
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-analyze-sort-groupagg · EXPLAIN ANALYZE · Sort+GroupAgg 算子耗时 · layer=db-interactive-cmd
-run_check "chk-explain-analyze-sort-groupagg" <<'EOF_CHK_EXPLAIN_ANALYZE_SORT_GROUPAGG'
-explain analyze select count(*) from t1 group by c1;
-EOF_CHK_EXPLAIN_ANALYZE_SORT_GROUPAGG
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-hashaggregate · 执行计划中双层HashAggregate · layer=db-interactive-cmd
-run_check "chk-hashaggregate" <<'EOF_CHK_HASHAGGREGATE'
-EXPLAIN (costs off) SELECT t.c2, sum(cc) FROM (SELECT c2, sum(c3) AS cc FROM t1 GROUP BY c2) s1, t WHERE s1.c2=t.c2 GROUP BY t.c2 ORDER BY 1,2;
-EOF_CHK_HASHAGGREGATE
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-null-002 · 执行计划子查询关联方式 · layer=db-interactive-cmd
-run_check "chk-null-002" <<'EOF_CHK_NULL_002'
-EXPLAIN (costs off) SELECT t1 FROM t1 WHERE t1.c2 = 10 AND t1.c3 < (SELECT sum(c3) FROM t2 WHERE t1.c1 = t2.c1);
-EOF_CHK_NULL_002
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-subplan · 执行计划中SubPlan节点 · layer=db-interactive-cmd
-run_check "chk-subplan" <<'EOF_CHK_SUBPLAN'
-EXPLAIN (verbose on, costs off) SELECT c1,(SELECT avg(c2) FROM t2 WHERE t2.c2=t1.c2) FROM t1 WHERE t1.c1<100 ORDER BY t1.c2;
-EOF_CHK_SUBPLAN
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-analyze-total-runtime-partitionscan · EXPLAIN ANALYZE Total runtime / 是否走 PartitionScan · layer=db-interactive-cmd
-run_check "chk-explain-analyze-total-runtime-partitionscan" <<'EOF_CHK_EXPLAIN_ANALYZE_TOTAL_RUNTIME_PARTITIONSCAN'
-EXPLAIN ANALYZE SELECT min(b) FROM test_range_pt;
-EOF_CHK_EXPLAIN_ANALYZE_TOTAL_RUNTIME_PARTITIONSCAN
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-local-explain-analyze-total-runtime · 创建 LOCAL 索引后 EXPLAIN ANALYZE Total runtime · layer=db-interactive-cmd
 run_check "chk-local-explain-analyze-total-runtime" <<'EOF_CHK_LOCAL_EXPLAIN_ANALYZE_TOTAL_RUNTIME'
 CREATE INDEX idx_range_b ON test_range_pt(b) LOCAL;
 EOF_CHK_LOCAL_EXPLAIN_ANALYZE_TOTAL_RUNTIME
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-agg · EXPLAIN 执行计划 Agg 算子模式 · layer=db-interactive-cmd
-run_check "chk-explain-agg" <<'EOF_CHK_EXPLAIN_AGG'
-explain select b,count(1) from t1 group by b;
-EOF_CHK_EXPLAIN_AGG
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -327,24 +209,10 @@ EOF_CHK_EXPLAIN_VERBOSE_HASHJOIN
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-performance-dn · explain performance 各 DN 实际行数 · layer=db-interactive-cmd
-run_check "chk-explain-performance-dn" <<'EOF_CHK_EXPLAIN_PERFORMANCE_DN'
-explain performance select count(*) from inventory;
-EOF_CHK_EXPLAIN_PERFORMANCE_DN
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-table-skewness-dn · table_skewness() 各 DN 数据分布比例 · layer=db-system-view
 run_check "chk-table-skewness-dn" <<'EOF_CHK_TABLE_SKEWNESS_DN'
 select table_skewness('inventory');
 EOF_CHK_TABLE_SKEWNESS_DN
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-analyze-streaming-redistribute-dn · EXPLAIN ANALYZE Streaming(REDISTRIBUTE) 各 DN 输出行数 · layer=db-interactive-cmd
-run_check "chk-explain-analyze-streaming-redistribute-dn" <<'EOF_CHK_EXPLAIN_ANALYZE_STREAMING_REDISTRIBUTE_DN'
-explain select * from skew s,test t where s.x = t.x order by s.a limit 1;
-EOF_CHK_EXPLAIN_ANALYZE_STREAMING_REDISTRIBUTE_DN
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -404,13 +272,6 @@ EOF_CHK_SEQ_SCAN_DN
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-analyze · EXPLAIN ANALYZE 执行计划耗时与过滤行数 · layer=db-interactive-cmd
-run_check "chk-explain-analyze" <<'EOF_CHK_EXPLAIN_ANALYZE'
-explain (analyze on, costs off) select * from store_sales where ss_sold_date_sk = 2450944;
-EOF_CHK_EXPLAIN_ANALYZE
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-explain-analyze-join · EXPLAIN ANALYZE Join 算子类型与耗时 · layer=db-interactive-cmd
 run_check "chk-explain-analyze-join" <<'EOF_CHK_EXPLAIN_ANALYZE_JOIN'
 EXPLAIN ANALYZE
@@ -453,20 +314,6 @@ EOF_CHK_SCAN_FILTER
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-not-in · 含 NOT IN 子查询的执行计划 · layer=db-interactive-cmd
-run_check "chk-not-in" <<'EOF_CHK_NOT_IN'
-EXPLAIN SELECT * FROM t1 WHERE c1 NOT IN (SELECT d2 FROM t2);
-EOF_CHK_NOT_IN
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-null-005 · 执行计划子查询处理方式 · layer=db-interactive-cmd
-run_check "chk-null-005" <<'EOF_CHK_NULL_005'
-explain verbose select t1.c1 from t1 where t1.c1 = (select t2.c1 from t2 where t1.c1=t2.c1);
-EOF_CHK_NULL_005
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-explain-performance-windowagg-sort · EXPLAIN PERFORMANCE 执行计划 · WindowAgg/Sort 算子耗时 · layer=db-interactive-cmd
 run_check "chk-explain-performance-windowagg-sort" <<'EOF_CHK_EXPLAIN_PERFORMANCE_WINDOWAGG_SORT'
 explain performance
@@ -488,10 +335,10 @@ EOF_CHK_TABLE_SKEWNESS_TABLE_DISTRIBUTION
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-null-006 · 线程等待状态 · layer=db-system-view
-run_check "chk-null-006" <<'EOF_CHK_NULL_006'
+# chk-null-003 · 线程等待状态 · layer=db-system-view
+run_check "chk-null-003" <<'EOF_CHK_NULL_003'
 select * from pg_thread_wait_status where query_id='149181737656737395';
-EOF_CHK_NULL_006
+EOF_CHK_NULL_003
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -502,10 +349,10 @@ EOF_CHK_SQL_CREATE_INDEX
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-null-007 · 表数据倾斜 · layer=db-system-view
-run_check "chk-null-007" <<'EOF_CHK_NULL_007'
+# chk-null-004 · 表数据倾斜 · layer=db-system-view
+run_check "chk-null-004" <<'EOF_CHK_NULL_004'
 select table_skewness('ioc_dm.m_ss_index_event');
-EOF_CHK_NULL_007
+EOF_CHK_NULL_004
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -527,20 +374,6 @@ i=$((i+1))
 run_check "chk-pgxc-get-stat-all-tables-dirty-page-rate" <<'EOF_CHK_PGXC_GET_STAT_ALL_TABLES_DIRTY_PAGE_RATE'
 SELECT schemaname AS schema, relname AS table_name, n_live_tup AS analyze_count, pg_size_pretty(pg_table_size(relid)) as table_size, dirty_page_rate FROM PGXC_GET_STAT_ALL_TABLES WHERE schemaName NOT IN ('pg_toast', 'pg_catalog', 'information_schema', 'cstore', 'pmk') AND dirty_page_rate > 30 ORDER BY table_size DESC, dirty_page_rate DESC;
 EOF_CHK_PGXC_GET_STAT_ALL_TABLES_DIRTY_PAGE_RATE
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-index-scan · EXPLAIN 执行计划 · 是否使用Index Scan · layer=db-interactive-cmd
-run_check "chk-explain-index-scan" <<'EOF_CHK_EXPLAIN_INDEX_SCAN'
-explain verbose select * from test where a = 101;
-EOF_CHK_EXPLAIN_INDEX_SCAN
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-verbose-index-scan-vs-seq-scan · EXPLAIN VERBOSE · Index Scan vs Seq Scan · layer=db-interactive-cmd
-run_check "chk-explain-verbose-index-scan-vs-seq-scan" <<'EOF_CHK_EXPLAIN_VERBOSE_INDEX_SCAN_VS_SEQ_SCAN'
-explain verbose select * from test where a  = 101;
-EOF_CHK_EXPLAIN_VERBOSE_INDEX_SCAN_VS_SEQ_SCAN
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -628,13 +461,6 @@ EOF_CHK_PGXC_THREAD_WAIT_STATUS_DN
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-performance-dn · explain performance · DN 行数与耗时分布 · layer=db-interactive-cmd
-run_check "chk-explain-performance-dn" <<'EOF_CHK_EXPLAIN_PERFORMANCE_DN'
-explain performance select avg(ss_wholesale_cost) from store_sales;
-EOF_CHK_EXPLAIN_PERFORMANCE_DN
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-table-skewness · table_skewness · 数据倾斜率 · layer=db-system-view
 run_check "chk-table-skewness" <<'EOF_CHK_TABLE_SKEWNESS'
 SELECT table_skewness('store_sales');
@@ -663,10 +489,10 @@ EOF_CHK_PG_STAT_ACTIVITY_SQL
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-null-014 · 表倾斜情况 · layer=db-shell
-run_check "chk-null-014" <<'EOF_CHK_NULL_014'
+# chk-null-011 · 表倾斜情况 · layer=db-shell
+run_check "chk-null-011" <<'EOF_CHK_NULL_011'
 SELECT table_skewness('table name');
-EOF_CHK_NULL_014
+EOF_CHK_NULL_011
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -733,20 +559,6 @@ EOF_CHK_DN
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-agg-hashagg-gather-vs-redistribute-hashagg · EXPLAIN · Agg 计划形态（hashagg+gather vs redistribute+hashagg） · layer=db-interactive-cmd
-run_check "chk-explain-agg-hashagg-gather-vs-redistribute-hashagg" <<'EOF_CHK_EXPLAIN_AGG_HASHAGG_GATHER_VS_REDISTRIBUTE_HASHAGG'
-explain select b,count(1) from t1 group by b
-EOF_CHK_EXPLAIN_AGG_HASHAGG_GATHER_VS_REDISTRIBUTE_HASHAGG
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-verbose-anti-join · EXPLAIN VERBOSE · Anti Join 执行计划及行数估算 · layer=db-interactive-cmd
-run_check "chk-explain-verbose-anti-join" <<'EOF_CHK_EXPLAIN_VERBOSE_ANTI_JOIN'
-explain verbose select count(*) as numwait from lineitem l1, orders where o_orderkey = l1.l_orderkey and o_orderstatus = 'F' and l1.l_receiptdate > l1.l_commitdate and not exists (select * from lineitem l3 where l3.l_orderkey = l1.l_orderkey and l3.l_suppkey <> l1.l_suppkey and l3.l_receiptdate > l3.l_commitdate) order by numwait desc
-EOF_CHK_EXPLAIN_VERBOSE_ANTI_JOIN
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-explain-verbose-hashjoin · EXPLAIN VERBOSE · HashJoin 行数估算偏差 · layer=db-interactive-cmd
 run_check "chk-explain-verbose-hashjoin" <<'EOF_CHK_EXPLAIN_VERBOSE_HASHJOIN'
 set cost_param=2; explain verbose select nation, sum(amount) as sum_profit from (...) as profit group by nation order by nation
@@ -758,13 +570,6 @@ i=$((i+1))
 run_check "chk-dn" <<'EOF_CHK_DN'
 SELECT wait_status, count(*) as cnt FROM pgxc_thread_wait_status WHERE wait_status not like '%cmd%' AND wait_status not like '%none%' and wait_status not like '%quit%' group by 1 order by 2 desc
 EOF_CHK_DN
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-performance-dn-scan · EXPLAIN PERFORMANCE 各 DN 基表 scan 行数及时间分布 · layer=db-interactive-cmd
-run_check "chk-explain-performance-dn-scan" <<'EOF_CHK_EXPLAIN_PERFORMANCE_DN_SCAN'
-explain performance select avg(ss_wholesale_cost) from store_sales
-EOF_CHK_EXPLAIN_PERFORMANCE_DN_SCAN
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -782,13 +587,6 @@ EOF_CHK_EXPLAIN_PERFORMANCE_STREAM_DN
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-streaming-type-redistribute · EXPLAIN · Streaming(type: REDISTRIBUTE) 算子是否出现 · layer=db-interactive-cmd
-run_check "chk-explain-streaming-type-redistribute" <<'EOF_CHK_EXPLAIN_STREAMING_TYPE_REDISTRIBUTE'
-EXPLAIN SELECT * FROM t1, t2 WHERE t1.a = t2.b
-EOF_CHK_EXPLAIN_STREAMING_TYPE_REDISTRIBUTE
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-pgxc-stat-activity-state · pgxc_stat_activity state 字段 · layer=db-system-view
 run_check "chk-pgxc-stat-activity-state" <<'EOF_CHK_PGXC_STAT_ACTIVITY_STATE'
 SELECT state, query, query_id FROM pgxc_stat_activity;
@@ -800,83 +598,6 @@ i=$((i+1))
 run_check "chk-cn-savepoint-release" <<'EOF_CHK_CN_SAVEPOINT_RELEASE'
 SELECT coorname,pid,query_id,state,query,usename FROM pgxc_stat_activity WHERE usename='jack';
 EOF_CHK_CN_SAVEPOINT_RELEASE
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-join-nestloop-vs-hashjoin · EXPLAIN · JOIN 算子类型 (NestLoop vs HashJoin) · layer=db-interactive-cmd
-run_check "chk-explain-join-nestloop-vs-hashjoin" <<'EOF_CHK_EXPLAIN_JOIN_NESTLOOP_VS_HASHJOIN'
-EXPLAIN SELECT ls_pid_cusr1,COALESCE(max(round((current_date-bthdate)/365)),0) FROM calc_empfyc_c1_result_tmp_t1 t1,p10_md_tmp_t2 t2 WHERE t1.ls_pid_cusr1 = any(values(id),(id15)) GROUP BY ls_pid_cusr1
-EOF_CHK_EXPLAIN_JOIN_NESTLOOP_VS_HASHJOIN
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-performance · EXPLAIN PERFORMANCE · 基表扫描方式及执行时间 · layer=db-interactive-cmd
-run_check "chk-explain-performance" <<'EOF_CHK_EXPLAIN_PERFORMANCE'
-EXPLAIN PERFORMANCE SELECT * FROM orders WHERE o_custkey = '1106459
-EOF_CHK_EXPLAIN_PERFORMANCE
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-verbose-not-in · EXPLAIN VERBOSE · NOT IN 执行计划算子类型 · layer=db-interactive-cmd
-run_check "chk-explain-verbose-not-in" <<'EOF_CHK_EXPLAIN_VERBOSE_NOT_IN'
-EXPLAIN VERBOSE SELECT * FROM t1 WHERE t1.c NOT IN (SELECT t2.c FROM t2)
-EOF_CHK_EXPLAIN_VERBOSE_NOT_IN
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-verbose-not-exists · EXPLAIN VERBOSE · NOT EXISTS 执行计划算子类型验证 · layer=db-interactive-cmd
-run_check "chk-explain-verbose-not-exists" <<'EOF_CHK_EXPLAIN_VERBOSE_NOT_EXISTS'
-EXPLAIN VERBOSE SELECT * FROM t1 WHERE NOT EXISTS (SELECT 1 FROM t2 WHERE t2.c = t1.c)
-EOF_CHK_EXPLAIN_VERBOSE_NOT_EXISTS
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-analyze · EXPLAIN ANALYZE · 基表扫描算子类型及执行时间 · layer=db-interactive-cmd
-run_check "chk-explain-analyze" <<'EOF_CHK_EXPLAIN_ANALYZE'
-explain (analyze on, costs off) select * from store_sales where ss_sold_date_sk = 2450944
-EOF_CHK_EXPLAIN_ANALYZE
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-analyze-verbose-sql-partition-iterator · EXPLAIN ANALYZE VERBOSE · SQL 自诊断信息 + Partition Iterator 扫描分区数 · layer=db-interactive-cmd
-run_check "chk-explain-analyze-verbose-sql-partition-iterator" <<'EOF_CHK_EXPLAIN_ANALYZE_VERBOSE_SQL_PARTITION_ITERATOR'
-EXPLAIN (ANALYZE ON, VERBOSE ON) SELECT count(1) FROM t_ddw_f10_op_cust_asset_mon b1 WHERE b1.year_mth < substr('20200722',1 ,6 ) AND b1.year_mth + 1 >= cast(substr('20200722',1 ,6 ) AS int)
-EOF_CHK_EXPLAIN_ANALYZE_VERBOSE_SQL_PARTITION_ITERATOR
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-analyze-verbose-partition-iterator-iterations · EXPLAIN ANALYZE VERBOSE · 改写后 Partition Iterator Iterations · layer=db-interactive-cmd
-run_check "chk-explain-analyze-verbose-partition-iterator-iterations" <<'EOF_CHK_EXPLAIN_ANALYZE_VERBOSE_PARTITION_ITERATOR_ITERATIONS'
-EXPLAIN (analyze ON, verbose ON) SELECT count(1) FROM t_ddw_f10_op_cust_asset_mon b1 WHERE b1.year_mth < substr('20200722',1 ,6 ) AND b1.year_mth >= cast(substr('20200722',1 ,6 ) AS int) - 1
-EOF_CHK_EXPLAIN_ANALYZE_VERBOSE_PARTITION_ITERATOR_ITERATIONS
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-performance-partition-iterator-iterations · EXPLAIN PERFORMANCE · 全表扫描时间及 Partition Iterator Iterations · layer=db-interactive-cmd
-run_check "chk-explain-performance-partition-iterator-iterations" <<'EOF_CHK_EXPLAIN_PERFORMANCE_PARTITION_ITERATOR_ITERATIONS'
-EXPLAIN PERFORMANCE SELECT count(*) FROM orders_no_part WHERE o_orderdate >= '1996-01-01 00:00:00'::timestamp(0)
-EOF_CHK_EXPLAIN_PERFORMANCE_PARTITION_ITERATOR_ITERATIONS
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-performance-cunone-filter · EXPLAIN PERFORMANCE · CUNone 比例及 filter 耗时 · layer=db-interactive-cmd
-run_check "chk-explain-performance-cunone-filter" <<'EOF_CHK_EXPLAIN_PERFORMANCE_CUNONE_FILTER'
-EXPLAIN PERFORMANCE SELECT * FROM orders_no_pck WHERE o_orderkey = '13095143' ORDER BY o_orderdate
-EOF_CHK_EXPLAIN_PERFORMANCE_CUNONE_FILTER
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-performance-cstore-scan-cu · EXPLAIN PERFORMANCE · CStore Scan CU 加载数量 · layer=db-interactive-cmd
-run_check "chk-explain-performance-cstore-scan-cu" <<'EOF_CHK_EXPLAIN_PERFORMANCE_CSTORE_SCAN_CU'
-EXPLAIN PERFORMANCE SELECT sum(l_extendedprice * l_discount) as revenue FROM lineitem WHERE l_shipdate >= '1994-01-01'::date and l_shipdate < '1994-01-01'::date + interval '1 year' and l_discount between 0.06 - 0.01 and 0.06 + 0.01 and l_quantity < 24
-EOF_CHK_EXPLAIN_PERFORMANCE_CSTORE_SCAN_CU
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-performance · explain performance 执行时间 · layer=db-interactive-cmd
-run_check "chk-explain-performance" <<'EOF_CHK_EXPLAIN_PERFORMANCE'
-explain performance select a.ca_state state, count(*) cnt from customer_address a ,customer c ,store_sales s ,date_dim d ,item i where a.ca_address_sk = c.c_current_addr_sk ...
-EOF_CHK_EXPLAIN_PERFORMANCE
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -915,20 +636,6 @@ EOF_CHK_EXPLAIN_PERFORMANCE_ROWS_HINT
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-performance-vector-windowagg · EXPLAIN PERFORMANCE 执行计划 · Vector WindowAgg 耗时及位置 · layer=db-interactive-cmd
-run_check "chk-explain-performance-vector-windowagg" <<'EOF_CHK_EXPLAIN_PERFORMANCE_VECTOR_WINDOWAGG'
-EXPLAIN PERFORMANCE SELECT COUNT(1) over() AS DATACNT, IMSI AS IMSI_IMSI, CAST(TRUNC(((SUM(L4_UL_THROUGHPUT) + SUM(L4_DW_THROUGHPUT))), 0) AS DECIMAL(20)) AS TOTAL_VOLUME_KPIID FROM public.test AS test GROUP BY IMSI ORDER BY TOTAL_VOLUME_KPIID DESC LIMIT 10
-EOF_CHK_EXPLAIN_PERFORMANCE_VECTOR_WINDOWAGG
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-performance · EXPLAIN PERFORMANCE 改写后执行计划 · 排序下推验证 · layer=db-interactive-cmd
-run_check "chk-explain-performance" <<'EOF_CHK_EXPLAIN_PERFORMANCE'
-EXPLAIN PERFORMANCE SELECT COUNT(1) over() AS DATACNT, IMSI_IMSI, TOTAL_VOLUME_KPIID FROM (SELECT IMSI AS IMSI_IMSI, CAST(TRUNC(((SUM(L4_UL_THROUGHPUT) + SUM(L4_DW_THROUGHPUT))), 0) AS DECIMAL(20)) AS TOTAL_VOLUME_KPIID FROM public.test AS test GROUP BY IMSI ORDER BY TOTAL_VOLUME_KPIID DESC LIMIT 10)
-EOF_CHK_EXPLAIN_PERFORMANCE
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-gs-wlm-session-history-warning-sql · GS_WLM_SESSION_HISTORY.warning · SQL 自诊断信息 · layer=db-system-view
 run_check "chk-gs-wlm-session-history-warning-sql" <<'EOF_CHK_GS_WLM_SESSION_HISTORY_WARNING_SQL'
 SELECT query,warning FROM GS_WLM_SESSION_HISTORY ORDER BY start_time DESC
@@ -950,10 +657,10 @@ EOF_CHK_XID
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-null-017 · 活跃事务列表 · layer=db-system-view
-run_check "chk-null-017" <<'EOF_CHK_NULL_017'
+# chk-null-014 · 活跃事务列表 · layer=db-system-view
+run_check "chk-null-014" <<'EOF_CHK_NULL_014'
 SELECT txid_current_snapshot();
-EOF_CHK_NULL_017
+EOF_CHK_NULL_014
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -1712,7 +1419,7 @@ cat > "$OUTDIR/manual.md" <<'MANUAL_DOC_END'
   可直接使用WDR报告中SQL ordered by CPU Time部分，尝试优化分析相关语句
   ```
 
-## chk-null-003 · 内核代码热点函数火焰图
+## chk-null-001 · 内核代码热点函数火焰图
 - layer: `flamegraph` · type: `metric`
 - method:
   ```
@@ -1768,7 +1475,7 @@ cat > "$OUTDIR/manual.md" <<'MANUAL_DOC_END'
   每次异常处理都涉及上下文的创建和销毁，这会消耗额外的内存和资源。
   ```
 
-## chk-null-004 · 存储过程默认权限模式
+## chk-null-002 · 存储过程默认权限模式
 - layer: `db-shell` · type: `metric`
 - method:
   ```
@@ -1992,7 +1699,7 @@ cat > "$OUTDIR/manual.md" <<'MANUAL_DOC_END'
   在业务查询中，CASE WHEN语句常用来进行条件判断，但如果在SQL查询中存在大量冗余的CASE WHEN
   ```
 
-## chk-null-008 · 系统表/用户表膨胀情况
+## chk-null-005 · 系统表/用户表膨胀情况
 - layer: `db-system-view` · type: `metric`
 - method:
   ```
@@ -2041,21 +1748,21 @@ cat > "$OUTDIR/manual.md" <<'MANUAL_DOC_END'
   使用ANALYZE命令分析数据库。
   ```
 
-## chk-null-009 · 查询返回行数
+## chk-null-006 · 查询返回行数
 - layer: `db-interactive-cmd` · type: `metric`
 - method:
   ```
   检查查询语句是否返回了多余的数据信息。
   ```
 
-## chk-null-010 · 主机负载下查询单独运行时延
+## chk-null-007 · 主机负载下查询单独运行时延
 - layer: `db-interactive-cmd` · type: `metric`
 - method:
   ```
   尝试在数据库没有其他查询或查询较少的时候运行查询语句，并观察运行效率。
   ```
 
-## chk-null-011 · 重复执行同一查询语句的执行时间
+## chk-null-008 · 重复执行同一查询语句的执行时间
 - layer: `db-interactive-cmd` · type: `metric`
 - method:
   ```
@@ -2153,14 +1860,14 @@ cat > "$OUTDIR/manual.md" <<'MANUAL_DOC_END'
   - **abnormal_patterns**: ["NULL"]
   ```
 
-## chk-null-012 · 写入方式
+## chk-null-009 · 写入方式
 - layer: `db-shell` · type: `metric`
 - method:
   ```
   如果通过单条INSERT INTO语句的方式单并发写数据入库，客户端很可能会出现瓶颈
   ```
 
-## chk-null-013 · 各节点磁盘使用率均衡性
+## chk-null-010 · 各节点磁盘使用率均衡性
 - layer: `db-system-view` · type: `metric`
 - method:
   ```
@@ -2244,7 +1951,7 @@ cat > "$OUTDIR/manual.md" <<'MANUAL_DOC_END'
   某业务SQL总执行时间2.519s，其中Scan占了2.516s，同时该表的扫描最终只扫描到0条符合条件数据，过滤了20480条数据
   ```
 
-## chk-null-015 · 表脏页率
+## chk-null-012 · 表脏页率
 - layer: `db-system-view` · type: `metric`
 - method:
   ```
@@ -2286,7 +1993,7 @@ cat > "$OUTDIR/manual.md" <<'MANUAL_DOC_END'
   pv_total_memory_detail
   ```
 
-## chk-null-016 · 列存表文件大小监控
+## chk-null-013 · 列存表文件大小监控
 - layer: `db-system-view` · type: `metric`
 - method:
   ```
@@ -2458,7 +2165,7 @@ SKIP_DOC_END
 
 echo ""
 echo "─────────────────────────────────────────────"
-echo "完成 · TOTAL=341 · auto=180 · manual=153 · skip=8"
+echo "完成 · TOTAL=298 · auto=137 · manual=153 · skip=8"
 echo "  报告:        $OUTDIR/report.tsv"
 echo "  stdout 目录: $OUTDIR/stdout/"
 echo "  stderr 目录: $OUTDIR/stderr/"

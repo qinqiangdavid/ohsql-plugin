@@ -542,6 +542,14 @@ run_check() {
   rm -f "\$tmpf"
   local s
   case \$rc in 0) s=ok;; 124) s=timeout;; *) s="error-rc\$rc";; esac
+  # ghost-ok detector: gsql -f 默认 batch · SQL 报错也 exit 0
+  # rc=0 时 grep stderr 含 ERROR/FATAL/PANIC → 标 ghost-ok-sql-error 而非 ok
+  # 只在 sql 类生效 (shell 类 stderr 含 ERROR 是正常输出 · 不算 ghost-ok)
+  if [ "\$s" = "ok" ] && [ "\$cmd_kind" = "sql" ] && [ -s "\$OUTDIR/stderr/\$cid.txt" ]; then
+    if LC_ALL=C grep -qE '^(gsql:.+:[[:space:]]*)?(ERROR|FATAL|PANIC):' "\$OUTDIR/stderr/\$cid.txt" 2>/dev/null; then
+      s=ghost-ok-sql-error
+    fi
+  fi
   printf '%s\\t%s\\t%s\\n' "\$cid" "\$rc" "\$s" >> "\$OUTDIR/report.tsv"
 }
 
@@ -727,7 +735,18 @@ with open(report, 'w', encoding='utf-8') as rf:
             rc = r.returncode
             (OUTDIR / 'stdout' / f'{cid}.txt').write_bytes(r.stdout)
             (OUTDIR / 'stderr' / f'{cid}.txt').write_bytes(r.stderr)
-            status = 'ok' if rc == 0 else f'error-rc{rc}'
+            # ghost-ok detector: gsql -f 默认 batch · SQL 报错也 exit 0
+            # rc=0 且 sql 类时 grep stderr 含 ERROR/FATAL/PANIC → ghost-ok-sql-error
+            if rc == 0 and is_sql and r.stderr:
+                import re as _re2
+                if _re2.search(rb'(?m)^(gsql:.+:\\s*)?(ERROR|FATAL|PANIC):', r.stderr):
+                    status = 'ghost-ok-sql-error'
+                else:
+                    status = 'ok'
+            elif rc == 0:
+                status = 'ok'
+            else:
+                status = f'error-rc{rc}'
         except subprocess.TimeoutExpired as e:
             rc = 124
             status = 'timeout'
