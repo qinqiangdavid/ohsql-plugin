@@ -547,7 +547,13 @@ run_check() {
   # 只在 sql 类生效 (shell 类 stderr 含 ERROR 是正常输出 · 不算 ghost-ok)
   if [ "\$s" = "ok" ] && [ "\$cmd_kind" = "sql" ] && [ -s "\$OUTDIR/stderr/\$cid.txt" ]; then
     if LC_ALL=C grep -qE '^(gsql:.+:[[:space:]]*)?(ERROR|FATAL|PANIC):' "\$OUTDIR/stderr/\$cid.txt" 2>/dev/null; then
-      s=ghost-ok-sql-error
+      # 二级判定: 部署形态特异 (集中式跑分布式专用视图/函数报错) · 不是真错
+      # 这类 SQL 拉到分布式实例跑会 ok · 跟 distill 数据质量问题 (syntax error) 区分开
+      if LC_ALL=C grep -qiE 'Unsupported view in single node mode|Unsupported function|Function [a-z_]+\\([^)]*\\) does not exist|does not support|not supported in (single|centralized)' "\$OUTDIR/stderr/\$cid.txt" 2>/dev/null; then
+        s=unsupported-deploy-form
+      else
+        s=ghost-ok-sql-error
+      fi
     fi
   fi
   printf '%s\\t%s\\t%s\\n' "\$cid" "\$rc" "\$s" >> "\$OUTDIR/report.tsv"
@@ -740,7 +746,11 @@ with open(report, 'w', encoding='utf-8') as rf:
             if rc == 0 and is_sql and r.stderr:
                 import re as _re2
                 if _re2.search(rb'(?m)^(gsql:.+:\\s*)?(ERROR|FATAL|PANIC):', r.stderr):
-                    status = 'ghost-ok-sql-error'
+                    # 二级判定: 部署形态特异 (集中式跑分布式专用视图/函数) · 拉分布式会 ok
+                    if _re2.search(rb'Unsupported view in single node mode|Unsupported function|Function [a-z_]+\\([^)]*\\) does not exist|does not support|not supported in (single|centralized)', r.stderr, _re2.I):
+                        status = 'unsupported-deploy-form'
+                    else:
+                        status = 'ghost-ok-sql-error'
                 else:
                     status = 'ok'
             elif rc == 0:

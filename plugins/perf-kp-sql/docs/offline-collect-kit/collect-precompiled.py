@@ -3,7 +3,7 @@
 
 所有 137 个 auto 命令已 inline 在 CHECKS list 里 (不解析 ndjson).
 
-生成时间: 2026-05-24T03:45:30.713Z
+生成时间: 2026-05-25T00:51:17.075Z
 数据: auto=137 · manual=153 · skip=8 · total=298
 
 用法:
@@ -405,7 +405,11 @@ with open(report, 'w', encoding='utf-8') as rf:
             if rc == 0 and is_sql and r.stderr:
                 import re as _re2
                 if _re2.search(rb'(?m)^(gsql:.+:\s*)?(ERROR|FATAL|PANIC):', r.stderr):
-                    status = 'ghost-ok-sql-error'
+                    # 二级判定: 部署形态特异 (集中式跑分布式专用视图/函数) · 拉分布式会 ok
+                    if _re2.search(rb'Unsupported view in single node mode|Unsupported function|Function [a-z_]+\([^)]*\) does not exist|does not support|not supported in (single|centralized)', r.stderr, _re2.I):
+                        status = 'unsupported-deploy-form'
+                    else:
+                        status = 'ghost-ok-sql-error'
                 else:
                     status = 'ok'
             elif rc == 0:
