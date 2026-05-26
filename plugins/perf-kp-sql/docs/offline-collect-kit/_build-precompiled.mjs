@@ -549,7 +549,9 @@ run_check() {
     if LC_ALL=C grep -qE '^(gsql:.+:[[:space:]]*)?(ERROR|FATAL|PANIC):' "\$OUTDIR/stderr/\$cid.txt" 2>/dev/null; then
       # 二级判定: 部署形态特异 (集中式跑分布式专用视图/函数报错) · 不是真错
       # 这类 SQL 拉到分布式实例跑会 ok · 跟 distill 数据质量问题 (syntax error) 区分开
-      if LC_ALL=C grep -qiE 'Unsupported view in single node mode|Unsupported function|Function [a-z_]+\\([^)]*\\) does not exist|does not support|not supported in (single|centralized)' "\$OUTDIR/stderr/\$cid.txt" 2>/dev/null; then
+      # pgxc_* 分布式 catalog 在集中式报 'Relation "pgxc_xxx" does not exist' · 也算部署形态特异
+      # (只认 pgxc_/pg_catalog.pgxc_ 前缀 · 不误伤 'Relation "t1" does not exist' 文档示例表)
+      if LC_ALL=C grep -qiE 'Unsupported view in single node mode|Unsupported function|Function [a-z_]+\\([^)]*\\) does not exist|does not support|not supported in (single|centralized)|[Rr]elation "(pgxc_|pg_catalog\\.pgxc_)[a-z0-9_]+" does not exist' "\$OUTDIR/stderr/\$cid.txt" 2>/dev/null; then
         s=unsupported-deploy-form
       else
         s=ghost-ok-sql-error
@@ -747,7 +749,8 @@ with open(report, 'w', encoding='utf-8') as rf:
                 import re as _re2
                 if _re2.search(rb'(?m)^(gsql:.+:\\s*)?(ERROR|FATAL|PANIC):', r.stderr):
                     # 二级判定: 部署形态特异 (集中式跑分布式专用视图/函数) · 拉分布式会 ok
-                    if _re2.search(rb'Unsupported view in single node mode|Unsupported function|Function [a-z_]+\\([^)]*\\) does not exist|does not support|not supported in (single|centralized)', r.stderr, _re2.I):
+                    # pgxc_* 在集中式报 'Relation "pgxc_xxx" does not exist' · 也算 (只认 pgxc_ 前缀)
+                    if _re2.search(rb'Unsupported view in single node mode|Unsupported function|Function [a-z_]+\\([^)]*\\) does not exist|does not support|not supported in (single|centralized)|[Rr]elation "(pgxc_|pg_catalog\\.pgxc_)[a-z0-9_]+" does not exist', r.stderr, _re2.I):
                         status = 'unsupported-deploy-form'
                     else:
                         status = 'ghost-ok-sql-error'

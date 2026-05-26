@@ -1,6 +1,6 @@
 # GaussDB 离线采集清单(指标 + 抓取方法)
 
-- 生成: 2026-05-24T03:44:14.088Z
+- 生成: 2026-05-26T03:45:01.255Z
 - 关联 case 范围: `cases/gaussdb/` (77 case) + `cases/gaussdb-dws/` (120 case) · 共 197 case_id
 - 数据源: `plugins/perf-kp-sql/data/cases/indices/by-check-item/CASES.md` (655 check 总,本清单是 gaussdb 关联子集)
 
@@ -16,18 +16,18 @@ GaussDB 在内网/无 SSH 直连场景 perf-kp-sql skill 不能远程采集,把�
 
 | | 数 |
 |---|---:|
-| **GaussDB 关联 check 合计** | **298** |
-| 其中 type=metric | 244 |
+| **GaussDB 关联 check 合计** | **290** |
+| 其中 type=metric | 236 |
 | 其中 type=parameter-current-value | 54 |
 
 ### 按 collection_layer 分布
 
 | collection_layer | check 数 |
 |---|---:|
-| `db-system-view` | 96 |
-| `db-interactive-cmd` | 87 |
+| `db-system-view` | 94 |
+| `db-interactive-cmd` | 82 |
 | `gaussdb-guc-param` | 54 |
-| `db-shell` | 20 |
+| `db-shell` | 19 |
 | `db-internal-counter` | 15 |
 | `log-grep` | 13 |
 | `os` | 11 |
@@ -35,9 +35,9 @@ GaussDB 在内网/无 SSH 直连场景 perf-kp-sql skill 不能远程采集,把�
 
 ---
 
-## collection_layer = `db-system-view` (96 check)
+## collection_layer = `db-system-view` (94 check)
 
-### type=metric (96 个)
+### type=metric (94 个)
 
 | check_id | metric_name | collection_method | abnormal_patterns | 关联 case 数 |
 |---|---|---|---|---:|
@@ -56,7 +56,6 @@ GaussDB 在内网/无 SSH 直连场景 perf-kp-sql skill 不能远程采集,把�
 | `chk-disk-cache-pgxc-disk-cache-all-stats` | Disk Cache 命中率与磁盘使用大小 (pgxc_disk_cache_all_stats) | "通过查询视图pgxc_disk_cache_all_stats可以查看当前缓存的命中率以及各个DN磁盘的使用大小情况" | "\"用户查询数据时，会优先到Disk Cache中查看数据是否已存在于本地磁盘，如果不存在则再去OBS读取数据\"" | 1 |
 | `chk-dms` | DMS 监控 · 节点磁盘使用率 | `选择“监控 > 节点监控 > 磁盘”，单击“磁盘使用率”右侧的![](https://support.huaweicloud.com/trouble-dws/figure/zh-cn_image_0000001393399197.png)进行排序，可查看当前集群各个节点的磁盘使用率。` | ">= 70%" | 1 |
 | `chk-dms-max-min` | DMS · 节点磁盘使用率排序 (max - min) | `选择“监控 > 节点监控 > 磁盘”，单击“磁盘使用率”右侧的![](https://support.huaweicloud.com/trouble-dws/figure/zh-cn_image_0000001393399197.png)进行排序，可查看当前集群各个节点的磁盘使用率。` | "max - min >= 10%" | 1 |
-| `chk-dn-xc-node-id` | 各 DN 数据量分布 (xc_node_id 分组) | "SELECT a.count,b.node_name FROM (SELECT count(*) AS count,xc_node_id FROM table_name GROUP BY xc_node_id) a, pgxc_node b WHERE a.xc_node_id=b.node_id ORDER BY  | "\"> 5% diff (视为倾斜); > 10% diff (必须调整)\"" | 1 |
 | `chk-gs-asp` | gs_asp (两天内秒级抖动) | "对于两天内秒级性能抖动，分析相应时间点的gs_asp表" | "\"分析相应时间点的gs_asp表\"" | 1 |
 | `chk-gs-wlm-instance-history-io-await-io-util-disk-read-disk-writ` | GS_WLM_INSTANCE_HISTORY · io_await / io_util / disk_read / disk_write / process_read / process_write | `GS_WLM_INSTANCE_HISTORY` | "\"io_util&io_await能够反应出磁盘的繁忙程度，disk_read&disk_write是发生的实际IO流量值，如果磁盘很繁忙，但实际IO流量值不高" | 1 |
 | `chk-gs-wlm-session-history-warning` | GS_WLM_SESSION_HISTORY.warning · 统计信息未收集告警 | `SELECT query,warning FROM GS_WLM_SESSION_STATISTICS ORDER BY start_time DESC` | "\"Statistic Not Collect schema_test.t1\"" | 1 |
@@ -135,14 +134,13 @@ GaussDB 在内网/无 SSH 直连场景 perf-kp-sql skill 不能远程采集,把�
 | `chk-vs` | 脏数据膨胀率 / 表实际大小 vs 有效数据量 | NULL | "\"发现表数据膨胀严重，对其中一张8GB大小的表，总数据量5万条，做完VACUUM FULL后大小减小为5.6MB。\"" | 1 |
 | `chk-waiting-in-queue` | 查询等待状态 · waiting in queue | "普通用户主要在waiting in queue/waiting in global queue时。当前的活跃语句数超过max_active_statements限制导致的普通用户排队，由于管理员用户不受管控所以无需排队。" | "\"普通用户在排队：waiting in queue/waiting in global queue/waiting in ccn queue.\"" | 1 |
 | `chk-wdr-top-sql-order-by-cpu-time` | WDR 报告 Top SQL order by CPU Time | "可直接使用WDR报告中SQL ordered by CPU Time部分，尝试优化分析相关语句" | "\"如果CPU一直较高，方法一：可直接使用WDR报告中SQL ordered by CPU Time部分，尝试优化分析相关语句\"" | 1 |
-| `chk-xc-node-id` | 按 xc_node_id 分组的表数据行数 | `SELECT a.count,b.node_name         FROM             (SELECT count(*) AS count,xc_node_id FROM tablename GROUP BY xc_node_id) a,               pgxc_node b       | "DN 间数据量差异 >= 10%" | 1 |
 | `chk-xid` | 当前事务 XID | `SELECT txid_current();` | "\"执行以下命令查询当前的事务XID。\"" | 1 |
 
 ---
 
-## collection_layer = `db-interactive-cmd` (87 check)
+## collection_layer = `db-interactive-cmd` (82 check)
 
-### type=metric (87 个)
+### type=metric (82 个)
 
 | check_id | metric_name | collection_method | abnormal_patterns | 关联 case 数 |
 |---|---|---|---|---:|
@@ -152,7 +150,6 @@ GaussDB 在内网/无 SSH 直连场景 perf-kp-sql skill 不能远程采集,把�
 | `chk-cstore-scan` | 执行计划算子：CStore Scan耗时占比 | "通过抓取问题SQL的执行信息，发现大部分的耗时都在\"CStore Scan\"" | "\"大部分的耗时都在\\\"CStore Scan\\\"\"" | 1 |
 | `chk-cu` | 执行计划中CU扫描数量 | "查看偶发慢业务慢时的执行计划信息，慢在cstore scan，且扫描数据量不大但扫描CU个数较多" | "CU数量 >> 数据行数/60000" | 1 |
 | `chk-data-node-scan` | 执行计划下推标识（Data Node Scan） | "将GUC参数enable_fast_query_shipping设置为off，使查询优化器使用分布式框架策略。查看执行计划。如果执行计划中有Data Node Scan节点，那么此执行计划是发送语句的分布式执行计划，为不可下推的执行计划；如果执行计划中有Streaming节点，那么计划是可以下推的。" | "\"可见，func_percent_2并没有被下推，而是将ss_sales_price和ss_list_price收到CN上，再进行计算，消耗大量CN的资源，而且" | 1 |
-| `chk-dn` | 各 DN 数据条数分布 | `SELECT a.count,b.node_name FROM (SELECT count(*) AS count,xc_node_id FROM table_name GROUP BY xc_node_id) a, pgxc_node b WHERE a.xc_node_id=b.node_id ORDER BY  | ">= 10%" | 1 |
 | `chk-enable-hashjoin` | enable_hashjoin 关闭后执行计划 | `SET enable_hashjoin = off;` | "`分析上述执行计划，发现执行了Hash Join，对大表b_zyk_wbswxx（网吧上网信息）建立了Hash Table。由于该表数据量大，创建过程耗时较长。" | 1 |
 | `chk-explain` | EXPLAIN 执行计划算子估算行数 | `EXPLAIN` | "第11层算子估算行数为2140，比实际行数严重低估" | 1 |
 | `chk-explain` | EXPLAIN · 计划与实际行数比对 | `导致执行计划选择不优` | "`统计信息不是最新的情况`" | 1 |
@@ -187,7 +184,6 @@ GaussDB 在内网/无 SSH 直连场景 perf-kp-sql skill 不能远程采集,把�
 | `chk-explain-performance-rows-hint` | EXPLAIN PERFORMANCE · rows hint 修正后各算子行数及整体耗时 | `select avg(netpaid) from (select /*+rows(store_sales store_returns * 11270)*/ c_last_name ...` | "\"最终计划如下图所示，运行时间94s，完成调优\"" | 1 |
 | `chk-explain-performance-spill-written-disk-temp-file-num` | EXPLAIN PERFORMANCE · spill / written disk / temp file num 关键字 | `performance中出现spill、written disk、temp file num等关键字时，说明对应的算子出现了下盘。` | "`performance中出现spill、written disk、temp file num等关键字时，说明对应的算子出现了下盘。`" | 1 |
 | `chk-explain-performance-sql-streaming-redistribute` | EXPLAIN PERFORMANCE · SQL自诊断信息（Streaming REDISTRIBUTE 计算倾斜） | `SQL自诊断信息显示在做row_number()函数计算前的PARTITION BY T.ORDER_LINE_ID引入的重分布算子(Streaming(type: REDISTRIBUTE))有计算倾斜` | "`Streaming(type: REDISTRIBUTE)有计算倾斜`" | 1 |
-| `chk-explain-performance-stream-dn` | EXPLAIN PERFORMANCE · Stream 算子各 DN 行数分布 | `select * from skew s,test t where s.x = t.x order by s.a limit 1` | "\"6 --Streaming(type: REDISTRIBUTE) datanode1 (rows=5050368) datanode2 (rows=1527" | 1 |
 | `chk-explain-performance-vs-a-rows-vs-e-rows` | EXPLAIN PERFORMANCE · 各算子行数估算 vs 实际行数（A-rows vs E-rows） | `EXPLAIN PERFORMANCE` 查看 TPC-DS Q24 部分语句执行计划 | "\"第11层算子估算行数为2140，比实际行数严重低估\"" | 1 |
 | `chk-explain-performance-windowagg-sort` | EXPLAIN PERFORMANCE 执行计划 · WindowAgg/Sort 算子耗时 | `explain performance` | "\"执行计划中出现Sort和WindowAgg，第3~6步集中在一个DN上进行，使SQL非常缓慢。\"" | 1 |
 | `chk-explain-remotequery-data-node-scan` | EXPLAIN · 是否含 RemoteQuery / Data Node Scan | - **abnormal_patterns**: ["`Data Node Scan on t1 \"_REMOTE_TABLE_QUERY_\"`"] | "`Data Node Scan on t1 \"_REMOTE_TABLE_QUERY_\"`" | 1 |
@@ -197,8 +193,6 @@ GaussDB 在内网/无 SSH 直连场景 perf-kp-sql skill 不能远程采集,把�
 | `chk-explain-seq-scan-vs-index-scan` | EXPLAIN 执行计划 · 扫描算子类型（Seq Scan vs Index Scan） | `Seq Scan扫描需要3767ms，因涉及从4096000条数据中获取8240条数据，符合索引扫描的场景（海量数据中寻找少量数据），在对过滤条件列增加索引后，计划依然是Seq Scan而没有走Index Scan。` | "`计划依然是Seq Scan而没有走Index Scan。`" | 1 |
 | `chk-explain-seqscan-vs-indexscan` | EXPLAIN · 算子(seqscan vs indexscan) | `在优化前，没有创建places.place_id和states.state_id索引，执行计划如下` | "NULL" | 1 |
 | `chk-explain-stream` | EXPLAIN 执行计划 Stream 算子类型 | `EXPLAIN` | "劣化的原因主要为lineitem和part表join时stream类型由BroadCast变更为Redistribute导致" | 1 |
-| `chk-explain-streaming` | EXPLAIN 计划是否含 Streaming | CREATE TABLE t1 (a int, b int) DISTRIBUTE BY HASH (a); CREATE TABLE t2 (a int, b int) DISTRIBUTE BY HASH (a); | "则执行计划将存在\"Streaming\"，导致DN之间存在较大通信数据量。" | 1 |
-| `chk-explain-streaming` | 调整后 EXPLAIN 是否消除 Streaming | CREATE TABLE t1 (a int, b int) DISTRIBUTE BY HASH (a); CREATE TABLE t2 (a int, b int) DISTRIBUTE BY HASH (b); | "则执行计划将不包含\"Streaming\"，减少DN之间存在的通信数据量，从而提升查询性能。" | 1 |
 | `chk-explain-subplan` | EXPLAIN 执行计划 SubPlan 存在 | `EXPLAIN` | "此SQL性能较差，查看发现执行计划中存在SubPlan" | 1 |
 | `chk-explain-verbose` | EXPLAIN VERBOSE 统计信息警告 | "通过explain verbose执行query分析执行计划时会提示WARNING信息，如下所示：WARNING:Statistics in some tables or columns(public.lineitem.l_receiptdate, public.lineitem.l_commitdate, publ | "\"WARNING:Statistics in some tables or columns(...) are not collected.\"" | 1 |
 | `chk-explain-verbose-anti-join` | EXPLAIN VERBOSE Anti Join 行数估算 | `explain verbose` | "估算Anti Join的行数与实际行数相差很大" | 1 |
@@ -217,7 +211,6 @@ GaussDB 在内网/无 SSH 直连场景 perf-kp-sql skill 不能远程采集,把�
 | `chk-in` | 执行计划in条件处理方式 | "打印语句的执行计划" | "\"执行计划中，in条件还是作为普通的过滤条件存在。这种场景下，最优的执行计划应该是将\\\"in 常量\\\"转化为join操作性能更好。\"" | 1 |
 | `chk-leading-hint` | 加 leading hint 后执行时间 | select /*+ leading((s d)) */ a.ca_state state, count(*) cnt ... | "34268.322ms → 11095.046ms" | 1 |
 | `chk-leading-no-nestloop-hint` | 加 leading + no nestloop hint 后执行时间 | select /*+ leading((s d)) no nestloop(s d) */ a.ca_state state, count(*) cnt ... | "11095.046ms → 4644.409ms" | 1 |
-| `chk-local-explain-analyze-total-runtime` | 创建 LOCAL 索引后 EXPLAIN ANALYZE Total runtime | `CREATE INDEX idx_range_b ON test_range_pt(b) LOCAL;` | "优化后时间消耗远小于优化前。" | 1 |
 | `chk-memory-information-dn` | Memory Information 各 DN 内存消耗分布 | `EXPLAIN ANALYZE` (Memory Information 段) | "各个节点的内存资源消耗也存在极为严重的偏斜" | 1 |
 | `chk-nestloop` | 语句执行时间 / 执行计划中 NestLoop 算子 | `该问题发生在实时场景下，语句执行时间因为达到了 3600s而自动终止运行` | ">= 3600s" | 1 |
 | `chk-nestloop` | 执行计划算子类型（NestLoop） | "首先观察SQL语句中有not in 语法；执行计划中有NestLoop" | "\"NestLoop是导致语句性能慢的主要原因。\"" | 1 |
@@ -314,9 +307,9 @@ GaussDB 在内网/无 SSH 直连场景 perf-kp-sql skill 不能远程采集,把�
 
 ---
 
-## collection_layer = `db-shell` (20 check)
+## collection_layer = `db-shell` (19 check)
 
-### type=metric (20 个)
+### type=metric (19 个)
 
 | check_id | metric_name | collection_method | abnormal_patterns | 关联 case 数 |
 |---|---|---|---|---:|
@@ -333,7 +326,6 @@ GaussDB 在内网/无 SSH 直连场景 perf-kp-sql skill 不能远程采集,把�
 | `chk-null-009` | 写入方式 | "如果通过单条INSERT INTO语句的方式单并发写数据入库，客户端很可能会出现瓶颈" | "\"如果通过单条INSERT INTO语句的方式单并发写数据入库，客户端很可能会出现瓶颈\"" | 1 |
 | `chk-null-011` | 表倾斜情况 | `SELECT table_skewness('table name');` | "NULL" | 1 |
 | `chk-pck` | 表定义是否存在PCK | `SELECT * FROM pg_get_tabledef('table name');` | "\"回显中存在\\\"PARTIAL CLUSTER KEY\\\"信息，表示存在PCK。\"" | 1 |
-| `chk-period-ttl` | 分区表 period / ttl 参数设置 | "CREATE TABLE CPU1(...) with (TTL='7 days',PERIOD='1 day', TIME_FORMAT='YYYYMMDD')" | "\"普通分区表无法自动创建新分区或清理过期分区，需维护人员定期手动操作\"" | 1 |
 | `chk-psort-work-mem` | psort_work_mem 参数值 | `show psort_work_mem;` | "\"查看psort_work_mem是否设置过小\"" | 1 |
 | `chk-savepoint` | 存储过程中 SAVEPOINT 的创建/释放配对 | 在使用完SAVEPOINT后，应及时使用RELEASE SAVEPOINT来释放资源。 | "同名的SAVEPOINT不会覆盖，而是会重新创建，这可能导致资源迅速累积。" | 1 |
 | `chk-session-package` | SESSION 中 PACKAGE 变量数量与内存占用 | "PACKAGE变量是在PACKAGE内定义的全局变量，其生命周期覆盖整个数据库会话（SESSION）。" | "\"大量PACKAGE变量在SESSION中缓存可能占用大量内存。\"" | 1 |

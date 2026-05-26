@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """GaussDB 离线采集 · 预编译版 · 自包含 · python 纯 stdlib.
 
-所有 137 个 auto 命令已 inline 在 CHECKS list 里 (不解析 ndjson).
+所有 129 个 auto 命令已 inline 在 CHECKS list 里 (不解析 ndjson).
 
-生成时间: 2026-05-25T00:51:17.075Z
-数据: auto=137 · manual=153 · skip=8 · total=298
+生成时间: 2026-05-26T03:45:01.345Z
+数据: auto=129 · manual=153 · skip=8 · total=290
 
 用法:
   source ~/gauss_env_file
@@ -54,7 +54,7 @@ DEPLOY_FORM = detect_deploy_form()
 print(f'部署形态自识别: {DEPLOY_FORM}', file=sys.stderr, flush=True)
 (OUTDIR / 'deploy.txt').write_text(DEPLOY_FORM + '\n')
 
-# (check_id, name, layer, method) · 137 条 auto · 直接跑
+# (check_id, name, layer, method) · 129 条 auto · 直接跑
 CHECKS = [
     ("chk-dbe-perf-statement-cpu-time", "dbe_perf.statement.cpu_time", "db-system-view", "select unique_sql_id,substr(query,1,50) as query ,n_calls,round(total_elapse_time/n_calls/1000,2) avg_time,round(total_elapse_time/1000,2) as total_time,round(cpu_time/1000,2) as cup_time from dbe_perf.statement t where  n_calls>10 and avg_time>3  and user_name='root'  order by cpu_time desc limit 5;"),
     ("chk-explain-verbose-remotequery", "explain verbose · RemoteQuery 计划", "db-interactive-cmd", "set rewrite_rule='none'; SET explain (verbose on, costs off)  select two_sum(tt.c1, tt.c2) from (select t1.c1,t2.c2 from t1,t2 where t1.c1=t2.c2) tt(c1,c2);"),
@@ -66,16 +66,12 @@ CHECKS = [
     ("chk-pgxc-get-table-skewness", "PGXC_GET_TABLE_SKEWNESS", "db-system-view", "SELECT * FROM pgxc_get_table_skewness ORDER BY totalsize DESC;"),
     ("chk-table-distribution-dn-1w", "table_distribution() 各DN空间（大表个数超1W场景）", "db-system-view", "SELECT schemaname,tablename,max(dnsize) AS maxsize, min(dnsize) AS minsize FROM pg_catalog.pg_class c INNER JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace INNER JOIN pg_catalog.table_distribution() s ON s.schemaname = n.nspname AND s.tablename = c.relname INNER JOIN pg_catalog.pgxc_class x ON c.oid = x.pcrelid AND x.pclocatortype = 'H' GROUP BY schemaname,tablename;"),
     ("chk-explain-verbose-warning", "EXPLAIN VERBOSE 执行计划 Warning", "db-interactive-cmd", "explain verbose"),
-    ("chk-local-explain-analyze-total-runtime", "创建 LOCAL 索引后 EXPLAIN ANALYZE Total runtime", "db-interactive-cmd", "CREATE INDEX idx_range_b ON test_range_pt(b) LOCAL;"),
     ("chk-copy", "COPY 导入是否存在约束冲突类容错需求", "db-shell", "SET a_format_load_with_constraints_violation = 's2';"),
     ("chk-explain-verbose-anti-join", "EXPLAIN VERBOSE Anti Join 行数估算", "db-interactive-cmd", "explain verbose"),
     ("chk-explain-verbose-hashjoin", "EXPLAIN VERBOSE hashjoin 行数估算", "db-interactive-cmd", "set cost_param=2; explain verbose"),
     ("chk-table-skewness-dn", "table_skewness() 各 DN 数据分布比例", "db-system-view", "select table_skewness('inventory');"),
     ("chk-pg-stat-get-last-data-changed-time", "pg_stat_get_last_data_changed_time 最近变更的表", "db-system-view", "SELECT table_distribution(schemaname,relname) FROM get_last_changed_table();"),
     ("chk-table-distribution-dn", "table_distribution() 各 DN 存储空间分布", "db-system-view", "SELECT table_distribution(schemaname,relname) FROM get_last_changed_table();"),
-    ("chk-xc-node-id", "按 xc_node_id 分组的表数据行数", "db-system-view", "SELECT a.count,b.node_name         FROM             (SELECT count(*) AS count,xc_node_id FROM tablename GROUP BY xc_node_id) a,               pgxc_node b         WHERE a.xc_node_id=b.node_id ORDER BY a.count DESC;"),
-    ("chk-explain-streaming", "EXPLAIN 计划是否含 Streaming", "db-interactive-cmd", "CREATE TABLE t1 (a int, b int) DISTRIBUTE BY HASH (a); CREATE TABLE t2 (a int, b int) DISTRIBUTE BY HASH (a);"),
-    ("chk-explain-streaming", "调整后 EXPLAIN 是否消除 Streaming", "db-interactive-cmd", "CREATE TABLE t1 (a int, b int) DISTRIBUTE BY HASH (a); CREATE TABLE t2 (a int, b int) DISTRIBUTE BY HASH (b);"),
     ("chk-explain-analyze-hashjoin-dn", "EXPLAIN ANALYZE HashJoin 各 DN 执行时间范围", "db-interactive-cmd", "EXPLAIN ANALYZE"),
     ("chk-memory-information-dn", "Memory Information 各 DN 内存消耗分布", "db-interactive-cmd", "EXPLAIN ANALYZE` (Memory Information 段)"),
     ("chk-seq-scan-dn", "Seq Scan 各 DN 扫描时间", "db-interactive-cmd", "EXPLAIN ANALYZE"),
@@ -91,8 +87,6 @@ CHECKS = [
     ("chk-null-003", "线程等待状态", "db-system-view", "select * from pg_thread_wait_status where query_id='149181737656737395';"),
     ("chk-sql-create-index", "活跃SQL及CREATE INDEX语句", "db-system-view", "select * from pg_stat_activity where state !='idle' and usename !='omm';"),
     ("chk-null-004", "表数据倾斜", "db-system-view", "select table_skewness('ioc_dm.m_ss_index_event');"),
-    ("chk-dn-xc-node-id", "各 DN 数据量分布 (xc_node_id 分组)", "db-system-view", "SELECT a.count,b.node_name FROM (SELECT count(*) AS count,xc_node_id FROM table_name GROUP BY xc_node_id) a, pgxc_node b WHERE a.xc_node_id=b.node_id ORDER BY a.count desc;"),
-    ("chk-period-ttl", "分区表 period / ttl 参数设置", "db-shell", "CREATE TABLE CPU1(...) with (TTL='7 days',PERIOD='1 day', TIME_FORMAT='YYYYMMDD')"),
     ("chk-pgxc-get-stat-all-tables-dirty-page-rate", "PGXC_GET_STAT_ALL_TABLES.dirty_page_rate", "db-system-view", "SELECT schemaname AS schema, relname AS table_name, n_live_tup AS analyze_count, pg_size_pretty(pg_table_size(relid)) as table_size, dirty_page_rate FROM PGXC_GET_STAT_ALL_TABLES WHERE schemaName NOT IN ('pg_toast', 'pg_catalog', 'information_schema', 'cstore', 'pmk') AND dirty_page_rate > 30 ORDER BY table_size DESC, dirty_page_rate DESC;"),
     ("chk-dn", "各DN数据量分布", "db-shell", "SELECT pg_get_tabledef('customer_t1');"),
     ("chk-enable-codegen", "enable_codegen 参数状态", "db-shell", "SHOW turbo_engine_version;"),
@@ -119,11 +113,9 @@ CHECKS = [
     ("chk-pgxc-thread-wait-status", "pgxc_thread_wait_status 锁等待状态", "db-system-view", "SELECT * FROM pgxc_thread_wait_status WHERE query_id = {query_id};"),
     ("chk-pck", "表定义是否存在PCK", "db-shell", "SELECT * FROM pg_get_tabledef('table name');"),
     ("chk-psort-work-mem", "psort_work_mem 参数值", "db-shell", "show psort_work_mem;"),
-    ("chk-dn", "各 DN 数据条数分布", "db-interactive-cmd", "SELECT a.count,b.node_name FROM (SELECT count(*) AS count,xc_node_id FROM table_name GROUP BY xc_node_id) a, pgxc_node b WHERE a.xc_node_id=b.node_id ORDER BY a.count desc;"),
     ("chk-explain-verbose-hashjoin", "EXPLAIN VERBOSE · HashJoin 行数估算偏差", "db-interactive-cmd", "set cost_param=2; explain verbose select nation, sum(amount) as sum_profit from (...) as profit group by nation order by nation"),
     ("chk-dn", "磁盘利用率各 DN 差异", "db-shell", "SELECT wait_status, count(*) as cnt FROM pgxc_thread_wait_status WHERE wait_status not like '%cmd%' AND wait_status not like '%none%' and wait_status not like '%quit%' group by 1 order by 2 desc"),
     ("chk-table-skewness-table-distribution", "table_skewness / table_distribution · 表数据倾斜率", "db-shell", "SELECT table_skewness('store_sales')"),
-    ("chk-explain-performance-stream-dn", "EXPLAIN PERFORMANCE · Stream 算子各 DN 行数分布", "db-interactive-cmd", "select * from skew s,test t where s.x = t.x order by s.a limit 1"),
     ("chk-pgxc-stat-activity-state", "pgxc_stat_activity state 字段", "db-system-view", "SELECT state, query, query_id FROM pgxc_stat_activity;"),
     ("chk-cn-savepoint-release", "各 CN 上 SAVEPOINT/RELEASE 语句分布", "db-system-view", "SELECT coorname,pid,query_id,state,query,usename FROM pgxc_stat_activity WHERE usename='jack';"),
     ("chk-leading-hint", "加 leading hint 后执行时间", "db-interactive-cmd", "select /*+ leading((s d)) */ a.ca_state state, count(*) cnt ..."),
@@ -406,7 +398,8 @@ with open(report, 'w', encoding='utf-8') as rf:
                 import re as _re2
                 if _re2.search(rb'(?m)^(gsql:.+:\s*)?(ERROR|FATAL|PANIC):', r.stderr):
                     # 二级判定: 部署形态特异 (集中式跑分布式专用视图/函数) · 拉分布式会 ok
-                    if _re2.search(rb'Unsupported view in single node mode|Unsupported function|Function [a-z_]+\([^)]*\) does not exist|does not support|not supported in (single|centralized)', r.stderr, _re2.I):
+                    # pgxc_* 在集中式报 'Relation "pgxc_xxx" does not exist' · 也算 (只认 pgxc_ 前缀)
+                    if _re2.search(rb'Unsupported view in single node mode|Unsupported function|Function [a-z_]+\([^)]*\) does not exist|does not support|not supported in (single|centralized)|[Rr]elation "(pgxc_|pg_catalog\.pgxc_)[a-z0-9_]+" does not exist', r.stderr, _re2.I):
                         status = 'unsupported-deploy-form'
                     else:
                         status = 'ghost-ok-sql-error'

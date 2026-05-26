@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # GaussDB 离线采集 · 预编译版 · 完全自包含
-# 所有 137 个 auto 命令已 inline 为 heredoc (不解析 ndjson · 不需 jq).
+# 所有 129 个 auto 命令已 inline 为 heredoc (不解析 ndjson · 不需 jq).
 #
-# 生成时间: 2026-05-25T00:51:17.074Z
-# 数据: auto=137 · manual=153 · skip=8 · total=298
+# 生成时间: 2026-05-26T03:45:01.344Z
+# 数据: auto=129 · manual=153 · skip=8 · total=290
 #
 # 用法:
 #   source ~/gauss_env_file              # 先 source gsql env (如需要)
@@ -100,7 +100,9 @@ run_check() {
     if LC_ALL=C grep -qE '^(gsql:.+:[[:space:]]*)?(ERROR|FATAL|PANIC):' "$OUTDIR/stderr/$cid.txt" 2>/dev/null; then
       # 二级判定: 部署形态特异 (集中式跑分布式专用视图/函数报错) · 不是真错
       # 这类 SQL 拉到分布式实例跑会 ok · 跟 distill 数据质量问题 (syntax error) 区分开
-      if LC_ALL=C grep -qiE 'Unsupported view in single node mode|Unsupported function|Function [a-z_]+\([^)]*\) does not exist|does not support|not supported in (single|centralized)' "$OUTDIR/stderr/$cid.txt" 2>/dev/null; then
+      # pgxc_* 分布式 catalog 在集中式报 'Relation "pgxc_xxx" does not exist' · 也算部署形态特异
+      # (只认 pgxc_/pg_catalog.pgxc_ 前缀 · 不误伤 'Relation "t1" does not exist' 文档示例表)
+      if LC_ALL=C grep -qiE 'Unsupported view in single node mode|Unsupported function|Function [a-z_]+\([^)]*\) does not exist|does not support|not supported in (single|centralized)|[Rr]elation "(pgxc_|pg_catalog\.pgxc_)[a-z0-9_]+" does not exist' "$OUTDIR/stderr/$cid.txt" 2>/dev/null; then
         s=unsupported-deploy-form
       else
         s=ghost-ok-sql-error
@@ -111,7 +113,7 @@ run_check() {
 }
 
 i=0
-TOTAL=137
+TOTAL=129
 echo "开始: $TOTAL 个 auto 命令 · timeout ${TIMEOUT}s · outdir $OUTDIR"
 echo ""
 
@@ -187,13 +189,6 @@ EOF_CHK_EXPLAIN_VERBOSE_WARNING
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-local-explain-analyze-total-runtime · 创建 LOCAL 索引后 EXPLAIN ANALYZE Total runtime · layer=db-interactive-cmd
-run_check "chk-local-explain-analyze-total-runtime" <<'EOF_CHK_LOCAL_EXPLAIN_ANALYZE_TOTAL_RUNTIME'
-CREATE INDEX idx_range_b ON test_range_pt(b) LOCAL;
-EOF_CHK_LOCAL_EXPLAIN_ANALYZE_TOTAL_RUNTIME
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-copy · COPY 导入是否存在约束冲突类容错需求 · layer=db-shell
 run_check "chk-copy" <<'EOF_CHK_COPY'
 SET a_format_load_with_constraints_violation = 's2';
@@ -233,27 +228,6 @@ i=$((i+1))
 run_check "chk-table-distribution-dn" <<'EOF_CHK_TABLE_DISTRIBUTION_DN'
 SELECT table_distribution(schemaname,relname) FROM get_last_changed_table();
 EOF_CHK_TABLE_DISTRIBUTION_DN
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-xc-node-id · 按 xc_node_id 分组的表数据行数 · layer=db-system-view
-run_check "chk-xc-node-id" <<'EOF_CHK_XC_NODE_ID'
-SELECT a.count,b.node_name         FROM             (SELECT count(*) AS count,xc_node_id FROM tablename GROUP BY xc_node_id) a,               pgxc_node b         WHERE a.xc_node_id=b.node_id ORDER BY a.count DESC;
-EOF_CHK_XC_NODE_ID
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-streaming · EXPLAIN 计划是否含 Streaming · layer=db-interactive-cmd
-run_check "chk-explain-streaming" <<'EOF_CHK_EXPLAIN_STREAMING'
-CREATE TABLE t1 (a int, b int) DISTRIBUTE BY HASH (a); CREATE TABLE t2 (a int, b int) DISTRIBUTE BY HASH (a);
-EOF_CHK_EXPLAIN_STREAMING
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-streaming · 调整后 EXPLAIN 是否消除 Streaming · layer=db-interactive-cmd
-run_check "chk-explain-streaming" <<'EOF_CHK_EXPLAIN_STREAMING'
-CREATE TABLE t1 (a int, b int) DISTRIBUTE BY HASH (a); CREATE TABLE t2 (a int, b int) DISTRIBUTE BY HASH (b);
-EOF_CHK_EXPLAIN_STREAMING
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -359,20 +333,6 @@ i=$((i+1))
 run_check "chk-null-004" <<'EOF_CHK_NULL_004'
 select table_skewness('ioc_dm.m_ss_index_event');
 EOF_CHK_NULL_004
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-dn-xc-node-id · 各 DN 数据量分布 (xc_node_id 分组) · layer=db-system-view
-run_check "chk-dn-xc-node-id" <<'EOF_CHK_DN_XC_NODE_ID'
-SELECT a.count,b.node_name FROM (SELECT count(*) AS count,xc_node_id FROM table_name GROUP BY xc_node_id) a, pgxc_node b WHERE a.xc_node_id=b.node_id ORDER BY a.count desc;
-EOF_CHK_DN_XC_NODE_ID
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-period-ttl · 分区表 period / ttl 参数设置 · layer=db-shell
-run_check "chk-period-ttl" <<'EOF_CHK_PERIOD_TTL'
-CREATE TABLE CPU1(...) with (TTL='7 days',PERIOD='1 day', TIME_FORMAT='YYYYMMDD')
-EOF_CHK_PERIOD_TTL
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -558,13 +518,6 @@ EOF_CHK_PSORT_WORK_MEM
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-dn · 各 DN 数据条数分布 · layer=db-interactive-cmd
-run_check "chk-dn" <<'EOF_CHK_DN'
-SELECT a.count,b.node_name FROM (SELECT count(*) AS count,xc_node_id FROM table_name GROUP BY xc_node_id) a, pgxc_node b WHERE a.xc_node_id=b.node_id ORDER BY a.count desc;
-EOF_CHK_DN
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-explain-verbose-hashjoin · EXPLAIN VERBOSE · HashJoin 行数估算偏差 · layer=db-interactive-cmd
 run_check "chk-explain-verbose-hashjoin" <<'EOF_CHK_EXPLAIN_VERBOSE_HASHJOIN'
 set cost_param=2; explain verbose select nation, sum(amount) as sum_profit from (...) as profit group by nation order by nation
@@ -583,13 +536,6 @@ i=$((i+1))
 run_check "chk-table-skewness-table-distribution" <<'EOF_CHK_TABLE_SKEWNESS_TABLE_DISTRIBUTION'
 SELECT table_skewness('store_sales')
 EOF_CHK_TABLE_SKEWNESS_TABLE_DISTRIBUTION
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-explain-performance-stream-dn · EXPLAIN PERFORMANCE · Stream 算子各 DN 行数分布 · layer=db-interactive-cmd
-run_check "chk-explain-performance-stream-dn" <<'EOF_CHK_EXPLAIN_PERFORMANCE_STREAM_DN'
-select * from skew s,test t where s.x = t.x order by s.a limit 1
-EOF_CHK_EXPLAIN_PERFORMANCE_STREAM_DN
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -2171,7 +2117,7 @@ SKIP_DOC_END
 
 echo ""
 echo "─────────────────────────────────────────────"
-echo "完成 · TOTAL=298 · auto=137 · manual=153 · skip=8"
+echo "完成 · TOTAL=290 · auto=129 · manual=153 · skip=8"
 echo "  报告:        $OUTDIR/report.tsv"
 echo "  stdout 目录: $OUTDIR/stdout/"
 echo "  stderr 目录: $OUTDIR/stderr/"
