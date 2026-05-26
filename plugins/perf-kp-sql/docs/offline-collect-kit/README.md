@@ -6,15 +6,27 @@
 
 ```
 offline-collect-kit/
-├── README.md                 本文件
-├── checklist.ndjson          341 个 check (GaussDB 关联 · 由 by-check-item 派生)
+├── README.md                    本文件
+├── checklist.ndjson             290 个真采集 check (GaussDB 关联 · 已剔文档示例)
 │
-├── collect-precompiled.sh    ★ 预编译版 bash · 216 个命令 inline · 完全自包含
-├── collect-precompiled.py    ★ 预编译版 python · 216 个命令 inline · 纯 stdlib
+├── collect-precompiled.sh       ★ 预编译版 bash · auto 命令 inline · 完全自包含
+├── collect-precompiled.py       ★ 预编译版 python · auto 命令 inline · 纯 stdlib
 │
-├── collect.sh                现场解析版 bash · 读 ndjson · 依赖 jq
-├── collect.py                现场解析版 python · 读 ndjson · 纯 stdlib
-└── _build-precompiled.mjs    本地工具 · 重编译 precompiled.{sh,py} (本地跑 · 不部署)
+├── collect.sh                   现场解析版 bash · 读 ndjson · 依赖 jq
+├── collect.py                   现场解析版 python · 读 ndjson · 纯 stdlib
+│
+├── extract-offline-checklist.mjs  ★ 源头 · 从 perf-kp-sql case 库筛 gaussdb + A3 剔文档示例 → ndjson
+└── _build-precompiled.mjs         本地工具 · checklist.ndjson → precompiled.{sh,py} (本地跑 · 不部署)
+```
+
+### 完整再生链 (改了 case 库后重跑)
+
+```bash
+# 1. 从 perf-kp-sql case 库重新筛 GaussDB 采集清单 (写到 ../gaussdb-offline-checklist.ndjson)
+node extract-offline-checklist.mjs
+# 2. cp 到 kit + 重编译自包含脚本
+cp ../gaussdb-offline-checklist.ndjson checklist.ndjson
+node _build-precompiled.mjs
 ```
 
 ## 两种形态选哪个
@@ -94,9 +106,12 @@ COLLECT_DRYRUN=1    ./collect.sh        # 不真跑 · 只分类 manual/auto
 
 ## 数据来源
 
-- checklist.ndjson 由 `runs/gaussdb-tuning-kunpeng/scripts/extract-offline-checklist.mjs`
-  从 `plugins/perf-kp-sql/data/cases/indices/by-check-item/CASES.md` 过滤生成
+- checklist.ndjson 由本目录 `extract-offline-checklist.mjs`(2026-05-25 从 db-distill-engine
+  仓收编 · 它属 perf-kp-sql 离线套件不属蒸馏引擎)从
+  `plugins/perf-kp-sql/data/cases/indices/by-check-item/CASES.md` 过滤生成
 - 过滤标准: check.linked_case_ids ∩ (`cases/gaussdb/` ∪ `cases/gaussdb-dws/`) ≠ ∅
+- A3 剔除文档示例 SQL: 写操作 DDL/DML(CREATE/INSERT/...) + 只读查询 FROM 跟非 trusted
+  系统视图(t1/customer/skew 等业务示例表)· 341 → 290 真采集
 
 ## 拿回结果之后
 

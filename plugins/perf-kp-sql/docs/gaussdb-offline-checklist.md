@@ -1,6 +1,6 @@
 # GaussDB 离线采集清单(指标 + 抓取方法)
 
-- 生成: 2026-05-26T03:45:01.255Z
+- 生成: 2026-05-26T04:03:49.028Z
 - 关联 case 范围: `cases/gaussdb/` (77 case) + `cases/gaussdb-dws/` (120 case) · 共 197 case_id
 - 数据源: `plugins/perf-kp-sql/data/cases/indices/by-check-item/CASES.md` (655 check 总,本清单是 gaussdb 关联子集)
 
