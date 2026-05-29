@@ -11,7 +11,7 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { walkCasePairs } from "./lib-walk-cases.mjs";
@@ -43,13 +43,18 @@ function loadGolden(): GoldenSchema {
   return JSON.parse(readFileSync(GOLDEN_PATH, "utf8"));
 }
 
-// 跨所有 per-db/topology 桶收集 case_id(从各 CASES.md 的 ## case_id: 头)
+// 跨所有 per-db/topology 桶 + flame 反向索引收集 case_id(从各 CASES.md 的 ## case_id: 头)
+// flame-signature 已分流到 cases/indices/by-flame-signature/(walkCasePairs 排除 indices/),
+// golden 的 flame 桶引用这些 signature id,故需显式并入。
 function loadIndexCaseIds(): Set<string> {
   const ids = new Set<string>();
-  for (const { casesPath } of walkCasePairs(DATA_CASES)) {
-    for (const m of readFileSync(casesPath, "utf8").matchAll(/^## case_id:\s*(\S+)/gm)) {
-      ids.add(m[1]);
-    }
+  const files = [
+    ...walkCasePairs(DATA_CASES).map((p) => p.casesPath),
+    resolve(DATA_CASES, "indices/by-flame-signature/CASES.md"),
+  ];
+  for (const f of files) {
+    if (!existsSync(f)) continue;
+    for (const m of readFileSync(f, "utf8").matchAll(/^## case_id:\s*(\S+)/gm)) ids.add(m[1]);
   }
   return ids;
 }

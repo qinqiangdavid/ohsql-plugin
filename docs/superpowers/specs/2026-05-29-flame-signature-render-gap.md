@@ -1,9 +1,15 @@
-# flame-signature 处理 · 修复方案(DF 内嵌引用 + flame INDEX 懒查)
+# flame-signature 处理 · 修复方案(flame INDEX 懒查)
 
 - 日期: 2026-05-29
+- 状态: ✅ **已落地(2026-05-29)** · 见文末「落地记录」
 - 性质: **既有缺陷 + 设计未收口**,非 gaussdb topology 改动引入(git 对比确认重生前同样缺失)
 - 发现于: gaussdb topology 计划 2 修活久红的 case-integrity 测试时暴露
-- 优先级: **低**(与 gaussdb 集中式/离线采集正交;火焰图匹配路径本就未接通,无回归风险)
+- 优先级: 低(与 gaussdb 集中式/离线采集正交)
+
+> **落地时的设计简化**:原 §2 设想"DF step 存引用键 → 按键查 flame INDEX"。实现时按 SKILL.md
+> 火焰图路径的真实语义(用 perf 热点**全局撞** flame INDEX 的 pattern_regex)简化为:**不在 DF step
+> 存 per-step 引用键**,flame INDEX 作为全局反向索引,命中需读火焰图时整体懒查、用 pattern_regex
+> 撞热点。少一层 per-step 引用维护,且匹配语义与 SKILL 描述一致。
 
 ## 1. 现状(摸清)
 
@@ -57,3 +63,23 @@
 - 每个 DF 的 flamegraph step 的引用键在 flame INDEX 命中(无悬空)。
 - `field-integrity` 不再隔离 flame、全绿;新增 flame INDEX 测试绿。
 - SKILL.md 描述与 build 产出一致(火焰图路径真正可用)。
+
+## 落地记录(2026-05-29)
+
+- **distill**(`db-distill-engine-dev` `feat/flame-index`):
+  - `parseDistillFlameMd` 补抽 `source_authority` + `pattern_quote`/`mechanism_quote`/`workload_implication_quote`。
+  - `build-runtime` 加 `splitFlame` + `renderFlameIndex*`:flame 不进 per-db DF,归
+    `cases/indices/by-flame-signature/{INDEX,CASES}.md`(INDEX 带 pattern_regex)。13 signatures。
+- **ohsql**(`ohsql-plugin-dev` `feat/flame-index`):
+  - 重生数据:per-db 桶无 flame(残留 0);新增 `by-flame-signature/`。
+  - `field-integrity.test.ts` 撤掉 flame KNOWN-GAP 隔离(桶里已无 flame · 全过)。
+  - `index-integrity.test.ts` 加 flame INDEX 完整性(INDEX↔CASES 行号 + 每条非空 pattern_regex)。
+  - `golden-validity.test.ts` `loadIndexCaseIds` 并入 by-flame-signature 的 case_id(golden flame 桶引用它们)。
+  - `SKILL.md`:数据布局加 flame 索引两行;Phase 2 火焰图路径改懒查(命中需读火焰图才 Read flame INDEX)。
+- 测试:case 三测 33/33、离线 kit 17/17,全绿,无 skip。
+
+## 仍遗留(另起 · 与本 flame 修复无关)
+
+gaussdb 在线 Phase 2 路由仍按 `data/cases/gaussdb/INDEX.md` 单文件读,但 topology 拆分后已是
+`gaussdb/{common,centralized,distributed}/`。**在线 gaussdb 路由对新布局失配**(plan 2 明确"先不动在线"
+所致)· 需单独更新 Phase 2.0/2.1 让在线也按部署形态选 topology 子桶。

@@ -1,8 +1,8 @@
 # Cases Index
 
-> 生成时间: 2026-05-29T07:49:27.625Z
+> 生成时间: 2026-05-29T09:18:14.077Z
 > 数据源: distill-v2/cases/<db>/diagnostic-flow/*.md + runtime baseline 合并
-> 总计: 71 cases
+> 总计: 64 cases
 > 配套: mongodb/CASES.md
 
 | case_id | symptom_category | title | 行号 |
@@ -71,10 +71,3 @@
 | mongo-query-ixscan-poor-selectivity-extra-sort-02 | query-slow | 索引存在但 totalDocsExamined ≫ nReturned + 出现独立 SORT stage | 3582 |
 | mongo-write-regression-default-writeconcern-majority-journal-01 | query-slow | MongoDB 5.0+ 默认 writeConcern=majority 致 JournalFlusher 写盘成为热点 | 3642 |
 | mongo-wt-checkpoint-time-grows-bulk-load-stall-01 | disk-io-saturation | bulk-load 期间 WiredTiger checkpoint 时间从几秒增至数分钟,期间业务停滞 | 3717 |
-| wt-evict-cold-page-compact-cure-01 | other | WiredTiger 冷数据 evict 后 checkpoint 不再处理 · compact 触发 reconciliation 强制回收 | 3789 |
-| wt-app-thread-evict-assist-pressure-01 | other | WiredTiger 应用线程被迫参与 eviction 助手(cache 使用率超阈值压力 signature) | 3817 |
-| wt-evict-reconcile-blocked-ebusy-01 | other | WiredTiger eviction reconcile 被多重 EBUSY 阻碍(__evict_review → __evict_reconcile 链路热点) | 3845 |
-| wt-capacity-throttle-cond-signal-crash-01 | other | WiredTiger io_capacity 配置语法错误后,后台 eviction 线程经 capacity_throttle 调用 __wt_cond_signal 解引用 NULL capacity_cond 触发 SIGSEGV | 3873 |
-| wt-reconcile-row-tombstone-skip-01 | other | WiredTiger reconcile 在 row leaf 上跳过全局可见 stop_ts 的 key(磁盘清理读-判-跳路径 signature) | 3901 |
-| wt-reconcile-write-wrapup-block-free-01 | other | WiredTiger reconcile 写入 wrapup 阶段释放旧页面磁盘块(block manager free-list 入队 signature) | 3929 |
-| wt-reconcile-row-leaf-tombstone-not-globally-visible-01 | other | WiredTiger 行叶页 reconcile 路径下 tombstone 非全局可见 → 已删除数据被整页保留(oldest_timestamp 推进不足 signature) | 3957 |

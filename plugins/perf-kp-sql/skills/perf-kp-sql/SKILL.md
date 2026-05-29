@@ -136,6 +136,8 @@ perf-kp-sql 是一个鲲鹏场景下泛数据库性能诊断 skill，基于全�
 | `data/cases/indices/by-check-item/INDEX.md` | 指标集合路由表 · **全局反向索引** · 跨 db 共享 · 派生于所有 cases 的 metric + parameter 推荐值 (~7K tokens) | Phase 3 nothing 模式才加载 |
 | `data/cases/indices/by-check-item/CASES.md` | 指标集合完整字段(type=metric / parameter-current-value) · 跨 db 共享 | Phase 3 巡检 / Phase 6 同 |
 | `data/cases/indices/by-source-url.json` | NLM 喂料(由 build-runtime-cases-from-md.mjs 从 case source_url 派生)· 跨 db 合并 | NLM 注册 / Phase 4 |
+| `data/cases/indices/by-flame-signature/INDEX.md` | 火焰图特征路由表 · **全局反向索引** · 跨 db 共享 · 列 `case_id + scope + signature_type + pattern_regex + 行号` | **Phase 2 火焰图路径懒查**:命中需读火焰图的 DF case 时才加载 |
+| `data/cases/indices/by-flame-signature/CASES.md` | 火焰图特征完整字段(pattern_regex / scope / signature_type / match_layer + pattern/mechanism/workload_implication quote 段) | 同上 · Read offset+limit 拿单条 |
 
 **工具**:
 
@@ -893,9 +895,9 @@ Read(file_path="<PLUGIN_ROOT>/data/cases/_common/INDEX.md")
 
 `_common` 必读理由:Kunpeng/Linux 底层调优 case (NUMA / TLB / cstore-not-related 通用) 对任何 db 都适用 · 跟 db-specific case 并行匹配。
 
-INDEX 含两段:
-- **diagnostic-flow**: 列 case_id + symptom_category + title + 案例 line(每 db 数量见 SKILL.md 顶部 `Case library`)
-- **flame-signature**: 列 case_id + title + pattern_regex + 案例 line
+`data/cases/<db>/INDEX.md` 是 **diagnostic-flow 路由表**:列 case_id + symptom_category + title + 案例 line(每 db 数量见 SKILL.md 顶部 `Case library`)。
+
+**火焰图特征单独成索引**(不在 db INDEX 里):`data/cases/indices/by-flame-signature/INDEX.md`(全局跨 db · 列 `case_id + scope + signature_type + pattern_regex + 行号`)。**懒加载** — 只有当用户给了火焰图 / 命中的 DF case 的某个 step 需读火焰图时才 Read,不在 Phase 2 启动时常驻。
 
 ### 2.2 · LLM 匹配
 
@@ -903,7 +905,7 @@ INDEX 含两段:
 
 匹配策略:
 - **DF 路径**:用 symptom_category 锚点(11 类:cpu-high / disk-io-saturation / memory-pressure / query-slow / lock-contention / replica-lag / connection-storm / network-latency / startup-failure / disk-space-pressure / other)做粗分 · 再用 title 语义比对收窄
-- **Flame 路径**:用户提供 perf script → LLM 用 INDEX 里 `pattern_regex` 匹配热点函数 → 命中走 Flame case 确认 · 同时跑 DF 路由(双源 · 互不影响)
+- **Flame 路径**(懒查):用户提供 perf script,或 DF 路由命中的 case 的 step 标了需读火焰图 → 此时才 Read `data/cases/indices/by-flame-signature/INDEX.md` → 用其中 `pattern_regex` 匹配热点函数 → 命中则去同目录 CASES.md 拿该 signature 完整字段确认 · 与 DF 路由并行(双源 · 互不影响)
 
 **LLM 内部**输出候选 case_id 列表(in-memory · 不暴露给用户)。**收敛规则**(团队定):
 

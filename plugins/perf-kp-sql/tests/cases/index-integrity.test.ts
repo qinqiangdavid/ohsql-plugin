@@ -117,3 +117,38 @@ describe("案例数据完整性 · 全部 per-db/topology 桶", () => {
     }
   });
 });
+
+describe("Flame-Signature 反向索引完整性 · by-flame-signature/", () => {
+  const casesPath = resolve(DATA_DIR, "cases/indices/by-flame-signature/CASES.md");
+  const indexPath = resolve(DATA_DIR, "cases/indices/by-flame-signature/INDEX.md");
+  const headers = parseCaseHeaders(casesPath);
+  const rows = parseIndexTable(indexPath);
+
+  it("至少有若干 flame signature(sanity)", () => {
+    assert.ok(headers.size >= 10, `flame signature 数 ${headers.size} 过少`);
+  });
+
+  it("INDEX 每行 case_id + 行号精确对应 CASES.md 真实 ## 头", () => {
+    for (const row of rows) {
+      const caseLine = headers.get(row.case_id);
+      assert.ok(caseLine !== undefined, `flame signature ${row.case_id} 在 CASES.md 无对应 ## 头`);
+      assert.equal(caseLine, row.line, `${row.case_id} INDEX line=${row.line} 实际=${caseLine}`);
+    }
+  });
+
+  it("INDEX 行数 = CASES.md ## 头数", () => {
+    assert.equal(rows.length, headers.size, `INDEX ${rows.length} 行 vs CASES ${headers.size} 头`);
+  });
+
+  it("每条 signature 都有非空 pattern_regex(火焰图路径命根子)", () => {
+    const text = readLines(casesPath).join("\n");
+    const blocks = text.split(/(?=^## case_id:)/m).filter((b) => b.startsWith("## case_id:"));
+    const missing: string[] = [];
+    for (const b of blocks) {
+      const id = (b.match(/^## case_id:\s*(\S+)/) || [])[1];
+      const pr = b.match(/^- \*\*pattern_regex\*\*:\s*(.+)$/m);
+      if (!pr || !pr[1].trim()) missing.push(id);
+    }
+    assert.equal(missing.length, 0, `缺 pattern_regex 的 signature: ${missing.join(", ")}`);
+  });
+});
