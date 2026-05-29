@@ -1,6 +1,6 @@
 # GaussDB 离线采集清单(指标 + 抓取方法)
 
-- 生成: 2026-05-29T07:57:42.142Z
+- 生成: 2026-05-29T10:30:38.165Z
 - 关联 case 范围: `cases/gaussdb/` (77 case) + `cases/gaussdb-dws/` (120 case) · 共 197 case_id
 - 数据源: `plugins/perf-kp-sql/data/cases/indices/by-check-item/CASES.md` (655 check 总,本清单是 gaussdb 关联子集)
 
@@ -16,15 +16,15 @@ GaussDB 在内网/无 SSH 直连场景 perf-kp-sql skill 不能远程采集,把�
 
 | | 数 |
 |---|---:|
-| **GaussDB 关联 check 合计** | **290** |
-| 其中 type=metric | 236 |
+| **GaussDB 关联 check 合计** | **291** |
+| 其中 type=metric | 237 |
 | 其中 type=parameter-current-value | 54 |
 
 ### 按 collection_layer 分布
 
 | collection_layer | check 数 |
 |---|---:|
-| `db-system-view` | 94 |
+| `db-system-view` | 95 |
 | `db-interactive-cmd` | 82 |
 | `gaussdb-guc-param` | 54 |
 | `db-shell` | 19 |
@@ -35,9 +35,9 @@ GaussDB 在内网/无 SSH 直连场景 perf-kp-sql skill 不能远程采集,把�
 
 ---
 
-## collection_layer = `db-system-view` (94 check)
+## collection_layer = `db-system-view` (95 check)
 
-### type=metric (94 个)
+### type=metric (95 个)
 
 | check_id | metric_name | collection_method | abnormal_patterns | 关联 case 数 |
 |---|---|---|---|---:|
@@ -121,6 +121,7 @@ GaussDB 在内网/无 SSH 直连场景 perf-kp-sql skill 不能远程采集,把�
 | `chk-pgxc-wlm-session-statistics-max-peak-memory-memory-skew-perc` | pgxc_wlm_session_statistics · max_peak_memory / memory_skew_percent | `SELECT nodename,pid,dbname,username,application_name,min_peak_memory,max_peak_memory,average_peak_memory,memory_skew_percent,substr(query,0,50) as query FROM p | "`根据结果中的max_peak_memory以及memory_skew_percent值，较大的值就是消耗内存较多的语句。`" | 1 |
 | `chk-pv-total-memory-detail-process-used-memory-vs-max-process-me` | pv_total_memory_detail · process_used_memory vs max_process_memory | `pv_total_memory_detail` | "\"可比较process_used_memory和max_process_memory的关系，如前者明显小于后者，则说明占用内存大的语句已经跑完或者被杀掉，当前系" | 1 |
 | `chk-resource-track-level-operator-realtime` | resource_track_level · operator_realtime 级别实时算子监控 | `SET resource_track_level = 'operator_realtime';` | "`能够看出哪个算子执行时间长，通过算子执行时间和已处理行数等信息，确定是否需要终止SQL。`" | 1 |
+| `chk-slow-sql-statement-history` | statement_history 慢 SQL (execution_time 超阈值语句明细) | SELECT substr(query,1,60) AS q, round(execution_time/1000000.0,2) AS exec_s, round(db_time/1000000.0,2) AS db_s, (n_blocks_fetched-n_blocks_hit) AS phys_read, s | 存在 execution_time > 3s (log_min_duration_statement) 的慢 SQL 记录 | 2 |
 | `chk-sql-create-index` | 活跃SQL及CREATE INDEX语句 | `select * from pg_stat_activity where state !='idle' and usename !='omm';` | "\"查询当前活跃sql，发现有大量的create index语句\"" | 1 |
 | `chk-statement-history-cpu-time-vs-db-time` | statement_history.cpu_time vs db_time | "登录至各CN/DN节点查询相应时间段的statement_history 表。使用全局接口dbe_perf.get_global_full_sql_by_timestamp('开始时间','结束时间')。注意：需要切换至postgres库。" | "\"通常如果说语句的CPU消耗较高，慢SQL语句的cpu_time和db_time差距就较小\"" | 1 |
 | `chk-statement-history-data-io-time-sql-io` | statement_history.data_io_time (慢SQL IO分析) | "查询statement_history表，慢SQL n_blocks_fetched/n_blocks_hit字段差值较高 记录，或者查询data_io_time较高 记录" | "\"慢SQL n_blocks_fetched/n_blocks_hit字段差值较高 记录，或者查询data_io_time较高 记录\"" | 1 |

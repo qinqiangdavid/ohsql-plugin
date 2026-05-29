@@ -30,6 +30,24 @@ const OUT = join(HERE, '..', 'gaussdb-offline-checklist.md');  // 写到 docs/ �
 
 const IS_MAIN = import.meta.url === `file://${process.argv[1]}`;
 
+// kit 合成的采集 check(非 distill 派生 · 跟 §3.6 的 GUC SHOW 合成同类 · 是"采集动作"不是 case 根因)。
+// 慢 SQL 正主是 statement_history(unlogged 表 · 假定采集在主机跑)· distill 里两条 statement_history
+// check 都是描述性(进 manual)· 这里补一条可执行的,集中式主机直接跑。
+export const CURATED_CHECKS = [
+  {
+    check_id: 'chk-slow-sql-statement-history',
+    type: 'metric',
+    collection_layer: 'db-system-view',
+    metric_name: 'statement_history 慢 SQL (execution_time 超阈值语句明细)',
+    param_name: '',
+    collection_method: 'SELECT substr(query,1,60) AS q, round(execution_time/1000000.0,2) AS exec_s, round(db_time/1000000.0,2) AS db_s, (n_blocks_fetched-n_blocks_hit) AS phys_read, start_time FROM statement_history WHERE execution_time > 3000000 ORDER BY execution_time DESC LIMIT 20;',
+    abnormal_patterns: '存在 execution_time > 3s (log_min_duration_statement) 的慢 SQL 记录',
+    recommended_value: '',
+    rationales: '',
+    linked_case_ids: ['gaussdb-cpu-high-topsql-01', 'gaussdb-disk-io-high-statement-view-01'],
+  },
+];
+
 // check 的 topology = 其 linked case topology 取最宽松(spec §3 继承规则):
 //   任一 common → common; cent+dist 同现 → common; 否则取那个具体值; 空 → common
 export function checkTopology(linked) {
@@ -161,6 +179,10 @@ gaussChecks = gaussChecks.filter(c => !isDocExample(c.collection_method));
 console.log(`剔除文档示例 SQL: ${docExamples.length} 条 (写操作 DDL/DML + 只读查询 FROM 跟非 trusted 表)`);
 console.log(`  示例: ${docExamples.slice(0, 3).map(c => c.check_id).join(', ')}${docExamples.length > 3 ? ' ...' : ''}`);
 console.log(`剔除后真采集 check: ${gaussChecks.length}`);
+
+// ── 3.4 注入 kit 合成 check(慢 SQL 等 · 假定采集在主机跑)──────────────────
+gaussChecks.push(...CURATED_CHECKS);
+console.log(`注入 kit 合成 check: ${CURATED_CHECKS.length} 条 (${CURATED_CHECKS.map(c => c.check_id).join(', ')})`);
 
 // ── 3.5 给空 slug chk- (中文 metric_name slug 化失败) 加序号 ──────────────
 // build-runtime 不修这个 bug,我们在下游侧补救:同名 chk- 全部加 -<n> 后缀让 unique

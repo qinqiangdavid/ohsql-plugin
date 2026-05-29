@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # GaussDB 离线采集 · 预编译版 · 完全自包含
-# 所有 129 个 auto 命令已 inline 为 heredoc (不解析 ndjson · 不需 jq).
+# 所有 130 个 auto 命令已 inline 为 heredoc (不解析 ndjson · 不需 jq).
 #
-# 生成时间: 2026-05-29T07:59:35.830Z
-# 数据: auto=129 · manual=153 · skip=8 · total=290
+# 生成时间: 2026-05-29T10:30:38.255Z
+# 数据: auto=130 · manual=153 · skip=8 · total=291
 #
 # 用法:
 #   source ~/gauss_env_file              # 先 source gsql env (如需要)
@@ -128,7 +128,7 @@ run_check() {
 }
 
 i=0
-TOTAL=129
+TOTAL=130
 echo "开始: $TOTAL 个 auto 命令 · timeout ${TIMEOUT}s · outdir $OUTDIR"
 echo ""
 
@@ -1034,6 +1034,13 @@ i=$((i+1))
 run_check "chk-max-connections" "distributed-only" <<'EOF_CHK_MAX_CONNECTIONS'
 gsql -d postgres -c "SHOW max_connections;"
 EOF_CHK_MAX_CONNECTIONS
+
+i=$((i+1))
+[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
+# chk-slow-sql-statement-history · statement_history 慢 SQL (execution_time 超阈值语句明细) · layer=db-system-view
+run_check "chk-slow-sql-statement-history" "common" <<'EOF_CHK_SLOW_SQL_STATEMENT_HISTORY'
+SELECT substr(query,1,60) AS q, round(execution_time/1000000.0,2) AS exec_s, round(db_time/1000000.0,2) AS db_s, (n_blocks_fetched-n_blocks_hit) AS phys_read, start_time FROM statement_history WHERE execution_time > 3000000 ORDER BY execution_time DESC LIMIT 20;
+EOF_CHK_SLOW_SQL_STATEMENT_HISTORY
 
 
 # ── 153 个描述性 method (蒸馏不可执行 · 写 manual.md) ──────────
@@ -2132,7 +2139,7 @@ SKIP_DOC_END
 
 echo ""
 echo "─────────────────────────────────────────────"
-echo "完成 · TOTAL=290 · auto=129 · manual=153 · skip=8"
+echo "完成 · TOTAL=291 · auto=130 · manual=153 · skip=8"
 echo "  报告:        $OUTDIR/report.tsv"
 echo "  stdout 目录: $OUTDIR/stdout/"
 echo "  stderr 目录: $OUTDIR/stderr/"

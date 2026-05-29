@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """GaussDB 离线采集 · 预编译版 · 自包含 · python 纯 stdlib.
 
-所有 129 个 auto 命令已 inline 在 CHECKS list 里 (不解析 ndjson).
+所有 130 个 auto 命令已 inline 在 CHECKS list 里 (不解析 ndjson).
 
-生成时间: 2026-05-29T07:59:35.830Z
-数据: auto=129 · manual=153 · skip=8 · total=290
+生成时间: 2026-05-29T10:30:38.256Z
+数据: auto=130 · manual=153 · skip=8 · total=291
 
 用法:
   source ~/gauss_env_file
@@ -56,7 +56,7 @@ if DEPLOY_FORM.startswith('unknown'):
     print(f'⚠️ topology-filter-disabled: deploy_form={DEPLOY_FORM} · 全采(不按 topology 跳过)', file=sys.stderr, flush=True)
 (OUTDIR / 'deploy.txt').write_text(DEPLOY_FORM + '\n')
 
-# (check_id, name, layer, method, topology) · 129 条 auto · 直接跑
+# (check_id, name, layer, method, topology) · 130 条 auto · 直接跑
 CHECKS = [
     ("chk-dbe-perf-statement-cpu-time", "dbe_perf.statement.cpu_time", "db-system-view", "select unique_sql_id,substr(query,1,50) as query ,n_calls,round(total_elapse_time/n_calls/1000,2) avg_time,round(total_elapse_time/1000,2) as total_time,round(cpu_time/1000,2) as cup_time from dbe_perf.statement t where  n_calls>10 and avg_time>3  and user_name='root'  order by cpu_time desc limit 5;", "common"),
     ("chk-explain-verbose-remotequery", "explain verbose · RemoteQuery 计划", "db-interactive-cmd", "set rewrite_rule='none'; SET explain (verbose on, costs off)  select two_sum(tt.c1, tt.c2) from (select t1.c1,t2.c2 from t1,t2 where t1.c1=t2.c2) tt(c1,c2);", "distributed-only"),
@@ -187,6 +187,7 @@ CHECKS = [
     ("chk-table-skewness-warning-rows", "table_skewness_warning_rows", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW table_skewness_warning_rows;\"", "distributed-only"),
     ("chk-session-timeout", "session_timeout", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW session_timeout;\"", "distributed-only"),
     ("chk-max-connections", "max_connections", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW max_connections;\"", "distributed-only"),
+    ("chk-slow-sql-statement-history", "statement_history 慢 SQL (execution_time 超阈值语句明细)", "db-system-view", "SELECT substr(query,1,60) AS q, round(execution_time/1000000.0,2) AS exec_s, round(db_time/1000000.0,2) AS db_s, (n_blocks_fetched-n_blocks_hit) AS phys_read, start_time FROM statement_history WHERE execution_time > 3000000 ORDER BY execution_time DESC LIMIT 20;", "common"),
 ]
 
 # (check_id, name, layer, method) · 153 条 manual · 描述性 · 不自动跑
