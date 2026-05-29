@@ -102,6 +102,14 @@ collector 已算出 `DEPLOY_FORM` 写 `deploy.txt`。本段让它据此过滤:
 README 标"(待实现)"的反喂工具落地,职责单一:**只出候选 case_id + 证据,不出诊断报告**。
 诊断报告仍交给 perf-kp-sql skill 的 Phase 4/5(不重复造报告逻辑)。
 
+### 5.1 离线一次性采集前提(决定输出形态)
+
+离线场景是**一轮采集**:kit scp 到 DB 机跑一遍、结果带回,补采要再跑一趟(内网/隔离机代价高)。
+故原则是 **采集端尽量全采,判断端再分流**:
+- 采集与 topology / 阈值无关 —— 只要 check 的 method 可执行,A 类(有阈值)与 B 类(阈值 NULL 描述性)
+  的原始 stdout 都已落 `out-*/stdout/<cid>.txt`。阈值是否为 NULL 只影响"能不能机械判命中",不影响"采没采到"。
+- 因此 match 工具**不丢 B 类**:B 类原样转交 + 附 stdout,判断在本地用已采数据做,不需第二轮采集。
+
 ```
 match-collect-to-cases.mjs
   输入:
@@ -113,16 +121,20 @@ match-collect-to-cases.mjs
          centralized / single-node → [common, centralized]
          distributed               → [common, distributed]
          unknown-*                 → [common, centralized, distributed]  (全采全撞)
-    3. 只 Read 选中桶的 CASES.md · 用 abnormal_pattern_threshold / abnormal_pattern_quote
-       撞 stdout/<cid>.txt 的采集值 → 命中 case_id 候选(带阈值比对证据)
-    4. 输出 match-report(候选 case_id + 证据行 + source_url)
+    3. 只 Read 选中桶的 CASES.md · 按 abnormal_pattern_threshold 是否为 NULL 分两段:
+         A 类(有阈值)   → 机械比对 stdout/<cid>.txt 采集值 vs 阈值 → 命中即 `自动命中候选`
+         B 类(阈值 NULL) → 不机械判 · 原样列入 `待判候选` · 附 abnormal_pattern_quote + 原始 stdout
+    4. 输出两段 match-report
   输出: out-<host>-<ts>/match-candidates.{md,ndjson}
+         (每条标 segment=auto-hit | needs-judge)
 ```
 
 设计点:
+- **两段输出**:`自动命中候选`(A 类 · 带"实测值 vs 阈值"证据)+ `待判候选`(B 类 · 带 quote + stdout,
+  交后续 skill 的 LLM / 人判)。工具本身仍只做机械比对,B 类是"原样转交 + 附证据",不引入模糊判断逻辑。
 - 形态判定**复用采集时写的 `deploy.txt`**,不重新探测 —— 采集与反喂同一事实源,
   杜绝"采时集中式、喂时按分布式撞库"的错配。
-- 撞库只读选中桶 → 集中式采集结果绝不误命中 `distributed-only` 根因。
+- 撞库只读选中桶 → 集中式采集结果绝不误命中 `distributed-only` 根因(对 A、B 两段都成立)。
 - `source_url` 必须 **verbatim** 来自 CASES.md(守 SKILL.md 红线);不命中不强写。
 
 ---
@@ -136,6 +148,7 @@ match-collect-to-cases.mjs
 | checklist topology 继承 | 多 case check 取最宽松;cent-only ∩ dist-only → common |
 | collector 跳过 | `deploy_form=centralized` + 一条 distributed-only check → `status=skip-topology`;`unknown` → 全采 + 报告头 `topology-filter-disabled` |
 | match 路由 | 集中式 deploy.txt → 不读 `distributed/` 桶 · 不命中 dist-only case |
+| match 两段输出 | A 类(有阈值)采集值越阈 → 进 `自动命中候选`(带实测值证据);B 类(阈值 NULL)→ 进 `待判候选` 且附 stdout · 不被丢弃 |
 
 收尾:在 `gauss_new`(192.168.1.5 · 507 集中式 · `gs_deployment()=BusinessCentralized`)
 跑一次真实端到端(采集 → 跳过 distributed-only → 反喂只撞 common+centralized)。
