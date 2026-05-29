@@ -136,7 +136,11 @@ COLLECT_DRYRUN=1    ./collect.sh        # 不真跑 · 只分类 manual/auto
 node match-collect-to-cases.mjs \
     --collect out-<host>-<date>/ \
     [--checklist checklist.ndjson]   # 默认用本目录 checklist.ndjson
+    [--cases ../../data/cases]       # 默认相对本目录定位 · case 级 topology 二次过滤用
 ```
+
+> 双重过滤:check 级(按 check.topology 跳无关 check)+ case 级(common check 可能 link
+> 到 distributed case,集中式下按 case 自身 topology 再剔)· 确保候选不含本形态无关的 case。
 
 产出 `out-*/match-candidates.{md,ndjson}` 两段:
 - `自动命中候选` —— 有阈值且采集值越界(带"实测值 vs 阈值"证据)

@@ -44,27 +44,40 @@ describe('firstThreshold', () => {
   });
 });
 
-describe('集成 · 集中式不撞 distributed-only', () => {
-  it('centralized 采集 → distributed-only check 不进候选 · common 越界进 auto-hit', () => {
+describe('集成 · 集中式不撞 distributed-only(check 级 + case 级双重过滤)', () => {
+  it('centralized: distributed-only check 不撞;common check 的 distributed case 也被剔', () => {
     const dir = mkdtempSync(join(tmpdir(), 'match-test-'));
     mkdirSync(join(dir, 'stdout'), { recursive: true });
     writeFileSync(join(dir, 'deploy.txt'), 'centralized\n');
-    // 两个 check 都有 stdout(模拟 unknown 全采时也采到了),但形态过滤应砍掉 distributed-only
-    writeFileSync(join(dir, 'stdout', 'chk-common-hot.txt'), '47\n');
-    writeFileSync(join(dir, 'stdout', 'chk-dist-skew.txt'), '99\n');
+    writeFileSync(join(dir, 'stdout', 'chk-common-hot.txt'), '47\n');      // common check · 越界
+    writeFileSync(join(dir, 'stdout', 'chk-dist-skew.txt'), '99\n');       // distributed-only check
+    writeFileSync(join(dir, 'stdout', 'chk-mixed-cfg.txt'), 'work_mem 64MB\n'); // common check · 阈值 NULL · link 跨 topology
     const checklist = join(dir, 'checklist.ndjson');
     writeFileSync(checklist, [
       JSON.stringify({ check_id: 'chk-common-hot', topology: 'common', abnormal_patterns: '"> 40"', linked_case_ids: ['gaussdb-cpu-01'] }),
       JSON.stringify({ check_id: 'chk-dist-skew', topology: 'distributed-only', abnormal_patterns: '"> 10"', linked_case_ids: ['gaussdb-dist-skew-01'] }),
+      JSON.stringify({ check_id: 'chk-mixed-cfg', topology: 'common', abnormal_patterns: 'NULL', linked_case_ids: ['gaussdb-cfg-01', 'gaussdb-dws-bloat-01'] }),
     ].join('\n') + '\n');
 
-    execFileSync('node', [join(HERE, 'match-collect-to-cases.mjs'), '--collect', dir, '--checklist', checklist], { encoding: 'utf8' });
+    // 造案例桶(case 级 topology 来源)
+    const cases = join(dir, 'cases');
+    for (const sub of ['gaussdb/common', 'gaussdb/centralized', 'gaussdb/distributed', 'gaussdb-dws']) {
+      mkdirSync(join(cases, sub), { recursive: true });
+    }
+    writeFileSync(join(cases, 'gaussdb/common/CASES.md'), '## case_id: gaussdb-cpu-01\n## case_id: gaussdb-cfg-01\n');
+    writeFileSync(join(cases, 'gaussdb/distributed/CASES.md'), '## case_id: gaussdb-dist-skew-01\n');
+    writeFileSync(join(cases, 'gaussdb-dws/CASES.md'), '## case_id: gaussdb-dws-bloat-01\n');
+    writeFileSync(join(cases, 'gaussdb/centralized/CASES.md'), '');
 
-    assert.ok(existsSync(join(dir, 'match-candidates.ndjson')), '应生成 match-candidates.ndjson');
+    execFileSync('node', [join(HERE, 'match-collect-to-cases.mjs'), '--collect', dir, '--checklist', checklist, '--cases', cases], { encoding: 'utf8' });
+
     const out = readFileSync(join(dir, 'match-candidates.ndjson'), 'utf8');
     assert.ok(out.includes('chk-common-hot'), 'common check 越界应进 auto-hit');
-    assert.ok(out.includes('gaussdb-cpu-01'), 'common check 的 linked case 应在候选');
+    assert.ok(out.includes('gaussdb-cpu-01'), 'common check 的 common case 应在候选');
     assert.ok(!out.includes('chk-dist-skew'), '集中式不应撞 distributed-only check');
-    assert.ok(!out.includes('gaussdb-dist-skew-01'), 'distributed-only 的 case 不应出现');
+    assert.ok(!out.includes('gaussdb-dist-skew-01'), 'distributed-only check 的 case 不应出现');
+    // 关键回归:common check 的 distributed/dws case 必须被 case 级过滤剔除
+    assert.ok(out.includes('gaussdb-cfg-01'), 'common check 的 common case 应保留');
+    assert.ok(!out.includes('gaussdb-dws-bloat-01'), 'common check link 的 dws case 在集中式必须剔除');
   });
 });
