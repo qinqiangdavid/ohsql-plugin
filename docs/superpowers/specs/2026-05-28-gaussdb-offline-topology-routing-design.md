@@ -51,17 +51,32 @@ perf-kp-sql 的 gaussdb 案例桶(79 case)把**集中式**与**分布式**根因
 
 ---
 
-## 3. 数据流(物理三拆是 build 产物 · 活过 distill 重生)
+## 3. 数据流(物理拆分是 build 产物 · 活过 distill 重生)
+
+> **建库现状(2026-05-29 考古结论)**:线上 per-db 布局的真实构建链为
+> `build-runtime-cases-from-md.mjs`(只产**扁平** `cases/CASES.md`,每 case 带 `- **db**:` 字段)
+> → `split-runtime-by-db.py`(按 db 字段拆 + 重渲带 db 名头部)→ cp 进 ohsql。
+> **致命问题**:`split-runtime-by-db.py` 是 `runs/` 下一次性脚本,**从未入库、磁盘已丢失**,
+> committed `build-runtime` 全历史只产扁平 → **线上 per-db 案例库当前无法从任何 committed/在盘代码复现**。
+>
+> **本设计的修法(方案 A · 折进 build-runtime,根因级)**:把 db 拆分 + gaussdb topology 三拆
+> **原生折进** committed 的 `build-runtime-cases-from-md.mjs`,一个脚本端到端产出分档布局,
+> 退役易丢的 `split-runtime-by-db.py`,使 committed 代码产出 = 线上部署态。
 
 ```
-distill-v2/cases/gaussdb/diagnostic-flow/*.md      ← 每个 case .md 加 topology 字段(权威源,手填一次)
-        │  合并 build(改成按 topology 分流)
+distill-v2/cases/gaussdb/diagnostic-flow/*.md      ← 每个 case .md 加 topology 字段(权威源,LLM 蒸馏填)
+        │  build-runtime-cases-from-md.mjs(折进:按 c.db 写 per-db · gaussdb 内按 c.topology 再拆)
         ▼
-ohsql-plugin-dev/plugins/perf-kp-sql/data/cases/gaussdb/
-        ├── common/{INDEX,CASES}.md
-        ├── centralized/{INDEX,CASES}.md
-        └── distributed/{INDEX,CASES}.md
-        │  extract-offline-checklist.mjs 读三套 · 把 topology 传到每个 check
+ohsql-plugin-dev/plugins/perf-kp-sql/data/cases/
+        ├── gaussdb/
+        │     ├── common/{INDEX,CASES}.md
+        │     ├── centralized/{INDEX,CASES}.md
+        │     └── distributed/{INDEX,CASES}.md
+        ├── mongodb/{INDEX,CASES}.md          ← 保持扁平(无需 topology)
+        ├── gaussdb-dws/{INDEX,CASES}.md      ← 保持扁平(整桶本就分布式,不细分)
+        ├── _common/{INDEX,CASES}.md          ← 保持扁平
+        └── indices/by-check-item/{INDEX,CASES}.md · by-source-url.json  ← 全局跨 db(本就如此)
+        │  extract-offline-checklist.mjs 读 gaussdb 三套 + gaussdb-dws · 把 topology 传到每个 check
         ▼
 docs/offline-collect-kit/checklist.ndjson          ← 每 check 加 topology(继承自 linked case)
         │  _build-precompiled.mjs 把 topology 一起 inline
@@ -70,8 +85,9 @@ docs/offline-collect-kit/collect-precompiled.{sh,py}  ← 内嵌每条 check 的
 ```
 
 要点:
-- topology 在 distill 源手填一次,后面全脚本派生 → distill 重跑 / case 库重生都不丢。
-- 物理拆是 build 确定性产物,不手工搬文件。
+- topology 在 distill 源填一次,后面全脚本派生 → distill 重跑 / case 库重生都不丢。
+- **只有 gaussdb 桶按 topology 三拆**;mongodb / _common 扁平;gaussdb-dws 扁平(整桶恒 distributed-only)。
+- 拆分是 **build 确定性产物**(由 `c.db` + `c.topology` 字段驱动),不手工搬文件;`split-runtime-by-db.py` 退役。
 - **check topology 继承规则**:一个 check 可 linked 多个 case;多 case topology 不一致时**取最宽松**
   —— 任一 linked case 为 `common` → check 记 `common`;否则取那个具体值;
   同时含 `centralized-only` 与 `distributed-only` → 记 `common`。
@@ -157,13 +173,17 @@ match-collect-to-cases.mjs
 
 ## 7. 改动清单(按仓)
 
-**db-distill-engine-clone**
+**db-distill-engine-clone**(计划 1)
 - `distill-v2/PROMPT-cases.md`: 加 `topology` 字段定义 + 分类规则。
 - `distill-v2/cases/gaussdb/diagnostic-flow/*.md` + `gaussdb-dws/diagnostic-flow/*.md`: 回填 topology。
+- `distill-v2/scripts/lib-distill-parse.mjs`: 解析 case 时识别 `topology` 字段(默认 `common`)。
+- `distill-v2/scripts/build-runtime-cases-from-md.mjs`: **折进 db 拆分 + gaussdb topology 三拆**
+  (按 `c.db` 写 `cases/<db>/`,gaussdb 内按 `c.topology` 写 `common/centralized/distributed/`;
+  渲染带 db 名头部),退役 `split-runtime-by-db.py`。
 
-**ohsql-plugin-dev (perf-kp-sql)**
-- 合并 build: 产 `data/cases/gaussdb/{common,centralized,distributed}/{INDEX,CASES}.md`。
-- `docs/offline-collect-kit/extract-offline-checklist.mjs`: 读三套 + 传 topology 到 check。
+**ohsql-plugin-dev (perf-kp-sql)**(计划 2)
+- 重跑折进后的 build → 产 `data/cases/gaussdb/{common,centralized,distributed}/{INDEX,CASES}.md`。
+- `docs/offline-collect-kit/extract-offline-checklist.mjs`: 读 gaussdb 三套 + 传 topology 到 check。
 - `docs/offline-collect-kit/_build-precompiled.mjs`: inline topology。
 - `docs/offline-collect-kit/collect-precompiled.{sh,py}`: deploy_form → skip-topology 过滤。
 - `docs/offline-collect-kit/match-collect-to-cases.mjs`: 新增(反喂候选)。
