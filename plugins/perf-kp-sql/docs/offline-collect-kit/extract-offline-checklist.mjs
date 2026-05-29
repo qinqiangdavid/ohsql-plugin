@@ -28,12 +28,41 @@ const HERE = dirname(fileURLToPath(import.meta.url));   // .../perf-kp-sql/docs/
 const OHSQL = join(HERE, '..', '..');                   // .../perf-kp-sql (上溯两级)
 const OUT = join(HERE, '..', 'gaussdb-offline-checklist.md');  // 写到 docs/ 下 (跟收编前一致)
 
-// ── 1. 抽 gaussdb 系 case_id set ─────────────────────────────────────────
+const IS_MAIN = import.meta.url === `file://${process.argv[1]}`;
+
+// check 的 topology = 其 linked case topology 取最宽松(spec §3 继承规则):
+//   任一 common → common; cent+dist 同现 → common; 否则取那个具体值; 空 → common
+export function checkTopology(linked) {
+  if (!linked || linked.length === 0) return 'common';
+  if (linked.includes('common')) return 'common';
+  const hasCent = linked.includes('centralized-only');
+  const hasDist = linked.includes('distributed-only');
+  if (hasCent && hasDist) return 'common';
+  if (hasDist) return 'distributed-only';
+  if (hasCent) return 'centralized-only';
+  return 'common';
+}
+
+if (IS_MAIN) {
+// ── 1. 抽 gaussdb 系 case_id + 每个 case 的 topology(由子目录路径反推) ───
 const gaussCaseIds = new Set();
-for (const db of ['gaussdb', 'gaussdb-dws']) {
-  const text = readFileSync(`${OHSQL}/data/cases/${db}/CASES.md`, 'utf8');
+const caseTopology = new Map();   // case_id → topology
+// gaussdb 三套 topology 子目录
+for (const [sub, topo] of [
+  ['gaussdb/common', 'common'],
+  ['gaussdb/centralized', 'centralized-only'],
+  ['gaussdb/distributed', 'distributed-only'],
+]) {
+  const text = readFileSync(`${OHSQL}/data/cases/${sub}/CASES.md`, 'utf8');
   for (const m of text.matchAll(/^## case_id:\s*(\S+)/gm)) {
-    gaussCaseIds.add(m[1]);
+    gaussCaseIds.add(m[1]); caseTopology.set(m[1], topo);
+  }
+}
+// gaussdb-dws 整桶 distributed-only
+{
+  const text = readFileSync(`${OHSQL}/data/cases/gaussdb-dws/CASES.md`, 'utf8');
+  for (const m of text.matchAll(/^## case_id:\s*(\S+)/gm)) {
+    gaussCaseIds.add(m[1]); caseTopology.set(m[1], 'distributed-only');
   }
 }
 console.log(`gaussdb 系 case_id total: ${gaussCaseIds.size}`);
@@ -273,18 +302,24 @@ console.log(`size: ${(lines.join('\n').length / 1024).toFixed(1)} KB · ${lines.
 
 // ── 6. 同时输出 NDJSON (机器可读 · 给 collector 吃) ───────────────────────
 const NDJSON_OUT = OUT.replace(/\.md$/, '.ndjson');
-const ndjson = gaussChecks.map(c => JSON.stringify({
-  check_id: c.check_id,
-  type: c.type || '',
-  collection_layer: c.collection_layer || '',
-  metric_name: c.metric_name || '',
-  param_name: c.param_name || '',
-  collection_method: c.collection_method || '',
-  abnormal_patterns: c.abnormal_patterns || '',
-  recommended_value: c.recommended_value || '',
-  rationales: c.rationales || '',
-  linked_case_ids: c.linked_case_ids.filter(cid => gaussCaseIds.has(cid)),
-})).join('\n') + '\n';
+const ndjson = gaussChecks.map(c => {
+  const linkedIds = c.linked_case_ids.filter(cid => gaussCaseIds.has(cid));
+  const topo = checkTopology(linkedIds.map(cid => caseTopology.get(cid) || 'common'));
+  return JSON.stringify({
+    check_id: c.check_id,
+    type: c.type || '',
+    collection_layer: c.collection_layer || '',
+    metric_name: c.metric_name || '',
+    param_name: c.param_name || '',
+    collection_method: c.collection_method || '',
+    abnormal_patterns: c.abnormal_patterns || '',
+    recommended_value: c.recommended_value || '',
+    rationales: c.rationales || '',
+    topology: topo,
+    linked_case_ids: linkedIds,
+  });
+}).join('\n') + '\n';
 writeFileSync(NDJSON_OUT, ndjson);
 console.log(`wrote: ${NDJSON_OUT}`);
 console.log(`size: ${(ndjson.length / 1024).toFixed(1)} KB · ${gaussChecks.length} entries`);
+}  // end if (IS_MAIN)
