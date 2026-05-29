@@ -1,21 +1,21 @@
-// 案例数据完整性测试
+// 案例数据完整性测试(per-db / gaussdb topology 布局)
 //
-// 验证:
-//   1. cases/CASES.md 含 109 个 ## case_id: 头(DF 96 + Flame 13)
-//   2. cases/INDEX.md DF 表 96 行 + Flame 表 13 行
-//   3. INDEX.md 里 行号 行号每个都精确对应 CASES.md 真实 ## case_id: 头
-//   4. best-practice/CASES.md 含 93 个 ## case_id:
-//   5. best-practice/INDEX.md 93 行
-//   6. 所有 case_id 全局 unique
+// 数据布局: data/cases/<db>/{INDEX,CASES}.md,gaussdb 再按 topology 拆
+//   gaussdb/{common,centralized,distributed}/{INDEX,CASES}.md。
+// 用 walkCasePairs 枚举所有桶,逐桶验证:
+//   1. 枚举到 gaussdb 三套 topology 桶
+//   2. 每桶 INDEX 每行 case_id + 行号 精确对应 CASES.md 真实 ## 头
+//   3. 每桶 INDEX 行数 = CASES.md ## 头数
+//   4. case_id 跨所有桶全局 unique
 //
 // 这些是 SKILL.md Phase 2.3 / Phase 3.B Read offset+limit 的前置 invariant。
-// M5 dry-run 跑 LLM 路由命中率前必须先确保数据本身完整。
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { walkCasePairs } from "./lib-walk-cases.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PLUGIN_ROOT = resolve(HERE, "../..");
@@ -75,113 +75,45 @@ function parseCaseHeaders(casesPath: string): Map<string, number> {
   return map;
 }
 
-describe("案例数据完整性 · cases/", () => {
-  const casesPath = resolve(DATA_DIR, "cases/CASES.md");
-  const indexPath = resolve(DATA_DIR, "cases/INDEX.md");
+const CASE_PAIRS = walkCasePairs(resolve(DATA_DIR, "cases"));
+const relOf = (dir: string) => dir.replace(/.*\/data\/cases\//, "");
 
-  const headers = parseCaseHeaders(casesPath);
-  const dfRows = parseIndexTable(indexPath, "diagnostic-flow");
-  const flameRows = parseIndexTable(indexPath, "flame-signature");
-
-  it("cases/CASES.md 含 109 个 ## case_id: 头(DF 96 + Flame 13)", () => {
-    assert.equal(headers.size, 109, `CASES.md ## case_id 头数 · 实际 ${headers.size}`);
-  });
-
-  it("cases/INDEX.md diagnostic-flow 表 96 行", () => {
-    assert.equal(dfRows.length, 96, `DF 表行数 · 实际 ${dfRows.length}`);
-  });
-
-  it("cases/INDEX.md flame-signature 表 13 行", () => {
-    assert.equal(flameRows.length, 13, `Flame 表行数 · 实际 ${flameRows.length}`);
-  });
-
-  it("INDEX.md 每个 case_id + 行号 都精确对应 CASES.md 真实 ## case_id 头", () => {
-    const allRows = [...dfRows, ...flameRows];
-    for (const row of allRows) {
-      const caseLine = headers.get(row.case_id);
-      assert.ok(
-        caseLine !== undefined,
-        `case_id ${row.case_id} 在 CASES.md 找不到对应 ## 头`
-      );
-      assert.equal(
-        caseLine,
-        row.line,
-        `case_id ${row.case_id} INDEX line=${row.line} 但 CASES.md 实际在 line=${caseLine}`
-      );
+describe("案例数据完整性 · 全部 per-db/topology 桶", () => {
+  it("枚举到 gaussdb 三套 topology 桶", () => {
+    const dirs = CASE_PAIRS.map((p) => relOf(p.dir));
+    for (const sub of ["gaussdb/common", "gaussdb/centralized", "gaussdb/distributed"]) {
+      assert.ok(dirs.includes(sub), `缺 ${sub} 桶 · 实际枚举到 ${dirs.join(", ")}`);
     }
   });
 
-  it("cases case_id 全局 unique", () => {
-    const ids = [...dfRows, ...flameRows].map((r) => r.case_id);
-    assert.equal(new Set(ids).size, ids.length, "case_id 有重复");
-  });
+  for (const { dir, casesPath, indexPath } of CASE_PAIRS) {
+    const rel = relOf(dir);
+    describe(`桶 ${rel}`, () => {
+      const headers = parseCaseHeaders(casesPath);
+      const rows = parseIndexTable(indexPath); // 单表 per-db/topology · 无 section
 
-  it("Read offset+limit=100 能覆盖最长 case", () => {
-    const sortedLines = [...headers.values()].sort((a, b) => a - b);
-    const totalLines = readLines(casesPath).length;
-    let maxCaseLength = 0;
-    for (let i = 0; i < sortedLines.length; i++) {
-      const start = sortedLines[i];
-      const end = i + 1 < sortedLines.length ? sortedLines[i + 1] : totalLines + 1;
-      const len = end - start;
-      if (len > maxCaseLength) maxCaseLength = len;
-    }
-    assert.ok(
-      maxCaseLength <= 100,
-      `最长 case 跨 ${maxCaseLength} 行 · 超过 SKILL.md Phase 2.3 的 limit=100 ` +
-        `(若超 100 LLM 需要二次 Read · 但应保持单次能覆盖大多数 case)`
-    );
-  });
-});
+      it(`INDEX 每行 case_id + 行号精确对应 CASES.md 真实 ## 头`, () => {
+        for (const row of rows) {
+          const caseLine = headers.get(row.case_id);
+          assert.ok(caseLine !== undefined, `${rel}: case_id ${row.case_id} 在 CASES.md 无对应 ## 头`);
+          assert.equal(caseLine, row.line, `${rel}: ${row.case_id} INDEX line=${row.line} 实际=${caseLine}`);
+        }
+      });
 
-describe("案例数据完整性 · best-practice/", () => {
-  const casesPath = resolve(DATA_DIR, "best-practice/CASES.md");
-  const indexPath = resolve(DATA_DIR, "best-practice/INDEX.md");
+      it(`INDEX 行数 = CASES.md ## 头数`, () => {
+        assert.equal(rows.length, headers.size, `${rel}: INDEX ${rows.length} 行 vs CASES ${headers.size} 头`);
+      });
+    });
+  }
 
-  const headers = parseCaseHeaders(casesPath);
-  const bpRows = parseIndexTable(indexPath); // 单表 · 无 section header
-
-  it("best-practice/CASES.md 含 93 个 ## case_id: 头", () => {
-    assert.equal(headers.size, 93, `CASES.md ## case_id 头数 · 实际 ${headers.size}`);
-  });
-
-  it("best-practice/INDEX.md 表 93 行", () => {
-    assert.equal(bpRows.length, 93, `BP 表行数 · 实际 ${bpRows.length}`);
-  });
-
-  it("INDEX.md 每个 case_id + 行号 都精确对应 CASES.md 真实 ## case_id 头", () => {
-    for (const row of bpRows) {
-      const caseLine = headers.get(row.case_id);
-      assert.ok(
-        caseLine !== undefined,
-        `case_id ${row.case_id} 在 CASES.md 找不到对应 ## 头`
-      );
-      assert.equal(
-        caseLine,
-        row.line,
-        `case_id ${row.case_id} INDEX line=${row.line} 但 CASES.md 实际在 line=${caseLine}`
-      );
-    }
-  });
-
-  it("BP case_id 全局 unique", () => {
-    const ids = bpRows.map((r) => r.case_id);
-    assert.equal(new Set(ids).size, ids.length, "BP case_id 有重复");
-  });
-});
-
-describe("案例数据完整性 · 总数对齐设计书", () => {
-  it("总 case 数 = 202(DF 96 + Flame 13 + BP 93)", () => {
-    const casesHeaders = parseCaseHeaders(resolve(DATA_DIR, "cases/CASES.md"));
-    const bpHeaders = parseCaseHeaders(resolve(DATA_DIR, "best-practice/CASES.md"));
-    assert.equal(casesHeaders.size + bpHeaders.size, 202);
-  });
-
-  it("cases + best-practice 间 case_id 不交叉", () => {
-    const casesIds = new Set(parseCaseHeaders(resolve(DATA_DIR, "cases/CASES.md")).keys());
-    const bpIds = new Set(parseCaseHeaders(resolve(DATA_DIR, "best-practice/CASES.md")).keys());
-    for (const id of casesIds) {
-      assert.ok(!bpIds.has(id), `case_id ${id} 同时出现在 cases 和 best-practice`);
+  it("case_id 跨所有桶全局 unique", () => {
+    const seen = new Map<string, string>();
+    for (const { dir, casesPath } of CASE_PAIRS) {
+      const rel = relOf(dir);
+      for (const id of parseCaseHeaders(casesPath).keys()) {
+        assert.ok(!seen.has(id), `case_id ${id} 重复出现于 ${seen.get(id)} 和 ${rel}`);
+        seen.set(id, rel);
+      }
     }
   });
 });

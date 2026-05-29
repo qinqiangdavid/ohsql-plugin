@@ -15,6 +15,7 @@ import assert from "node:assert/strict";
 import { readFileSync, mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { walkCasePairs } from "./lib-walk-cases.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PLUGIN_ROOT = resolve(HERE, "../..");
@@ -216,10 +217,9 @@ function checkCase(c: ParsedCase, sourceFile: string): CheckedCase | null {
 
 // ---- 跑 + 写报告 ----
 
-const casesAll = [
-  ...parseCases(resolve(DATA_DIR, "cases/CASES.md")).map((c) => ({ c, src: "data/cases/CASES.md" })),
-  ...parseCases(resolve(DATA_DIR, "best-practice/CASES.md")).map((c) => ({ c, src: "data/best-practice/CASES.md" })),
-];
+const casesAll = walkCasePairs(resolve(DATA_DIR, "cases")).flatMap(({ casesPath, dir }) =>
+  parseCases(casesPath).map((c) => ({ c, src: dir.replace(/.*\/plugins\//, "plugins/") })),
+);
 
 const all_checked: CheckedCase[] = [];
 for (const { c, src } of casesAll) {

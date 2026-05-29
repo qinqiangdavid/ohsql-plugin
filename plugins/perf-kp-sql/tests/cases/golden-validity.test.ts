@@ -14,11 +14,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { walkCasePairs } from "./lib-walk-cases.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PLUGIN_ROOT = resolve(HERE, "../..");
 const GOLDEN_PATH = resolve(PLUGIN_ROOT, "tests/golden/symptom-routing.json");
-const CASES_INDEX = resolve(PLUGIN_ROOT, "data/cases/INDEX.md");
+const DATA_CASES = resolve(PLUGIN_ROOT, "data/cases");
 
 interface GoldenCase {
   id: string;
@@ -42,15 +43,13 @@ function loadGolden(): GoldenSchema {
   return JSON.parse(readFileSync(GOLDEN_PATH, "utf8"));
 }
 
+// 跨所有 per-db/topology 桶收集 case_id(从各 CASES.md 的 ## case_id: 头)
 function loadIndexCaseIds(): Set<string> {
-  const lines = readFileSync(CASES_INDEX, "utf8").split("\n");
   const ids = new Set<string>();
-  for (const line of lines) {
-    if (!line.startsWith("|")) continue;
-    const cols = line.split("|").map((c) => c.trim()).filter((c) => c.length > 0);
-    if (cols.length < 2) continue;
-    if (cols[0] === "case_id" || cols[0].startsWith("---")) continue;
-    ids.add(cols[0]);
+  for (const { casesPath } of walkCasePairs(DATA_CASES)) {
+    for (const m of readFileSync(casesPath, "utf8").matchAll(/^## case_id:\s*(\S+)/gm)) {
+      ids.add(m[1]);
+    }
   }
   return ids;
 }
