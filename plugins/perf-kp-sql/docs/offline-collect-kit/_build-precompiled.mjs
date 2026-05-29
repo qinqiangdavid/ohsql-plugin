@@ -495,6 +495,9 @@ detect_deploy_form() {
 }
 DEPLOY_FORM=\$(detect_deploy_form)
 echo "部署形态自识别: \$DEPLOY_FORM" >&2
+case "\$DEPLOY_FORM" in
+  unknown*) echo "⚠️ topology-filter-disabled: deploy_form=\$DEPLOY_FORM · 全采(不按 topology 跳过)" >&2 ;;
+esac
 
 # 写到 report 头部元数据 (注释行 · 也 dump 到 deploy.txt 便于程序解析)
 {
@@ -512,6 +515,18 @@ run_check() {
   #       EOF_XXX
   # 自动 dispatch: 起始词是 SQL 关键字 → gsql -f, 否则 bash.
   local cid="\$1"
+  local topo="\${2:-common}"
+  # topology 过滤: 部署形态与 check 适用范围冲突 → 跳过(标 skip-topology · 可审计 · 不悄悄消失)
+  case "\$DEPLOY_FORM" in
+    centralized|single-node)
+      if [ "\$topo" = "distributed-only" ]; then
+        printf '%s\\t%s\\t%s\\n' "\$cid" "-" "skip-topology" >> "\$OUTDIR/report.tsv"; cat >/dev/null; return
+      fi ;;
+    distributed)
+      if [ "\$topo" = "centralized-only" ]; then
+        printf '%s\\t%s\\t%s\\n' "\$cid" "-" "skip-topology" >> "\$OUTDIR/report.tsv"; cat >/dev/null; return
+      fi ;;
+  esac
   local tmpf
   tmpf=\$(mktemp)
   cat > "\$tmpf"
@@ -574,7 +589,7 @@ for (const c of auto) {
   shBody += `i=\$((i+1))
 [ \$((i % 30)) -eq 0 ] && echo "[\$i/\$TOTAL]" >&2
 # ${c.check_id} · ${c.name.replace(/\n/g, ' ').slice(0, 80)} · layer=${c.collection_layer}
-run_check "${c.check_id}" <<'${term}'
+run_check "${c.check_id}" "${c.topology || 'common'}" <<'${term}'
 ${c.method}
 ${term}
 
@@ -676,15 +691,17 @@ def detect_deploy_form():
 
 DEPLOY_FORM = detect_deploy_form()
 print(f'部署形态自识别: {DEPLOY_FORM}', file=sys.stderr, flush=True)
+if DEPLOY_FORM.startswith('unknown'):
+    print(f'⚠️ topology-filter-disabled: deploy_form={DEPLOY_FORM} · 全采(不按 topology 跳过)', file=sys.stderr, flush=True)
 (OUTDIR / 'deploy.txt').write_text(DEPLOY_FORM + '\\n')
 
-# (check_id, name, layer, method) · ${auto.length} 条 auto · 直接跑
+# (check_id, name, layer, method, topology) · ${auto.length} 条 auto · 直接跑
 CHECKS = [
 `;
 
 let pyBody = '';
 for (const c of auto) {
-  pyBody += `    (${JSON.stringify(c.check_id)}, ${JSON.stringify(c.name)}, ${JSON.stringify(c.collection_layer)}, ${JSON.stringify(c.method)}),\n`;
+  pyBody += `    (${JSON.stringify(c.check_id)}, ${JSON.stringify(c.name)}, ${JSON.stringify(c.collection_layer)}, ${JSON.stringify(c.method)}, ${JSON.stringify(c.topology || 'common')}),\n`;
 }
 
 let pyMid = `]
@@ -722,7 +739,12 @@ with open(report, 'w', encoding='utf-8') as rf:
                  'ALTER','DROP','TRUNCATE','UPDATE','INSERT','DELETE','COPY','REINDEX',
                  'CHECKPOINT','GRANT','REVOKE','RESET','BEGIN','COMMIT','ROLLBACK','CALL','VALUES'}
     import tempfile, re as _re
-    for i, (cid, name, layer, method) in enumerate(CHECKS, 1):
+    for i, (cid, name, layer, method, topo) in enumerate(CHECKS, 1):
+        # topology 过滤: 部署形态与 check 适用范围冲突 → 跳过(标 skip-topology · 可审计)
+        if (DEPLOY_FORM in ('centralized', 'single-node') and topo == 'distributed-only') or \\
+           (DEPLOY_FORM == 'distributed' and topo == 'centralized-only'):
+            rf.write(f'{cid}\\t-\\tskip-topology\\n')
+            continue
         # 取第一个非注释 token 大写化
         first = ''
         for tok in _re.split(r'\\s+', method.strip()):
