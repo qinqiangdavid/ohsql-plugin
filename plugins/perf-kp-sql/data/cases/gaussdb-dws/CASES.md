@@ -8,6 +8,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: plan-suboptimal
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: DWS统计信息不准导致小表被误判为大表走Broadcast，应改用Redistribute
 - **source_heading**: 四、Stream方式的选择
 - **diagnostic_steps_count**: 1
@@ -52,6 +53,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: plan-suboptimal
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: DWS索引扫描关闭后Seq Scan触发NestLoop但Hash Join启动代价更高
 - **source_heading**: 二、Scan方式的选择
 - **diagnostic_steps_count**: 1
@@ -96,6 +98,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: plan-suboptimal
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 实时场景执行时间跳变至 3600s 超时，NestLoop 选择错误，通过 enable_index_nestloop hint 修复
 - **source_heading**: 实时场景下的性能跳变问题案例
 - **diagnostic_steps_count**: 1
@@ -143,6 +146,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: SQL作业block_time大但duration无明显变化——受其他作业排队影响
 - **source_heading**: 功能一：历史TopSQL
 - **diagnostic_steps_count**: 2
@@ -196,6 +200,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: data-skew
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: DN执行时间倾斜导致SQL作业整体执行慢
 - **source_heading**: 功能一：历史TopSQL
 - **diagnostic_steps_count**: 1
@@ -240,6 +245,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: disk-io-saturation
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: DN的IO指标偏低反映作业受IO抢占影响
 - **source_heading**: 功能三：历史实例资源监视
 - **diagnostic_steps_count**: 1
@@ -290,6 +296,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: row_number() over / count() over 窗口函数集中在单DN运行导致查询慢
 - **source_heading**: 1、【问题描述】
 - **diagnostic_steps_count**: 1
@@ -334,6 +341,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: data-skew
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: row_number() PARTITION BY 列存在大量 NULL 值导致计算倾斜、SQL 性能慢
 - **source_heading**: GaussDB(DWS)性能调优：row_number()的PARTITION BY列倾斜场景的性能优化
 - **diagnostic_steps_count**: 2
@@ -387,6 +395,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: data-skew
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: DWS数据倾斜——DN间数据分布不均导致性能瓶颈
 - **source_heading**: ◇数据倾斜
 - **diagnostic_steps_count**: 1
@@ -431,6 +440,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: DWS大表Broadcast导致网络传输量大、查询慢
 - **source_heading**: ◇Broadcast 量过大
 - **diagnostic_steps_count**: 1
@@ -475,6 +485,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: memory-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: DWS SQL执行落盘量过大或过早落盘导致性能低下
 - **source_heading**: ◇下盘量过大或过早下盘
 - **diagnostic_steps_count**: 1
@@ -519,6 +530,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: DWS大表等值连接使用NestLoop导致查询慢
 - **source_heading**: ◇大表等值连接使用 NestLoop
 - **diagnostic_steps_count**: 1
@@ -563,6 +575,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: data-skew
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 数据倾斜导致SQL执行不出结果
 - **source_heading**: 1 数据倾斜
 - **diagnostic_steps_count**: 4
@@ -634,6 +647,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: plan-suboptimal
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 统计信息未收集导致优化器估算偏差、执行计划差
 - **source_heading**: 2 统计信息未收集
 - **diagnostic_steps_count**: 1
@@ -678,6 +692,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: cpu-high
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 语句不下推导致CN成为性能瓶颈
 - **source_heading**: 3 语句不下推
 - **diagnostic_steps_count**: 2
@@ -731,6 +746,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: NOT IN语义导致NestLoop，SQL执行慢
 - **source_heading**: 4 not in 和 not exists
 - **diagnostic_steps_count**: 1
@@ -775,6 +791,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 查询条件未包含分区键导致未分区剪枝、全表扫描
 - **source_heading**: 5 未分区剪枝
 - **diagnostic_steps_count**: 1
@@ -819,6 +836,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 行数估算过小导致优化器选择NestLoop，查询卡住
 - **source_heading**: 6 行数估算过小，走了nestloop
 - **diagnostic_steps_count**: 2
@@ -881,6 +899,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 表数据膨胀未清理脏数据导致性能时快时慢
 - **source_heading**: 7 表数据膨胀，未清理脏数据
 - **diagnostic_steps_count**: 3
@@ -970,6 +989,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: in常量数量过多未转为join导致查询慢
 - **source_heading**: 8 "in 常量"优化
 - **diagnostic_steps_count**: 1
@@ -1017,6 +1037,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 大量冗余 CASE WHEN 导致查询性能下降
 - **source_heading**: 如何优化包含多个CASE WHEN条件的SQL查询？
 - **diagnostic_steps_count**: 1
@@ -1067,6 +1088,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: disk-space-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 数据膨胀磁盘空间不足，导致性能降低
 - **source_heading**: 数据膨胀磁盘空间不足，导致性能降低
 - **diagnostic_steps_count**: 1
@@ -1123,6 +1145,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: data-skew
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: Hash 分布列选择不当导致数据倾斜，部分 DN I/O 短板
 - **source_heading**: 步骤4：创建新表并加载数据
 - **diagnostic_steps_count**: 1
@@ -1167,6 +1190,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: disk-space-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: DWS的脏页过高导致磁盘空间膨胀
 - **source_heading**: DWS的脏页是如何产生的？
 - **diagnostic_steps_count**: 1
@@ -1217,6 +1241,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: disk-space-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: GDS导入失败后，磁盘占用空间增大
 - **source_heading**: GDS导入失败后，磁盘占用空间增大
 - **diagnostic_steps_count**: 1
@@ -1261,6 +1286,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 在processResult阶段耗时
 - **source_heading**: 在processResult阶段耗时
 - **diagnostic_steps_count**: 2
@@ -1323,6 +1349,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 在modifyJdbcCall和createParameterizedQuery阶段耗时
 - **source_heading**: 在modifyJdbcCall和createParameterizedQuery阶段耗时
 - **diagnostic_steps_count**: 1
@@ -1367,6 +1394,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: other
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 普通分区表无法自动创建/清理分区导致运维成本高
 - **source_heading**: 使用DWS分区自动管理功能降低电商和物联网行业数据分区维护成本
 - **diagnostic_steps_count**: 1
@@ -1423,6 +1451,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 分析查询效率异常降低的问题
 - **source_heading**: 分析查询效率异常降低的问题
 - **diagnostic_steps_count**: 4
@@ -1512,6 +1541,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: disk-io-saturation
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 存算分离场景下 Disk Cache 命中率低导致 OBS 直读多
 - **source_heading**: 关于磁盘缓存
 - **diagnostic_steps_count**: 1
@@ -1568,6 +1598,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: disk-space-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 存算分离场景下 EVS 磁盘空间占用过高触发集群只读
 - **source_heading**: 集群空间不足与磁盘缓存空间调整
 - **diagnostic_steps_count**: 1
@@ -1615,6 +1646,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: memory-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 存算分离 3.0 表多分区入库攒批内存消耗过大
 - **source_heading**: 入库的攒批开销与建议
 - **diagnostic_steps_count**: 1
@@ -1668,6 +1700,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: disk-space-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: DWS表膨胀：autovacuum未开启或回收不及时导致存储增长和性能下降
 - **source_heading**: DWS表膨胀原因有哪些？该如何处理？
 - **diagnostic_steps_count**: 1
@@ -1754,6 +1787,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: plan-suboptimal
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: DWS返回结果集过大时索引失效导致查询走全表扫描
 - **source_heading**: 场景一：返回结果集很大
 - **diagnostic_steps_count**: 1
@@ -1798,6 +1832,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: plan-suboptimal
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: DWS表未及时ANALYZE导致索引未被使用
 - **source_heading**: 场景二：未及时ANALYZE
 - **diagnostic_steps_count**: 1
@@ -1842,6 +1877,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: plan-suboptimal
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: DWS过滤条件使用函数或隐式类型转换导致索引失效
 - **source_heading**: 场景三：过滤条件使用了函数或隐式类型转化
 - **diagnostic_steps_count**: 1
@@ -1886,6 +1922,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: DWS普通用户查询慢——受max_active_statements资源管控排队
 - **source_heading**: 场景一：普通用户受资源管理的管控
 - **diagnostic_steps_count**: 1
@@ -1933,6 +1970,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: DWS普通用户查询慢——系统视图权限OR条件逐一判断耗时
 - **source_heading**: 场景二：执行计划中的or条件对普通用户执行语句逐一判断耗时
 - **diagnostic_steps_count**: 1
@@ -1977,6 +2015,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: data-skew
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 分布列选择不当导致数据倾斜，影响查询性能和磁盘空间
 - **source_heading**: 如何调整DWS分布列？
 - **diagnostic_steps_count**: 1
@@ -2021,6 +2060,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: cpu-high
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 自定义函数provolatile属性定义错误导致语句不下推，CN成为性能瓶颈
 - **source_heading**: 语句下推调优 · 实例分析：自定义函数
 - **diagnostic_steps_count**: 2
@@ -2074,6 +2114,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: WITH RECURSIVE查询不下推场景导致性能差
 - **source_heading**: 不支持下推的语法 · With Recursive
 - **diagnostic_steps_count**: 1
@@ -2118,6 +2159,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: plan-suboptimal
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: DWS未收集统计信息导致查询执行计划不优（查询性能差）
 - **source_heading**: 实例分析1：未收集统计信息导致查询性能差
 - **diagnostic_steps_count**: 1
@@ -2162,6 +2204,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: disk-space-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: HStore Delta表膨胀导致入库性能劣化
 - **source_heading**: MERGE相关
 - **diagnostic_steps_count**: 1
@@ -2218,6 +2261,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: cpu-high
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 实时数仓enable_codegen/enable_numa_bind参数未优化导致性能差
 - **source_heading**: 实时数仓GUC参数最佳配置
 - **diagnostic_steps_count**: 1
@@ -2283,6 +2327,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: cpu-high
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: CPU 持续飙高 · TopSQL 识别 Stream 算子数超阈值的语句
 - **source_heading**: 案例1：某客户集群出现系统级性能问题，CPU持续飚高，业务受阻
 - **diagnostic_steps_count**: 2
@@ -2336,6 +2381,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: plan-suboptimal
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: SQL 性能突然下降：统计信息不准导致执行计划跳变
 - **source_heading**: 案例2：业务语句性能下降，业务起初较快后来变慢
 - **diagnostic_steps_count**: 1
@@ -2380,6 +2426,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 作业长时间运行不结束：通过算子级 TopSQL 定位瓶颈算子
 - **source_heading**: 案例3：作业长时间运行不结束
 - **diagnostic_steps_count**: 1
@@ -2427,6 +2474,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: lock-contention
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 使用 PGXC_STAT_ACTIVITY 视图定位 DWS 慢 SQL、连接积压与业务阻塞
 - **source_heading**: 使用PGXC_STAT_ACTIVITY视图分析正在执行的SQL以处理DWS业务阻塞
 - **diagnostic_steps_count**: 4
@@ -2500,6 +2548,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: Flink 写入 DWS 时报 canceling statement due to statement timeout，connectionTimeOut 默认值过小
 - **source_heading**: Flink写入DWS报 canceling statement due to statement timeout
 - **diagnostic_steps_count**: 1
@@ -2547,6 +2596,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: lock-contention
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 执行SQL时出现LOCK_WAIT_TIMEOUT锁等待超时
 - **source_heading**: 执行SQL时出现表死锁，提示LOCK_WAIT_TIMEOUT锁等待超时
 - **diagnostic_steps_count**: 2
@@ -2608,6 +2658,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: disk-io-saturation
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 往DWS写数据慢，客户端数据积压：单条INSERT低并发场景吞吐不足
 - **source_heading**: 往DWS写数据慢，客户端数据会有积压
 - **diagnostic_steps_count**: 1
@@ -2652,6 +2703,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: SQL 执行慢：阻塞或统计信息失效导致性能低
 - **source_heading**: SQL执行很慢，性能低，有时长时间运行未结束
 - **diagnostic_steps_count**: 1
@@ -2696,6 +2748,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: memory-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: DWS 集群内存临时不可用 (memory is temporarily unavailable)
 - **source_heading**: 集群报错内存溢出
 - **diagnostic_steps_count**: 2
@@ -2749,6 +2802,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: disk-space-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 列存表多次UPDATE后出现表膨胀
 - **source_heading**: 列存表更新失败或多次更新后出现表膨胀
 - **diagnostic_steps_count**: 1
@@ -2793,6 +2847,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: data-skew
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: Hash 分布表数据倾斜导致 SQL 执行慢或无结果
 - **source_heading**: 数据倾斜导致SQL执行慢，大表SQL执行无结果
 - **diagnostic_steps_count**: 5
@@ -2873,6 +2928,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: plan-suboptimal
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 未收集统计信息导致查询性能差
 - **source_heading**: 未收集统计信息导致查询性能差
 - **diagnostic_steps_count**: 2
@@ -2926,6 +2982,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: DWS自定义函数属性定义错误导致SQL不下推，性能极差
 - **source_heading**: 带自定义函数的语句不下推
 - **diagnostic_steps_count**: 2
@@ -2979,6 +3036,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 执行计划中有NestLoop导致SQL语句执行慢
 - **source_heading**: 执行计划中有NestLoop导致SQL语句执行慢
 - **diagnostic_steps_count**: 1
@@ -3023,6 +3081,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 查询条件未涉及分区键导致全表扫描，SQL 执行慢
 - **source_heading**: 未分区剪枝导致SQL查询慢
 - **diagnostic_steps_count**: 1
@@ -3067,6 +3126,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: plan-suboptimal
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 行数估算过小导致优化器选择 NestLoop 执行计划，查询性能下降
 - **source_heading**: 行数估算过小，优化器选择走NestLoop导致性能下降
 - **diagnostic_steps_count**: 3
@@ -3132,6 +3192,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 表数据膨胀导致SQL查询慢，用户前台页面数据加载不出
 - **source_heading**: 表数据膨胀导致SQL查询慢，用户前台页面数据加载不出
 - **diagnostic_steps_count**: 4
@@ -3230,6 +3291,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 大量并发CREATE INDEX操作导致SQL查询慢
 - **source_heading**: 分析过程
 - **diagnostic_steps_count**: 2
@@ -3283,6 +3345,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 单表点查性能差：列存表用于点查场景导致耗时超预期
 - **source_heading**: 单表点查询性能差
 - **diagnostic_steps_count**: 1
@@ -3327,6 +3390,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: memory-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 动态负载管理下语句估算内存过大导致 CCN 排队、业务整体缓慢
 - **source_heading**: 动态负载管理下的CCN排队
 - **diagnostic_steps_count**: 1
@@ -3371,6 +3435,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: disk-io-saturation
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 列存小CU过多导致I/O飙升和查询偶发性变慢
 - **source_heading**: 列存小CU多导致的性能慢问题
 - **diagnostic_steps_count**: 2
@@ -3423,6 +3488,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: disk-io-saturation
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 列存表小CU膨胀导致I/O高、查询慢
 - **source_heading**: 场景1：列存小CU膨胀
 - **diagnostic_steps_count**: 1
@@ -3467,6 +3533,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: disk-io-saturation
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 表脏数据过多导致 I/O 高、查询慢
 - **source_heading**: 场景2：脏数据&数据清理
 - **diagnostic_steps_count**: 2
@@ -3520,6 +3587,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: data-skew
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 表存储倾斜导致单 DN I/O 过高、查询慢
 - **source_heading**: 场景3：表存储倾斜
 - **diagnostic_steps_count**: 2
@@ -3573,6 +3641,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 缺少索引或有索引未走导致全表扫描、I/O 高
 - **source_heading**: 场景4：无索引、有索引不走
 - **diagnostic_steps_count**: 1
@@ -3617,6 +3686,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: disk-io-saturation
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 设计了分区表但查询未走分区剪枝导致I/O极高
 - **source_heading**: 场景5：无分区、有分区不剪枝
 - **diagnostic_steps_count**: 1
@@ -3661,6 +3731,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: disk-io-saturation
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 大量数据带多个索引导入产生大量XLOG、主备同步慢
 - **source_heading**: 场景8：大量数据带索引导入
 - **diagnostic_steps_count**: 1
@@ -3705,6 +3776,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: disk-io-saturation
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 列存多分区导致小文件过多、IOPS 飙高
 - **source_heading**: 场景10：小文件多IOPS高
 - **diagnostic_steps_count**: 1
@@ -3749,6 +3821,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: memory-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 集群内存负载过高或出现memory is temporary unavailable报错
 - **source_heading**: 降低内存的处理方案
 - **diagnostic_steps_count**: 1
@@ -3793,6 +3866,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: lock-contention
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 存在锁等待导致VACUUM FULL执行慢
 - **source_heading**: 场景一：存在锁等待导致VACUUM FULL执行慢
 - **diagnostic_steps_count**: 3
@@ -3855,6 +3929,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: disk-io-saturation
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 列存表PCK排序下盘导致VACUUM FULL执行慢
 - **source_heading**: 场景四：列存表使用了局部聚簇（PCK）时，VACUUM FULL执行慢
 - **diagnostic_steps_count**: 2
@@ -3911,6 +3986,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: disk-space-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: DWS列存表多次小批量INSERT后表膨胀、磁盘空间持续增长
 - **source_heading**: 列存表多次插入后出现表膨胀
 - **diagnostic_steps_count**: 1
@@ -3964,6 +4040,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: lock-contention
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 并发更新同一行数据导致事务回滚报错
 - **source_heading**: 执行SQL时报错：abort transaction due to concurrent update
 - **diagnostic_steps_count**: 1
@@ -4008,6 +4085,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: data-skew
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: Hash 分布列选择不当导致 DN 数据分布倾斜
 - **source_heading**: 查看数据倾斜状态
 - **diagnostic_steps_count**: 2
@@ -4067,6 +4145,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: disk-space-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 集群所有/过半磁盘使用率 ≥ 70% — 脏页率过高
 - **source_heading**: 场景一：磁盘使用率过高
 - **diagnostic_steps_count**: 2
@@ -4119,6 +4198,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 优化器代价估算偏差导致 Agg 计划选择次优，通过 best_agg_plan 参数干预
 - **source_heading**: 案例：调整GUC参数best_agg_plan
 - **diagnostic_steps_count**: 1
@@ -4166,6 +4246,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: Anti Join 行数估算不准导致执行计划差，通过 cost_param bit0 修正
 - **source_heading**: 案例：设置cost_param对查询性能优化 · 场景一
 - **diagnostic_steps_count**: 1
@@ -4213,6 +4294,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 多个过滤条件列强相关时选择率估算不准，通过 cost_param bit1 改善
 - **source_heading**: 案例：设置cost_param对查询性能优化 · 场景二
 - **diagnostic_steps_count**: 1
@@ -4260,6 +4342,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: data-skew
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 存储层数据倾斜导致部分 DN 成为查询瓶颈
 - **source_heading**: 存储层数据倾斜
 - **diagnostic_steps_count**: 3
@@ -4322,6 +4405,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: data-skew
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 计算层数据倾斜：重分布列上的倾斜值导致运行时 DN 数据不均衡
 - **source_heading**: 计算层数据倾斜
 - **diagnostic_steps_count**: 1
@@ -4375,6 +4459,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: data-skew
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 磁盘倾斜:使用率最高与最低磁盘相差 ≥ 10%
 - **source_heading**: 场景二：磁盘倾斜
 - **diagnostic_steps_count**: 1
@@ -4419,6 +4504,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 分布列与 JOIN 条件不匹配导致 Redistribute Stream，查询耗时增加
 - **source_heading**: 案例：选择合适的分布列
 - **diagnostic_steps_count**: 1
@@ -4463,6 +4549,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: cpu-high
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 高 CPU 系统性能调优方案
 - **source_heading**: 高CPU系统性能调优方案
 - **diagnostic_steps_count**: 2
@@ -4531,6 +4618,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: connection-storm
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: DWS 语句处于 idle in transaction 状态常见场景
 - **source_heading**: DWS语句处于idle in transaction状态常见场景
 - **diagnostic_steps_count**: 2
@@ -4596,6 +4684,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: any-clause 不等值 JOIN 条件导致 NestLoop，超时超 1 小时
 - **source_heading**: 案例：改写SQL消除in-clause
 - **diagnostic_steps_count**: 1
@@ -4640,6 +4729,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: WHERE 过滤列缺少索引，列存分区表点查耗时 48ms，建索引后降至 18ms
 - **source_heading**: 案例：建立合适的索引
 - **diagnostic_steps_count**: 1
@@ -4684,6 +4774,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: "in 常量" 大量常量未转 join 导致执行不收
 - **source_heading**: 语句中存在"in 常量"导致SQL执行无结果
 - **diagnostic_steps_count**: 1
@@ -4731,6 +4822,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: JOIN 列存在大量 NULL 值导致扫描阶段耗时过长
 - **source_heading**: 案例：增加JOIN列非空条件
 - **diagnostic_steps_count**: 1
@@ -4775,6 +4867,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: NOT IN 语句使用 NestLoop Anti Join，改写为 NOT EXISTS 可使用 Hash Anti Join
 - **source_heading**: 案例：NOT IN转NOT EXISTS
 - **diagnostic_steps_count**: 2
@@ -4828,6 +4921,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: memory-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 中间数据量超出内存,算子下盘(spill) 导致查询响应剧烈劣化
 - **source_heading**: 算子下盘的概念 / 如何判断语句是否发生了下盘
 - **diagnostic_steps_count**: 4
@@ -4923,6 +5017,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 点查/范围扫描场景 SeqScan 全表扫描耗时过长，应改为 IndexScan
 - **source_heading**: 算子级调优示例 · 示例1
 - **diagnostic_steps_count**: 1
@@ -4967,6 +5062,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 大表 JOIN 使用 NestLoop 导致执行时间过长，应改为 HashJoin
 - **source_heading**: 算子级调优示例 · 示例2
 - **diagnostic_steps_count**: 1
@@ -5014,6 +5110,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 大结果集 Agg 选择 Sort+GroupAgg 导致性能差，应改为 HashAgg
 - **source_heading**: 算子级调优示例 · 示例3
 - **diagnostic_steps_count**: 1
@@ -5061,6 +5158,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 分区键包含表达式导致分区剪枝失效，全分区扫描耗时长达 10s
 - **source_heading**: 案例：改写SQL排除剪枝干扰
 - **diagnostic_steps_count**: 2
@@ -5114,6 +5212,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 大表无分区策略导致全表扫描耗时长，改建分区表后利用分区剪枝提升性能
 - **source_heading**: 案例：改建分区表
 - **diagnostic_steps_count**: 1
@@ -5158,6 +5257,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 列存大表无 PCK 导致点查扫描全部 CU，执行时间 48ms，设置 PCK 后降至 5ms
 - **source_heading**: 案例：调整局部聚簇键
 - **diagnostic_steps_count**: 1
@@ -5202,6 +5302,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 列存表未设置 Partial Cluster Key 导致 CStore Scan 大量加载 CU
 - **source_heading**: 案例：使用partial cluster key
 - **diagnostic_steps_count**: 1
@@ -5255,6 +5356,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: plan-suboptimal
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: Join 顺序 hint (leading) 调优 store_sales / date_dim join 顺序
 - **source_heading**: Join 顺序的hint
 - **diagnostic_steps_count**: 2
@@ -5308,6 +5410,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: plan-suboptimal
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: no nestloop hint 改 hashjoin 避免低效 NestLoop
 - **source_heading**: Scan/Join方法的hint
 - **diagnostic_steps_count**: 1
@@ -5352,6 +5455,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: plan-suboptimal
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 行数 hint 指明 store_sales 准确行数
 - **source_heading**: 行数hint
 - **diagnostic_steps_count**: 1
@@ -5395,6 +5499,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: data-skew
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 倾斜值 hint 优化 HashAgg 重分布倾斜
 - **source_heading**: 倾斜值hint
 - **diagnostic_steps_count**: 1
@@ -5439,6 +5544,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 多列关联统计信息缺失导致 HashJoin 行数严重低估，使用 rows hint 干预后结合 join 顺序优化从 110s 降至 94s
 - **source_heading**: Plan Hint实际调优案例
 - **diagnostic_steps_count**: 2
@@ -5492,6 +5598,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: plan-suboptimal
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: SQL 语句不能下推,执行计划中出现 Data Node Scan / RemoteQuery 节点
 - **source_heading**: 语句下推调优 · 查看执行计划是否下推
 - **diagnostic_steps_count**: 1
@@ -5545,6 +5652,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 中间表使用行存导致整体计划走行执行引擎，性能远差于列执行引擎
 - **source_heading**: 案例：调整中间表存储方式
 - **diagnostic_steps_count**: 1
@@ -5589,6 +5697,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: CDM 数据同步 COPY 入库导入速率不达预期
 - **source_heading**: sequence相关的典型优化场景
 - **diagnostic_steps_count**: 1
@@ -5636,6 +5745,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: CN 端 Window Agg + Sort 未下推导致查询耗时严重
 - **source_heading**: 案例：使排序下推
 - **diagnostic_steps_count**: 2
@@ -5689,6 +5799,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: HashJoin 大表做内表导致内存和性能问题
 - **source_heading**: HashJoin中大表做内表
 - **diagnostic_steps_count**: 1
@@ -5733,6 +5844,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 大表 Broadcast 导致 DN 间大量数据传输
 - **source_heading**: 大表Broadcast
 - **diagnostic_steps_count**: 1
@@ -5777,6 +5889,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 统计信息未收集导致优化器估算不准，查询性能下降
 - **source_heading**: 多列/单列统计信息未收集
 - **diagnostic_steps_count**: 1
@@ -5821,6 +5934,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: other
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 集群吞吐受限,系统级 GUC 未按 CPU/IO/内存/网络资源充分使用调优
 - **source_heading**: 系统级调优项
 - **diagnostic_steps_count**: 1
@@ -5913,6 +6027,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: disk-space-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: VACUUM FULL 后表文件大小无变化(长事务干扰)
 - **source_heading**: VACUUM FULL一张表后，表文件大小无变化
 - **diagnostic_steps_count**: 2
@@ -5972,6 +6087,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: disk-space-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: VACUUM 后存储空间未释放 (vacuum_defer_cleanup_age 非 0)
 - **source_heading**: 删除表数据后执行了VACUUM，但存储空间并没有释放
 - **diagnostic_steps_count**: 1
@@ -6031,6 +6147,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: other
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: Can't fit xid into page 报错(老事务导致 freeze 失效)
 - **source_heading**: 执行业务报错"Can't fit xid into page"
 - **diagnostic_steps_count**: 2
@@ -6084,6 +6201,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: data-skew
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: 导入(INSERT/COPY)时 DN 间数据倾斜超过阈值需即时告警
 - **source_heading**: 导入过程存储倾斜即时检测
 - **diagnostic_steps_count**: 1
@@ -6155,6 +6273,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: connection-storm
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: Too many clients already — non-active 空闲连接积压
 - **source_heading**: 连接DWS数据库时，提示客户端连接数太多
 - **diagnostic_steps_count**: 1
@@ -6216,6 +6335,7 @@
 - **engine**: gaussdb-dws
 - **symptom_category**: plan-suboptimal
 - **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
 - **title**: row_number() over() + count() over() 窗口函数全集中在单 DN 执行
 - **source_heading**: 1、【问题描述】+ 3、性能分析
 - **diagnostic_steps_count**: 2
@@ -6259,4 +6379,3 @@
   mitigation_quote: `改写逻辑：把t2写成with子查询以在join时使用其别名，使用left join (select count() from t2)代替count() over()，使用limit offset代替row_number() over()和对rn的过滤。`
 
 ```
-

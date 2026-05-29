@@ -8,6 +8,7 @@
 - **engine**: mongodb
 - **symptom_category**: replica-lag
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: WiredTiger Cache 峰值与复制延迟级联失败 (MongoDB 3.0 → 3.4 升级修复)
 - **source_heading**: Troubleshooting a MongoDB Performance Issue
 - **diagnostic_steps_count**: 3
@@ -88,6 +89,7 @@
 - **engine**: linux-os
 - **symptom_category**: startup-failure
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: 系统默认 ulimit 过低导致 mongod 运行异常
 - **source_heading**: ulimit(in "Tuning For Performance")
 - **diagnostic_steps_count**: 1
@@ -132,6 +134,7 @@
 - **engine**: mongodb
 - **symptom_category**: lock-contention
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: shard chunk migration 卡死 LockTimeout · balancer 一直 abort
 - **source_heading**: MongoDB Chunk Migration Failed Solution: Unable to acquire X lock
 - **diagnostic_steps_count**: 5
@@ -224,6 +227,7 @@
 - **engine**: mongodb
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: WiredTiger 大页驱逐导致 fetch 期间多次显著停顿
 - **source_heading**: Description (SERVER-16479)
 - **diagnostic_steps_count**: 2
@@ -289,6 +293,7 @@
 - **engine**: mongodb
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: sweep server 整 b-tree 驱逐期间集合访问被阻塞数分钟
 - **source_heading**: Description (SERVER-17907)
 - **diagnostic_steps_count**: 2
@@ -354,6 +359,7 @@
 - **engine**: mongodb
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: tcmalloc 归还大量 pageheap free memory 时持内部锁数秒 · 全线程延迟尖峰
 - **source_heading**: Description (SERVER-31417)
 - **diagnostic_steps_count**: 4
@@ -431,6 +437,7 @@
 - **engine**: mongodb
 - **symptom_category**: memory-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: mongod 内存远超已分配数据 · pageheap_free_bytes 持续累积
 - **source_heading**: Description (SERVER-33296)
 - **diagnostic_steps_count**: 2
@@ -496,6 +503,7 @@
 - **engine**: mongodb
 - **symptom_category**: memory-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: 4.4 引入 durable history 后 tcmalloc 碎片化加剧 · mongod VSZ 比 4.2.6 多约 9G
 - **source_heading**: Description (WT-6175)
 - **diagnostic_steps_count**: 2
@@ -561,6 +569,7 @@
 - **engine**: mongodb
 - **symptom_category**: lock-contention
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: globalLock.currentQueue.total 持续高 → 大量请求等锁 → 性能降级
 - **source_heading**: 锁性能
 - **diagnostic_steps_count**: 3
@@ -623,6 +632,7 @@
 - **engine**: mongodb
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: 大翻页 skip 性能塌陷: skip 100 页 12.8s → 改写 $gt 后稳定 10-20ms
 - **source_heading**: 分页翻页案例以及执行效率
 - **diagnostic_steps_count**: 1
@@ -673,6 +683,7 @@
 - **engine**: mongodb
 - **symptom_category**: disk-io-saturation
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: WiredTiger checkpoint 周期偏长 → 磁盘 IO 短暂 100% 抖动
 - **source_heading**: 优化策略3：存储引擎checkpoint优化
 - **diagnostic_steps_count**: 1
@@ -723,6 +734,7 @@
 - **engine**: mongodb
 - **symptom_category**: replica-lag
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: mongos 集中更新 system.sessions 拖垮主分片 → 集群瞬间数倍下降
 - **source_heading**: 优化策略4：sharding集群system.session优化
 - **diagnostic_steps_count**: 1
@@ -767,6 +779,7 @@
 - **engine**: mongodb
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: 慢日志 grep + currentOp 定位长时执行操作并 kill
 - **source_heading**: 【慢日志分析】
 - **diagnostic_steps_count**: 3
@@ -827,6 +840,7 @@
 - **engine**: mongodb
 - **symptom_category**: memory-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: cache 用量持续接近 eviction_trigger (默认 95%) → application threads 被拉去做 eviction
 - **source_heading**: Eviction tuning
 - **diagnostic_steps_count**: 2
@@ -886,6 +900,7 @@
 - **engine**: mongodb
 - **symptom_category**: cpu-high
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: MongoDB Snappy 压缩热点函数在鲲鹏 ARM64 上 CPU 占用偏高
 - **source_heading**: 压缩算法调优
 - **diagnostic_steps_count**: 1
@@ -930,6 +945,7 @@
 - **engine**: mixed
 - **symptom_category**: cpu-high
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: 应用线程并发数过高导致上下文切换/锁竞争开销加大
 - **source_heading**: 调整线程并发数
 - **diagnostic_steps_count**: 1
@@ -980,6 +996,7 @@
 - **engine**: mixed
 - **symptom_category**: cpu-high
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: 多线程内存分配场景未启用 jemalloc，glibc 默认分配器锁竞争激烈
 - **source_heading**: 使用jemalloc优化内存分配
 - **diagnostic_steps_count**: 1
@@ -1030,6 +1047,7 @@
 - **engine**: mongodb
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: seller analytics 看板聚合 8.2s: $match 在 $lookup 之后
 - **source_heading**: Fix 2: Aggregation Pipeline Refactoring
 - **diagnostic_steps_count**: 1
@@ -1074,6 +1092,7 @@
 - **engine**: mongodb
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: $lookup 用得过多 → 应改为 embed 单集合内
 - **source_heading**: Schema Suggestions
 - **diagnostic_steps_count**: 1
@@ -1118,6 +1137,7 @@
 - **engine**: mongodb
 - **symptom_category**: disk-space-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: 集合上有未使用 index → 占盘 + 拖慢写性能
 - **source_heading**: Schema Suggestions
 - **diagnostic_steps_count**: 1
@@ -1162,6 +1182,7 @@
 - **engine**: mongodb
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: 文档体积过大 → 频繁查询性能差
 - **source_heading**: Schema Suggestions
 - **diagnostic_steps_count**: 1
@@ -1206,6 +1227,7 @@
 - **engine**: mongodb
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: Atlas Query Targeting alert: high scanned-to-returned document ratio
 - **source_heading**: Query Targeting
 - **diagnostic_steps_count**: 3
@@ -1274,6 +1296,7 @@
 - **engine**: mongodb
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: Atlas Query Profiler: identify and interpret slow queries by multiple metrics
 - **source_heading**: Find Slow Queries with the Query Profiler
 - **diagnostic_steps_count**: 3
@@ -1360,6 +1383,7 @@
 - **engine**: mongodb
 - **symptom_category**: lock-contention
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: 锁等待队列堆积导致请求被阻塞
 - **source_heading**: Locking Performance
 - **diagnostic_steps_count**: 3
@@ -1428,6 +1452,7 @@
 - **engine**: mongodb
 - **symptom_category**: connection-storm
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: 连接数飙升 → 服务器吃不下请求
 - **source_heading**: Number of Connections
 - **diagnostic_steps_count**: 2
@@ -1493,6 +1518,7 @@
 - **engine**: mongodb
 - **symptom_category**: lock-contention
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: WiredTiger 读写 ticket 持续 < 128 → 并发被限流
 - **source_heading**: Run Your Queries at Top Speed → WiredTiger Ticket Number metric
 - **diagnostic_steps_count**: 2
@@ -1558,6 +1584,7 @@
 - **engine**: mongodb
 - **symptom_category**: replica-lag
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: 复制集 secondary 落后 primary(4 类互斥根因)
 - **source_heading**: Replication Lag
 - **diagnostic_steps_count**: 1
@@ -1620,6 +1647,7 @@
 - **engine**: mongodb
 - **symptom_category**: other
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: open cursor 持续上升但流量未变
 - **source_heading**: Open Cursors
 - **diagnostic_steps_count**: 1
@@ -1664,6 +1692,7 @@
 - **engine**: mongodb
 - **symptom_category**: memory-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: Scan and Order 数高 → 服务端排序内存压力
 - **source_heading**: Query Metrics
 - **diagnostic_steps_count**: 1
@@ -1708,6 +1737,7 @@
 - **engine**: mongodb
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: 文档中 array 无上限增长 → 每次更新触发整文档重写
 - **source_heading**: Document Structure Antipatterns
 - **diagnostic_steps_count**: 1
@@ -1752,6 +1782,7 @@
 - **engine**: mongodb
 - **symptom_category**: connection-storm
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: driver 连接池大小 < 1.10×并发请求数 → 池排队
 - **source_heading**: Drivers
 - **diagnostic_steps_count**: 1
@@ -1796,6 +1827,7 @@
 - **engine**: mongodb
 - **symptom_category**: disk-io-saturation
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: dbPath 用 NFS 卷 → 性能下降且不稳定
 - **source_heading**: Filesystem
 - **diagnostic_steps_count**: 1
@@ -1840,6 +1872,7 @@
 - **engine**: mongodb
 - **symptom_category**: disk-io-saturation
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: WiredTiger + EXT4 → 已知性能问题 · 应改 XFS
 - **source_heading**: Filesystem
 - **diagnostic_steps_count**: 1
@@ -1884,6 +1917,7 @@
 - **engine**: linux-os
 - **symptom_category**: other
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: RHEL/CentOS tuned profile 用默认值 → 对 MongoDB 性能负向影响
 - **source_heading**: Linux
 - **diagnostic_steps_count**: 1
@@ -1928,6 +1962,7 @@
 - **engine**: mongodb
 - **symptom_category**: startup-failure
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: MongoDB 8.0+ 在 Linux Kernel 6.19 上启动 crash
 - **source_heading**: MongoDB 8.0 Incompatible with Kernel 6.19
 - **diagnostic_steps_count**: 1
@@ -1972,6 +2007,7 @@
 - **engine**: linux-os
 - **symptom_category**: network-latency
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: tcp_keepalive_time 大于云 LB 空闲超时 → 连接被静默切断
 - **source_heading**: Adjust tcp_keepalive_time
 - **diagnostic_steps_count**: 1
@@ -2016,6 +2052,7 @@
 - **engine**: mongodb
 - **symptom_category**: cpu-high
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: MongoDB 在 NUMA 硬件上跨节点访问导致间歇性慢
 - **source_heading**: MongoDB and NUMA Hardware
 - **diagnostic_steps_count**: 2
@@ -2075,6 +2112,7 @@
 - **engine**: linux-os
 - **symptom_category**: memory-pressure
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: vm.swappiness 默认 60 → MongoDB 频繁 swap 性能下降
 - **source_heading**: Set vm.swappiness to 1 or 0
 - **diagnostic_steps_count**: 1
@@ -2119,6 +2157,7 @@
 - **engine**: mongodb
 - **symptom_category**: disk-io-saturation
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: AWS EC2 上 MongoDB 性能不可重现 / 不达上限
 - **source_heading**: AWS EC2
 - **diagnostic_steps_count**: 1
@@ -2175,6 +2214,7 @@
 - **engine**: mixed
 - **symptom_category**: memory-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: MongoDB 8.0 TCMalloc per-CPU caches 未启用 → 高负载下内存碎片与性能退化
 - **source_heading**: TCMalloc Performance Optimization for a Self-Managed Deployment
 - **diagnostic_steps_count**: 3
@@ -2249,6 +2289,7 @@
 - **engine**: mongodb
 - **symptom_category**: memory-pressure
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: In-memory storage engine 数据超出 inMemorySizeGB → WT_CACHE_FULL
 - **source_heading**: Memory Use
 - **diagnostic_steps_count**: 2
@@ -2302,6 +2343,7 @@
 - **engine**: mongodb
 - **symptom_category**: replica-lag
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: PSA 架构 + majority write concern · secondary 不可用/落后导致写性能下降与读 stale
 - **source_heading**: Performance Issues with PSA replica sets
 - **diagnostic_steps_count**: 3
@@ -2376,6 +2418,7 @@
 - **engine**: mongodb
 - **symptom_category**: memory-pressure
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: WiredTiger 内部 cache 大小被人工调高 → 与 filesystem cache 抢内存
 - **source_heading**: Cache Configuration Settings
 - **diagnostic_steps_count**: 1
@@ -2426,6 +2469,7 @@
 - **engine**: mongodb
 - **symptom_category**: memory-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: $sort 或 SORT 阶段 spill 到磁盘 → 排序内存压力
 - **source_heading**: Sort Stage · $sort and $group Stages
 - **diagnostic_steps_count**: 2
@@ -2485,6 +2529,7 @@
 - **engine**: mongodb
 - **symptom_category**: network-latency
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: connectTimeoutMS 默认或过大 → 应用侧操作时间慢但 DB 侧未见
 - **source_heading**: Tuning Your Connection Pool Settings
 - **diagnostic_steps_count**: 1
@@ -2529,6 +2574,7 @@
 - **engine**: mongodb
 - **symptom_category**: connection-storm
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: 防火墙错关连接 driver 不感知 → 应通过 socketTimeoutMS 兜底
 - **source_heading**: Tuning Your Connection Pool Settings
 - **diagnostic_steps_count**: 1
@@ -2579,6 +2625,7 @@
 - **engine**: mongodb
 - **symptom_category**: connection-storm
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: 启动期可用连接不足 → 应用频繁建新连接 → minPoolSize 太小
 - **source_heading**: Tuning Your Connection Pool Settings
 - **diagnostic_steps_count**: 1
@@ -2623,6 +2670,7 @@
 - **engine**: mongodb
 - **symptom_category**: query-slow
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: DB 负载低、活跃连接少、应用吞吐低于预期 → maxPoolSize 太小限流了
 - **source_heading**: Tuning Your Connection Pool Settings
 - **diagnostic_steps_count**: 1
@@ -2667,6 +2715,7 @@
 - **engine**: mongodb
 - **symptom_category**: cpu-high
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: DB CPU 比预期高 + 连接尝试比预期多 → maxPoolSize 太大压垮服务端
 - **source_heading**: Tuning Your Connection Pool Settings
 - **diagnostic_steps_count**: 1
@@ -2711,6 +2760,7 @@
 - **engine**: mongodb
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: 慢查询 explain() 五步排查链路
 - **source_heading**: Explain Slow Queries
 - **diagnostic_steps_count**: 4
@@ -2788,6 +2838,7 @@
 - **engine**: mongodb
 - **symptom_category**: other
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: profiler 慢查询阈值 / 抽样率默认配置审计
 - **source_heading**: Specify the Threshold for Slow Operations · Profile a Random Sample of Slow Operations
 - **diagnostic_steps_count**: 1
@@ -2844,6 +2895,7 @@
 - **engine**: mongodb
 - **symptom_category**: memory-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: THP 未启用导致 MongoDB 8.0+ 新 TCMalloc 优化失效
 - **source_heading**: Enable Transparent Hugepages (THP)
 - **diagnostic_steps_count**: 1
@@ -2894,6 +2946,7 @@
 - **engine**: mongodb
 - **symptom_category**: replica-lag
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: 副本集复制延迟(replication lag)
 - **source_heading**: Check the Replication Lag
 - **diagnostic_steps_count**: 2
@@ -2977,6 +3030,7 @@
 - **engine**: mongodb
 - **symptom_category**: replica-lag
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: Ops Manager replication lag alert: secondary behind primary
 - **source_heading**: Replication Lag
 - **diagnostic_steps_count**: 3
@@ -3051,6 +3105,7 @@
 - **engine**: mongodb
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: MongoDB 8.0 慢日志: workingMillis 与 durationMillis 分离 → 区分真慢查询 vs queue 等待
 - **source_heading**: Practical Diagnosis of Slow Queries
 - **diagnostic_steps_count**: 2
@@ -3116,6 +3171,7 @@
 - **engine**: mongodb
 - **symptom_category**: memory-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: MongoDB 7.0 SBE plan cache 膨胀: 单 query shape 5 万+ plan → OOM kill
 - **source_heading**: MongoDB 7.0 High Memory Usage: Environment and Initial Symptoms
 - **diagnostic_steps_count**: 5
@@ -3207,6 +3263,7 @@
 - **engine**: mongodb
 - **symptom_category**: disk-io-saturation
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: jumbo chunks 无法被 balancer 迁移导致单 shard 写热点
 - **source_heading**: What are jumbo chunks? + Ok, I have Jumbo chunks in my shard, but why should I bother
 - **diagnostic_steps_count**: 3
@@ -3281,6 +3338,7 @@
 - **engine**: mongodb
 - **symptom_category**: disk-io-saturation
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: chunk 计数均衡但数据/查询全压在一个 shard(getShardDistribution 100%/0%)
 - **source_heading**: I cannot see any jumbo chunks, and chunks are distributed evenly in each shard but of different sizes
 - **diagnostic_steps_count**: 1
@@ -3331,6 +3389,7 @@
 - **engine**: mongodb
 - **symptom_category**: memory-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: 容器中 WiredTiger 无法识别容器内存限制,回退 256MB 最小 cache
 - **source_heading**: Changing the cacheSizeRatio
 - **diagnostic_steps_count**: 2
@@ -3390,6 +3449,7 @@
 - **engine**: mongodb
 - **symptom_category**: memory-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: PSMDB operator v1.9 / v1.10 已知 bug · cacheSizeRatio 改了但 mongod 仍按默认 cache 启动
 - **source_heading**: (Conclusion 段附录 / K8SPSMDB-603)
 - **diagnostic_steps_count**: 2
@@ -3443,6 +3503,7 @@
 - **engine**: mongodb
 - **symptom_category**: memory-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: MongoDB 8.0 升级后未拿到预期性能提升 · TCMalloc 实际未启用 per-CPU caches
 - **source_heading**: Important change for Transparent Huge Pages (THP)
 - **diagnostic_steps_count**: 4
@@ -3526,6 +3587,7 @@
 - **engine**: mongodb
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: 索引存在但 totalDocsExamined ≫ nReturned + 出现独立 SORT stage
 - **source_heading**: Example 3
 - **diagnostic_steps_count**: 2
@@ -3585,6 +3647,7 @@
 - **engine**: mongodb
 - **symptom_category**: query-slow
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: MongoDB 5.0+ 默认 writeConcern=majority 致 JournalFlusher 写盘成为热点
 - **source_heading**: Strange behavior + Digging for the truth
 - **diagnostic_steps_count**: 3
@@ -3659,6 +3722,7 @@
 - **engine**: mongodb
 - **symptom_category**: disk-io-saturation
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: bulk-load 期间 WiredTiger checkpoint 时间从几秒增至数分钟,期间业务停滞
 - **source_heading**: Tuning MongoDB for Bulk Loads(全文主线)
 - **diagnostic_steps_count**: 2
@@ -3730,6 +3794,7 @@
 - **engine**: os-or-allocator
 - **symptom_category**: other
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: WiredTiger 冷数据 evict 后 checkpoint 不再处理 · compact 触发 reconciliation 强制回收
 - **diagnostic_steps_count**: 1
 - **likely_causes_count**: 0
@@ -3757,6 +3822,7 @@
 - **engine**: os-or-allocator
 - **symptom_category**: other
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: WiredTiger 应用线程被迫参与 eviction 助手(cache 使用率超阈值压力 signature)
 - **diagnostic_steps_count**: 1
 - **likely_causes_count**: 0
@@ -3784,6 +3850,7 @@
 - **engine**: os-or-allocator
 - **symptom_category**: other
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: WiredTiger eviction reconcile 被多重 EBUSY 阻碍(__evict_review → __evict_reconcile 链路热点)
 - **diagnostic_steps_count**: 1
 - **likely_causes_count**: 0
@@ -3811,6 +3878,7 @@
 - **engine**: os-or-allocator
 - **symptom_category**: other
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: WiredTiger io_capacity 配置语法错误后,后台 eviction 线程经 capacity_throttle 调用 __wt_cond_signal 解引用 NULL capacity_cond 触发 SIGSEGV
 - **diagnostic_steps_count**: 1
 - **likely_causes_count**: 0
@@ -3838,6 +3906,7 @@
 - **engine**: os-or-allocator
 - **symptom_category**: other
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: WiredTiger reconcile 在 row leaf 上跳过全局可见 stop_ts 的 key(磁盘清理读-判-跳路径 signature)
 - **diagnostic_steps_count**: 1
 - **likely_causes_count**: 0
@@ -3865,6 +3934,7 @@
 - **engine**: os-or-allocator
 - **symptom_category**: other
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: WiredTiger reconcile 写入 wrapup 阶段释放旧页面磁盘块(block manager free-list 入队 signature)
 - **diagnostic_steps_count**: 1
 - **likely_causes_count**: 0
@@ -3892,6 +3962,7 @@
 - **engine**: os-or-allocator
 - **symptom_category**: other
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: WiredTiger 行叶页 reconcile 路径下 tombstone 非全局可见 → 已删除数据被整页保留(oldest_timestamp 推进不足 signature)
 - **diagnostic_steps_count**: 1
 - **likely_causes_count**: 0

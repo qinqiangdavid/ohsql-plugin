@@ -1,6 +1,6 @@
 # Check Items Index · 指标集合
 
-> 生成时间: 2026-05-21T11:28:49.383Z
+> 生成时间: 2026-05-29T07:49:27.618Z
 > 数据源: 派生于 cases/CASES.md (每条 case 的 diagnostic_steps[*].metric_name + likely_causes.parameter_causes[*])
 > 总计: 655 checks (metric 429 / param 226)
 > 配套: cases/indices/by-check-item/CASES.md

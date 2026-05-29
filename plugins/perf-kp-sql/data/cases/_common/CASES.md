@@ -8,6 +8,7 @@
 - **engine**: kunpeng-platform
 - **symptom_category**: cpu-high
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: 周期时钟中断浪费 CPU 资源(nohz 未启用)
 - **source_heading**: 1.3.3 定时器机制调整,减少不必要的时钟中断
 - **diagnostic_steps_count**: 2
@@ -61,6 +62,7 @@
 - **engine**: kunpeng-platform
 - **symptom_category**: cpu-high
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: 4K 页大小导致 TLB 命中率低
 - **source_heading**: 1.3.4 调整内存页的大小为64K,提升TLB命中率
 - **diagnostic_steps_count**: 1
@@ -105,6 +107,7 @@
 - **engine**: kunpeng-platform
 - **symptom_category**: cpu-high
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: 线程并发数超过最佳点导致性能下降
 - **source_heading**: 1.3.5 调整线程并发数
 - **diagnostic_steps_count**: 1
@@ -149,6 +152,7 @@
 - **engine**: linux-os
 - **symptom_category**: disk-io-saturation
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: XFS mount 未加 noatime/nobarrier 导致文件系统冗余开销
 - **source_heading**: 文件系统调优
 - **diagnostic_steps_count**: 1
@@ -199,6 +203,7 @@
 - **engine**: linux-os
 - **symptom_category**: network-latency
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: OS 层 TCP 协议栈参数审计 (7 条 sysctl)
 - **source_heading**: 网络参数调优
 - **diagnostic_steps_count**: 1
@@ -279,6 +284,7 @@
 - **engine**: linux-os
 - **symptom_category**: network-latency
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: MongoDB 客户端侧 OS 层 TCP 参数审计 (8 条 sysctl)
 - **source_heading**: 客户端优化
 - **diagnostic_steps_count**: 1
@@ -365,6 +371,7 @@
 - **engine**: kunpeng-platform
 - **symptom_category**: disk-io-saturation
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: 鲲鹏 BIOS 中 SMMU 在非虚拟化场景未关闭(影响数据库 IO 性能)
 - **source_heading**: BIOS调优
 - **diagnostic_steps_count**: 1
@@ -409,6 +416,7 @@
 - **engine**: kunpeng-platform
 - **symptom_category**: cpu-high
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: 鲲鹏 BIOS 中硬件预取(CPU Prefetching)未关闭(影响数据库随机访问性能)
 - **source_heading**: BIOS调优
 - **diagnostic_steps_count**: 1
@@ -453,6 +461,7 @@
 - **engine**: linux-os
 - **symptom_category**: network-latency
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: 鲲鹏服务器网卡中断未绑核(irqbalance 在线/中断分散到非本地 CPU)
 - **source_heading**: 网卡中断绑核
 - **diagnostic_steps_count**: 2
@@ -512,6 +521,7 @@
 - **engine**: linux-os
 - **symptom_category**: disk-io-saturation
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: 块设备 nr_requests 队列长度偏小(限制磁盘吞吐)
 - **source_heading**: IO参数调优
 - **diagnostic_steps_count**: 1
@@ -556,6 +566,7 @@
 - **engine**: linux-os
 - **symptom_category**: cpu-high
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: KVM 虚拟机 vCPU 未绑核(跨 NUMA / 跨 DIE 切换)
 - **source_heading**: 虚拟机绑核
 - **diagnostic_steps_count**: 1
@@ -600,6 +611,7 @@
 - **engine**: linux-os
 - **symptom_category**: memory-pressure
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: KVM Host 未分配大页(虚拟机 TLB Miss / 内存访问密集业务下降)
 - **source_heading**: 虚拟机使用内存大页
 - **diagnostic_steps_count**: 1
@@ -649,6 +661,7 @@
 - **engine**: kunpeng-platform
 - **symptom_category**: cpu-high
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: 跨 NUMA 节点访问内存导致应用性能下降
 - **source_heading**: NUMA优化,减少跨NUMA访问内存
 - **diagnostic_steps_count**: 1
@@ -693,6 +706,7 @@
 - **engine**: kunpeng-platform
 - **symptom_category**: network-latency
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: 网卡中断与网卡不在同一 NUMA 节点导致跨 NUMA 访问内存
 - **source_heading**: 网络NUMA绑核
 - **diagnostic_steps_count**: 1
@@ -742,6 +756,7 @@
 - **engine**: linux-os
 - **symptom_category**: network-latency
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: 网卡中断聚合参数（ethtool -C）未按业务调优
 - **source_heading**: 中断聚合参数调整
 - **diagnostic_steps_count**: 1
@@ -792,6 +807,7 @@
 - **engine**: linux-os
 - **symptom_category**: network-latency
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: 单队列网卡软中断集中单 core 形成性能瓶颈（未启用 RPS）
 - **source_heading**: 单队列网卡中断散列
 - **diagnostic_steps_count**: 1
@@ -848,6 +864,7 @@
 - **engine**: linux-os
 - **symptom_category**: disk-io-saturation
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: 脏页刷盘策略不当导致突发 I/O 等待与文件读写阻塞
 - **source_heading**: 调整脏数据刷新策略，减小磁盘的I/O压力
 - **diagnostic_steps_count**: 1
@@ -910,6 +927,7 @@
 - **engine**: linux-os
 - **symptom_category**: disk-io-saturation
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: I/O 调度器与磁盘类型/业务模式不匹配（HDD 数据库使用 CFQ；SSD 未用 NOOP）
 - **source_heading**: 优化磁盘I/O调度方式
 - **diagnostic_steps_count**: 1
@@ -960,6 +978,7 @@
 - **engine**: linux-os
 - **symptom_category**: disk-io-saturation
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: 带电池 RAID 卡环境未使用 nobarrier 挂载选项
 - **source_heading**: 磁盘挂载方式优化nobarrier原理
 - **diagnostic_steps_count**: 1
@@ -1004,6 +1023,7 @@
 - **engine**: linux-os
 - **symptom_category**: disk-io-saturation
 - **case_pattern**: parameter-audit
+- **topology**: common
 - **title**: 大文件场景未选用 XFS 文件系统或 blocksize 仍为默认 4KB
 - **source_heading**: 选用性能更优的文件系统XFS原理
 - **diagnostic_steps_count**: 1
@@ -1054,6 +1074,7 @@
 - **engine**: kunpeng-platform
 - **symptom_category**: cpu-high
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: 自旋锁/CAS 失败循环导致 CPU 资源浪费（perf top 锁函数占比 ≥ 5%）
 - **source_heading**: 锁优化
 - **diagnostic_steps_count**: 1
@@ -1116,6 +1137,7 @@
 - **engine**: kunpeng-platform
 - **symptom_category**: cpu-high
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: x86 上对齐良好的代码迁移到鲲鹏 920（CacheLine 128B）出现伪共享
 - **source_heading**: CacheLine优化
 - **diagnostic_steps_count**: 1
@@ -1166,6 +1188,7 @@
 - **engine**: linux-os
 - **symptom_category**: disk-io-saturation
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: dirty_ratio 默认 20-30% 在大内存机上累积巨量脏页,触发同步 flush 卡顿
 - **source_heading**: Virtual Memory · Dirty Ratio
 - **diagnostic_steps_count**: 1
@@ -1215,6 +1238,7 @@
 - **engine**: linux-os
 - **symptom_category**: memory-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: Transparent HugePages 在 MongoDB 稀疏内存访问场景下产生开销
 - **source_heading**: Transparent HugePages
 - **diagnostic_steps_count**: 1
@@ -1265,6 +1289,7 @@
 - **engine**: linux-os
 - **symptom_category**: memory-pressure
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: 块设备 read-ahead 默认 128KB 浪费 MongoDB 文件系统缓存
 - **source_heading**: Read-Ahead
 - **diagnostic_steps_count**: 1
@@ -1314,6 +1339,7 @@
 - **engine**: os-or-allocator
 - **symptom_category**: other
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: Linux FS metadata syscall hotspot in mmap-based archiver workload
 - **diagnostic_steps_count**: 1
 - **likely_causes_count**: 0
@@ -1341,6 +1367,7 @@
 - **engine**: os-or-allocator
 - **symptom_category**: other
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: glibc malloc allocator tracing hot stack — application allocation code path
 - **diagnostic_steps_count**: 1
 - **likely_causes_count**: 0
@@ -1368,6 +1395,7 @@
 - **engine**: os-or-allocator
 - **symptom_category**: other
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: brk() syscall hot frame — heap expansion code path
 - **diagnostic_steps_count**: 1
 - **likely_causes_count**: 0
@@ -1395,6 +1423,7 @@
 - **engine**: os-or-allocator
 - **symptom_category**: other
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: mmap() syscall hot frame — VM mapping growth code path
 - **diagnostic_steps_count**: 1
 - **likely_causes_count**: 0
@@ -1422,6 +1451,7 @@
 - **engine**: os-or-allocator
 - **symptom_category**: other
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: page fault hot frame — physical memory population code path
 - **diagnostic_steps_count**: 1
 - **likely_causes_count**: 0
@@ -1449,6 +1479,7 @@
 - **engine**: os-or-allocator
 - **symptom_category**: other
 - **case_pattern**: core-perf-diagnosis
+- **topology**: common
 - **title**: Off-Wake flame graph stack chain: disk I/O block completion interrupt waking blocked vfs_read()
 - **diagnostic_steps_count**: 1
 - **likely_causes_count**: 0
@@ -1467,4 +1498,3 @@
     signature_type: stack-pattern
 
 ```
-
