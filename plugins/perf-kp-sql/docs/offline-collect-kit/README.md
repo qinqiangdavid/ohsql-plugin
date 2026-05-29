@@ -85,6 +85,20 @@ source ~/gauss_env_file
 | 含 ≥8 个汉字 OR 含描述词(查看 / 通常 / 建议 / 如果 / 排查 ...) | 跳过 + 列入 manual.md 给你人审 | `manual-descriptive` |
 | 真命令(GUC SHOW / OS top / gsql) | `bash -c "<method>"` 跑 · 捕获 stdout/stderr · 默认 5s timeout | `auto-ok` / `auto-error-rcN` / `auto-timeout` |
 
+## 部署形态过滤(topology)
+
+collector 用 `gs_deployment()` 自识别部署形态写 `deploy.txt`,并据此跳过无关 check:
+
+| deploy_form | 跳过 | 采集 |
+|---|---|---|
+| `centralized` / `single-node` | `distributed-only`(CN/DN/redistribute/DWS 等) | `common` + `centralized-only` |
+| `distributed` | `centralized-only` | `common` + `distributed-only` |
+| `unknown-*` | 不跳(全采) | 全部 + stderr 提示 `⚠️ topology-filter-disabled` |
+
+被跳的 check 在 `report.tsv` 标 `status=skip-topology`(可审计 · 不悄悄消失)。
+每条 check 的 topology 继承自其 linked case(在 `checklist.ndjson` 的 `topology` 字段;
+gaussdb case 的 topology 由 `cases/gaussdb/{common,centralized,distributed}/` 子目录定)。
+
 ## 输出目录布局
 
 ```
@@ -115,14 +129,20 @@ COLLECT_DRYRUN=1    ./collect.sh        # 不真跑 · 只分类 manual/auto
 
 ## 拿回结果之后
 
-把 `out-*/collect-report.ndjson` + `out-*/stdout/` 整个目录拷回本地,跑:
+把 `out-*/`(含 `deploy.txt` + `stdout/`)整个目录拷回本地,跑反喂(按 `deploy.txt`
+自动只撞相关 topology 的 check):
 
 ```bash
-# (待实现) 反喂工具:把 collect-report 撞 cases/gaussdb*/CASES.md 的 abnormal_pattern → 命中 case_id 候选
-node distill-v2/scripts/match-collect-to-cases.mjs \
+node match-collect-to-cases.mjs \
     --collect out-<host>-<date>/ \
-    --cases plugins/perf-kp-sql/data/cases/
+    [--checklist checklist.ndjson]   # 默认用本目录 checklist.ndjson
 ```
+
+产出 `out-*/match-candidates.{md,ndjson}` 两段:
+- `自动命中候选` —— 有阈值且采集值越界(带"实测值 vs 阈值"证据)
+- `待判候选` —— 阈值 NULL/不可机械比 · 附 stdout · 交后续 skill 的 LLM/人判
+
+诊断报告仍由 perf-kp-sql skill 的 Phase 4/5 出(本工具只出候选 case_id)。
 
 ## 预估自动率
 

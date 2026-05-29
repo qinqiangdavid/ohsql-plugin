@@ -180,11 +180,18 @@ if [ "$rc" = "0" ] && grep -qE '^(gsql:.+:\s*)?(ERROR|FATAL|PANIC):' "$OUTDIR/st
 fi
 ```
 
-### 6.3 真做 deploy form 分桶 (status 层面无差异)
+### 6.3 ~~真做 deploy form 分桶~~ ✅ 已落地 (2026-05-29 · case 级 topology 分桶)
 
-3 集群跑出 179 ok 完全一致 — 没有 status 层面的部署特异。**如要真分桶需对比 stdout 内容**(集中式查 `pgxc_node` 返 0 行 vs 分布式返 N 行)而非 exit code。
+不再靠"跑完对比 stdout",改为 **case 级 topology 字段** 驱动:
+- distill 给每个 case 标 `topology` (common/centralized-only/distributed-only) · gaussdb 按此拆
+  `cases/gaussdb/{common,centralized,distributed}/`;
+- `extract-offline-checklist.mjs` 把 topology 继承到每个 check (写进 `checklist.ndjson`);
+- collector 用 `gs_deployment()` 写 `deploy.txt`,**采集时**就跳过冲突 topology 的 check
+  (标 `report.tsv` 的 `skip-topology`);
+- `match-collect-to-cases.mjs` 反喂时按 `deploy.txt` 只撞相关 topology 的 check,出两段候选。
 
-**修法**:跑完后写 `bucket-diff.mjs` 比较两 outdir 的 stdout content,出 `common / centralized-only / distributed-only` 三类报告。
+设计/计划: `docs/superpowers/specs/2026-05-28-gaussdb-offline-topology-routing-design.md`
++ `docs/superpowers/plans/2026-05-29-gaussdb-topology-plan{1,2}-*.md`。
 
 ### 6.4 ~~reasons.tsv 没记 manual 决策依据~~ ✅ 已做 (2026-05-23)
 
