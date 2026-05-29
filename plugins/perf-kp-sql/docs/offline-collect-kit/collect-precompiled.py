@@ -3,7 +3,7 @@
 
 所有 130 个 auto 命令已 inline 在 CHECKS list 里 (不解析 ndjson).
 
-生成时间: 2026-05-29T10:30:38.256Z
+生成时间: 2026-05-29T10:59:11.127Z
 数据: auto=130 · manual=153 · skip=8 · total=291
 
 用法:
@@ -187,7 +187,7 @@ CHECKS = [
     ("chk-table-skewness-warning-rows", "table_skewness_warning_rows", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW table_skewness_warning_rows;\"", "distributed-only"),
     ("chk-session-timeout", "session_timeout", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW session_timeout;\"", "distributed-only"),
     ("chk-max-connections", "max_connections", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW max_connections;\"", "distributed-only"),
-    ("chk-slow-sql-statement-history", "statement_history 慢 SQL (execution_time 超阈值语句明细)", "db-system-view", "SELECT substr(query,1,60) AS q, round(execution_time/1000000.0,2) AS exec_s, round(db_time/1000000.0,2) AS db_s, (n_blocks_fetched-n_blocks_hit) AS phys_read, start_time FROM statement_history WHERE execution_time > 3000000 ORDER BY execution_time DESC LIMIT 20;", "common"),
+    ("chk-slow-sql-statement-history", "statement_history 慢 SQL 明细 (全列 + 等待事件解码)", "db-system-view", "gsql -x -d postgres -c \"SELECT db_name, schema_name, origin_node, user_name, application_name, client_addr, client_port, unique_query_id, debug_query_id, substr(query,1,200) AS query, start_time, finish_time, slow_sql_threshold, transaction_id, thread_id, session_id, n_soft_parse, n_hard_parse, n_returned_rows, n_tuples_fetched, n_tuples_returned, n_tuples_inserted, n_tuples_updated, n_tuples_deleted, n_blocks_fetched, n_blocks_hit, (n_blocks_fetched-n_blocks_hit) AS phys_read, db_time, cpu_time, execution_time, parse_time, plan_time, rewrite_time, pl_execution_time, pl_compilation_time, data_io_time, net_send_info, net_recv_info, net_stream_send_info, net_stream_recv_info, lock_count, lock_time, lock_wait_count, lock_wait_time, lock_max_count, lwlock_count, lwlock_wait_count, lwlock_time, lwlock_wait_time, statement_detail_decode(details, 'plaintext', true) AS wait_events, is_slow_sql, trace_id, advise, parent_unique_sql_id, finish_status, used_memory, lock_max_local_count, lock_max_fastpath_count, lock_max_global_count, sql_hash, plan_hash, plan_hash_prev, driver_start_time, driver_wait_response, driver_finish_time, driver_info, kernel_info, adaptive_join_states, aplan_count, aplan_parse_time, aplan_execution_time, relids, query_plan FROM statement_history WHERE is_slow_sql ORDER BY start_time DESC LIMIT ${SLOW_SQL_LIMIT:-20};", "common"),
 ]
 
 # (check_id, name, layer, method) · 153 条 manual · 描述性 · 不自动跑

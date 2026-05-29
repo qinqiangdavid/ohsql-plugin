@@ -116,6 +116,7 @@ out-<host>-<date>/
 ```bash
 COLLECT_TIMEOUT=10  ./collect.sh        # 默认 5s · 慢命令可放宽
 COLLECT_DRYRUN=1    ./collect.sh        # 不真跑 · 只分类 manual/auto
+SLOW_SQL_LIMIT=50   ./collect.sh        # 慢 SQL 明细取多少条 · 默认 20
 ```
 
 ## 数据来源
