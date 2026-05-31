@@ -1005,6 +1005,9 @@ mark task 2 (诊断案例匹配) completed → mark task 3 (诊断指标采集) 
 | `mongo-runtime-cmd` | `mongosh --eval "JSON.stringify(db.serverStatus())"` 等 |
 | `log-grep` | `grep -E '...' /var/log/mongodb/mongod.log` |
 | `atlas-advisor` | **不直接采** · 提示用户 Atlas UI 取(后续追问场景)|
+| `manual-business` / `manual-code` / `manual-external` | **不 SSH 执行** · 这类 step 的 `collection_method_quote` 是人工动作(以 `[需确认业务]` / `[需确认代码]` / `[需外部确认]` 前缀标记) · 不拼进采集命令文件 · 改为在采集小结里**列为待人工确认项**呈现给用户(如"需确认业务负载 / 需查内核代码 / 需向客户方或管理平台确认") · Phase 4 诊断时这类 step 视为"现场观测·需人工补"不参与案例阈值直判 |
+
+> ⚠️ **采集命令构造前先按 `collection_layer` 过滤**:凡 `collection_layer` 以 `manual-` 开头、或 `collection_method_quote` 以 `[需确认` / `[需外部确认` 开头的 step · **一律不进 SSH 命令文件**(避免把人工提示当 shell 命令去跑) · 单独收进"待人工确认"清单。
 
 3.A.3 · 火焰图采集(case 含 stack-pattern / signature_type=stack-pattern):
 
