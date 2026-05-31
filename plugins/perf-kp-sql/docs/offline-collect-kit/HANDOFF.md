@@ -41,8 +41,6 @@ offline-collect-kit/
 ├── collect-precompiled.sh   ★ 推荐 · 92.6 KB · 216 命令 inline heredoc · 不依赖 ndjson
 ├── collect-precompiled.py   ★ 推荐 · 59.8 KB · CHECKS list inline · 纯 stdlib
 │
-├── collect.sh                   现场解析版 bash · 读 ndjson · 依赖 jq
-├── collect.py                   现场解析版 python · 读 ndjson · 纯 stdlib
 │
 ├── manual-audit.md              ★ 153 manual 人审清单 · 每条带 matched_rule + 派生命令 (98.7% 有派生)
 ├── view-overlap-analysis.md     ★ 视图查询重叠分析 · 42 视图 / 134 → 42 round-trip · 可省 68.7%

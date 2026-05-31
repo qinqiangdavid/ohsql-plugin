@@ -36,6 +36,10 @@ const RULE_DESC = {
   'r8-cjk-verb-start':  '起始中文动词 (查询 / 查看 / 检测 ...) · 非 ready-to-run',
   'r9-pid-literal':     '含真 PID/OID 数字占位 · 需替换实际 PID 才能跑',
   'r10-cluster-tool':   'GaussDB 集群工具 (gs_ssh / gs_om / cm_ctl ...) · 需集群拓扑',
+  'r14-hadr-deploy-only':    '异地容灾(HADR)专用视图 gs_hadr_* · 没配容灾的部署上不存在 · 不盲采',
+  'r13-placeholder-objname': '占位对象名字面量(tablename/table_name 等)· 需填具体表名才能跑',
+  'r11-explain-needs-target': 'explain 类 · 需诊断时目标 SQL · 不能盲跑',
+  'r12-not-blind-runnable':  '起始非无参只读命令(explain/set-only/copy/perf/日志片段等) · 不能盲跑',
 };
 function matchedRule(m) {
   if (!m || m.toLowerCase() === 'null') return 'r0-null';
@@ -48,11 +52,30 @@ function matchedRule(m) {
   if (/^\s*-\s+\*\*[a-z_]+\*\*\s*:/i.test(m)) return 'r3-distill-leak';
   if (hans >= 1 && ascii < 5) return 'r4-cjk-only';
   if (/^[a-z_][a-z0-9_.]+$/i.test(m) && m.length > 6 && !/^(top|sar|free|vmstat|iostat|netstat|pidstat|gstack|gsql|perf|jstack|jmap|strace|tcpdump|dmesg)$/i.test(m)) return 'r5-single-ident';
-  if (/进程号|实例号|查询.{0,2}号|<\w+>|\bxxx\b|\bXXX\b/.test(m)) return 'r6-cjk-placeholder';
+  if (/进程号|实例号|查询.{0,2}号|<[^>\s]{1,24}>|\bxxx\b|\bXXX\b/.test(m)) return 'r6-cjk-placeholder';
   if (/^(WARNING|ERROR|FATAL|PANIC|NOTICE|HINT)[:\s]/.test(m)) return 'r7-log-kw-start';
   if (/^(查询|查看|检测|分析|定位|确认|计算|获取|读取|检查|执行)/.test(m)) return 'r8-cjk-verb-start';
   if (/^(gstack|strace|jstack|jmap|pstack|pmap)\s+\d{4,}/.test(m)) return 'r9-pid-literal';
   if (/^(gs_ssh|gs_om|cm_ctl|gs_check|gs_collector|gs_dump)\b/.test(m)) return 'r10-cluster-tool';
+  // r14: 异地容灾(streaming DR / HADR)专用视图 · 跟拓扑正交 · 没配容灾的部署上不存在 → 不盲采(进 manual)
+  if (/\bgs_hadr_/i.test(m)) return 'r14-hadr-deploy-only';
+  // r13: 占位对象名字面量(需运行时填具体表/列名才能跑)· 如 'tablename' / 'table_name'::regclass
+  if (/'(table_?name|schema_?name|index_?name|your_table|表名|列名|目标表)'/i.test(m)) return 'r13-placeholder-objname';
+
+  // 只留"无参可盲跑"的命令进 auto · 其余转 manual (剥离前置 set ...; 再判)
+  const _body = m.replace(/^\s*(?:set\s+[^;]+;\s*)+/i, '').trim();
+  // r11: explain 类 · 离线没有诊断目标 SQL · 不能盲跑
+  if (/^explain\b/i.test(_body)) return 'r11-explain-needs-target';
+  // r12: 起始不是已知"无参只读"命令(SQL 读取 verb / 完整 gsql / OS 只读工具) → 不能盲跑
+  const _first = (_body.match(/^[a-zA-Z_][a-zA-Z0-9_]*/) || [''])[0].toLowerCase();
+  const _BLIND = new Set([
+    'select','show','with','values','table',          // SQL 只读
+    'gsql',                                            // 完整 gsql 命令
+    'cat','iostat','sysctl','top','df','free','vmstat','netstat','ps','grep','egrep',
+    'find','ss','sar','uptime','lscpu','numactl','mpstat','pidstat','head','tail','du','awk','wc',  // OS 只读
+    'gs_guc',                                          // gs_guc check 读参数
+  ]);
+  if (!_BLIND.has(_first)) return 'r12-not-blind-runnable';
 
   return null;
 }
@@ -455,22 +478,27 @@ const shHead = `#!/usr/bin/env bash
 # 数据: auto=${auto.length} · manual=${manual.length} · skip=${skip.length} · total=${checks.length}
 #
 # 用法:
-#   source ~/gauss_env_file              # 先 source gsql env (如需要)
-#   ./collect-precompiled.sh             # 默认输出到 ./collect-results-<ts>/
-#   ./collect-precompiled.sh /tmp/out    # 自定义 outdir
+#   source ~/gauss_env_file                      # 先 source gsql env (如需要)
+#   ./collect-precompiled.sh [outdir] [port]     # port 作为入参 · 不传则用 PGPORT 环境变量
+#   ./collect-precompiled.sh /tmp/out 37000      # 端口 37000 (env 没设 PGPORT 时必传)
 #
 # 环境变量:
-#   COLLECT_TIMEOUT  单命令超时秒 (default: 5)
+#   COLLECT_TIMEOUT  单命令超时秒 · 默认空=不杀(去掉超时杀进程逻辑)· 设了才兜底
+#   IOSTAT_INTERVAL / IOSTAT_COUNT  iostat 采样间隔秒/次数 (default 1 / 2)
+#   PGPORT           gsql 端口 · 命令行第 2 入参优先于此
 #
 # 依赖: bash 3+ · mktemp · (可选) GNU timeout / gtimeout
 
 set -uo pipefail
 OUTDIR="\${1:-./collect-results-\$(date +%Y%m%d-%H%M%S)}"
-TIMEOUT="\${COLLECT_TIMEOUT:-5}"
+# 端口入参($2)优先 · 否则用 PGPORT 环境变量 · export 后所有 gsql(含字面 gsql 命令)都用它
+PORT="\${2:-\${PGPORT:-}}"
+[ -n "\$PORT" ] && export PGPORT="\$PORT"
+TIMEOUT="\${COLLECT_TIMEOUT:-}"   # 默认空=不杀进程 · 设了才启用单命令超时
 T_BIN=\$(command -v timeout 2>/dev/null || command -v gtimeout 2>/dev/null || echo "")
 # top / sar / vmstat 等 tty 工具在非交互 shell 会抱怨 TERM unset · 给个 dumb 兜底
 export TERM="\${TERM:-dumb}"
-mkdir -p "\$OUTDIR/stdout" "\$OUTDIR/stderr"
+mkdir -p "\$OUTDIR"
 
 # ── 部署形态自识别 (集中式 / 分布式 / 单节点) ──────────────────────────────
 # 用 GaussDB 内置函数 pg_catalog.gs_deployment() (C immutable · 返回 text).
@@ -505,6 +533,7 @@ esac
   printf '# detected_at\\t%s\\n' "\$(date -Iseconds 2>/dev/null || date -u +%Y-%m-%dT%H:%M:%SZ)"
   printf '# host\\t%s\\n' "\$(hostname 2>/dev/null || echo unknown)"
   printf '# user\\t%s\\n' "\$(whoami)"
+  printf '# 注: 只记异常(skip-topology/error/timeout/ghost/unsupported) · ok 的数据在 <check_id>.txt\\n'
   printf 'check_id\\texit_code\\tstatus\\n'
 } > "\$OUTDIR/report.tsv"
 printf '%s\\n' "\$DEPLOY_FORM" > "\$OUTDIR/deploy.txt"
@@ -527,8 +556,9 @@ run_check() {
         printf '%s\\t%s\\t%s\\n' "\$cid" "-" "skip-topology" >> "\$OUTDIR/report.tsv"; cat >/dev/null; return
       fi ;;
   esac
-  local tmpf
+  local tmpf serr
   tmpf=\$(mktemp)
+  serr=\$(mktemp)
   cat > "\$tmpf"
   # 取第一个非空 token (大写化 · 砍标点)
   local first
@@ -538,19 +568,14 @@ run_check() {
     SELECT|EXPLAIN|SHOW|WITH|SET|VACUUM|ANALYZE|CREATE|ALTER|DROP|TRUNCATE|UPDATE|INSERT|DELETE|COPY|REINDEX|CHECKPOINT|GRANT|REVOKE|RESET|BEGIN|COMMIT|ROLLBACK|CALL|VALUES)
       cmd_kind="sql" ;;
   esac
+  # 默认不杀进程(TIMEOUT 空)· 仅当显式设了 COLLECT_TIMEOUT 才套 timeout 兜底
+  local RUN=""
+  [ -n "\$TIMEOUT" ] && [ -n "\$T_BIN" ] && RUN="\$T_BIN \$TIMEOUT"
   set +e
   if [ "\$cmd_kind" = "sql" ]; then
-    if [ -n "\$T_BIN" ]; then
-      "\$T_BIN" "\$TIMEOUT" gsql -d postgres -f "\$tmpf" > "\$OUTDIR/stdout/\$cid.txt" 2> "\$OUTDIR/stderr/\$cid.txt"
-    else
-      gsql -d postgres -f "\$tmpf" > "\$OUTDIR/stdout/\$cid.txt" 2> "\$OUTDIR/stderr/\$cid.txt"
-    fi
+    \$RUN gsql -d postgres -f "\$tmpf" > "\$OUTDIR/\$cid.txt" 2> "\$serr"
   else
-    if [ -n "\$T_BIN" ]; then
-      "\$T_BIN" "\$TIMEOUT" bash "\$tmpf" > "\$OUTDIR/stdout/\$cid.txt" 2> "\$OUTDIR/stderr/\$cid.txt"
-    else
-      bash "\$tmpf" > "\$OUTDIR/stdout/\$cid.txt" 2> "\$OUTDIR/stderr/\$cid.txt"
-    fi
+    \$RUN bash "\$tmpf" > "\$OUTDIR/\$cid.txt" 2> "\$serr"
   fi
   local rc=\$?
   set -e
@@ -560,20 +585,28 @@ run_check() {
   # ghost-ok detector: gsql -f 默认 batch · SQL 报错也 exit 0
   # rc=0 时 grep stderr 含 ERROR/FATAL/PANIC → 标 ghost-ok-sql-error 而非 ok
   # 只在 sql 类生效 (shell 类 stderr 含 ERROR 是正常输出 · 不算 ghost-ok)
-  if [ "\$s" = "ok" ] && [ "\$cmd_kind" = "sql" ] && [ -s "\$OUTDIR/stderr/\$cid.txt" ]; then
-    if LC_ALL=C grep -qE '^(gsql:.+:[[:space:]]*)?(ERROR|FATAL|PANIC):' "\$OUTDIR/stderr/\$cid.txt" 2>/dev/null; then
+  if [ "\$s" = "ok" ] && [ "\$cmd_kind" = "sql" ] && [ -s "\$serr" ]; then
+    if LC_ALL=C grep -qE '^(gsql:.+:[[:space:]]*)?(ERROR|FATAL|PANIC):' "\$serr" 2>/dev/null; then
       # 二级判定: 部署形态特异 (集中式跑分布式专用视图/函数报错) · 不是真错
       # 这类 SQL 拉到分布式实例跑会 ok · 跟 distill 数据质量问题 (syntax error) 区分开
       # pgxc_* 分布式 catalog 在集中式报 'Relation "pgxc_xxx" does not exist' · 也算部署形态特异
       # (只认 pgxc_/pg_catalog.pgxc_ 前缀 · 不误伤 'Relation "t1" does not exist' 文档示例表)
-      if LC_ALL=C grep -qiE 'Unsupported view in single node mode|Unsupported function|Function [a-z_]+\\([^)]*\\) does not exist|does not support|not supported in (single|centralized)|[Rr]elation "(pgxc_|pg_catalog\\.pgxc_)[a-z0-9_]+" does not exist' "\$OUTDIR/stderr/\$cid.txt" 2>/dev/null; then
+      if LC_ALL=C grep -qiE 'Unsupported view in single node mode|Unsupported function|Function [a-z_]+\\([^)]*\\) does not exist|does not support|not supported in (single|centralized)|[Rr]elation "(pgxc_|pg_catalog\\.pgxc_)[a-z0-9_]+" does not exist' "\$serr" 2>/dev/null; then
         s=unsupported-deploy-form
       else
         s=ghost-ok-sql-error
       fi
     fi
   fi
-  printf '%s\\t%s\\t%s\\n' "\$cid" "\$rc" "\$s" >> "\$OUTDIR/report.tsv"
+  # stderr 汇总进单一 errors.log (按 cid 标记) · 不再每条一个 stderr 文件
+  if [ -s "\$serr" ]; then
+    { echo "===== \$cid (\$s) ====="; cat "\$serr"; echo; } >> "\$OUTDIR/errors.log"
+  fi
+  rm -f "\$serr"
+  # report.tsv 只记异常(非 ok) · ok 的数据在 <cid>.txt 不再冗余记一行
+  if [ "\$s" != "ok" ]; then
+    printf '%s\\t%s\\t%s\\n' "\$cid" "\$rc" "\$s" >> "\$OUTDIR/report.tsv"
+  fi
 }
 
 i=0
@@ -596,41 +629,15 @@ ${term}
 `;
 }
 
-let shTail = `
-# ── ${manual.length} 个描述性 method (蒸馏不可执行 · 写 manual.md) ──────────
-cat > "\$OUTDIR/manual.md" <<'MANUAL_DOC_END'
-# 需人审 method (描述性中文 · 不自动跑 · 共 ${manual.length} 项)
-
-> distill-v2 蒸馏出来的描述性文本 (含 8+ 汉字 OR "查看/判断/通常/建议..." 等关键词),
-> 不能直接当 shell 命令跑。请人工解读后手工执行,把结果跟 case abnormal_pattern 比对。
-
-`;
-for (const c of manual) {
-  const cleanMethod = c.method.replace(/\n/g, '\n  ');
-  shTail += `## ${c.check_id} · ${c.name}\n- layer: \`${c.collection_layer}\` · type: \`${c.type}\`\n- method:\n  \`\`\`\n  ${cleanMethod}\n  \`\`\`\n\n`;
-}
-
-shTail += `MANUAL_DOC_END
-
-# ── ${skip.length} 个 NULL/空 method (蒸馏没抽到抓法 · 仅记录) ─────────────
-cat > "\$OUTDIR/skip.md" <<'SKIP_DOC_END'
-# Skip-empty method (蒸馏没抽到 collection_method · 共 ${skip.length} 项)
-
-`;
-for (const c of skip) {
-  shTail += `- \`${c.check_id}\` · ${c.name} (layer=\`${c.collection_layer}\`)\n`;
-}
-
-shTail += `SKIP_DOC_END
-
+// 本脚本只采 auto · 不再内嵌 manual/skip 清单(已拆到独立文件 manual-audit.md · 随 kit 走 · 不进现场采集脚本)
+const shTail = `
 echo ""
 echo "─────────────────────────────────────────────"
-echo "完成 · TOTAL=${checks.length} · auto=${auto.length} · manual=${manual.length} · skip=${skip.length}"
-echo "  报告:        \$OUTDIR/report.tsv"
-echo "  stdout 目录: \$OUTDIR/stdout/"
-echo "  stderr 目录: \$OUTDIR/stderr/"
-echo "  人审 (${manual.length}): \$OUTDIR/manual.md"
-echo "  空 method (${skip.length}): \$OUTDIR/skip.md"
+echo "完成 · auto=${auto.length}(本脚本只跑这些)· manual=${manual.length} · skip=${skip.length}"
+echo "  异常清单:    \$OUTDIR/report.tsv (只记非 ok · 全 ok 则只有表头)"
+echo "  数据文件:   \$OUTDIR/<check_id>.txt (每条 check 一个)"
+echo "  报错汇总:   \$OUTDIR/errors.log"
+echo "  人审清单:    见 kit 内独立文件 manual-audit.md (${manual.length} 项 · 不在本采集脚本内)"
 `;
 
 writeFileSync(OUT_SH, shHead + shBody + shTail);
@@ -650,7 +657,7 @@ const pyHead = `#!/usr/bin/env python3
   python3 collect-precompiled.py [outdir]
 
 环境变量:
-  COLLECT_TIMEOUT  单命令超时秒 (default: 5)
+  COLLECT_TIMEOUT  单命令超时秒 · 默认空=不超时 · IOSTAT_INTERVAL/IOSTAT_COUNT iostat 采样(默认 1/2)
 
 依赖: python3 3.6+ · bash (用来跑 method)
 """
@@ -659,10 +666,12 @@ from pathlib import Path
 from datetime import datetime
 
 OUTDIR = Path(sys.argv[1] if len(sys.argv) > 1 else f'./collect-results-{datetime.now().strftime("%Y%m%d-%H%M%S")}')
-TIMEOUT = int(os.environ.get('COLLECT_TIMEOUT', '5'))
+# 端口入参(argv[2])优先 · 否则用 PGPORT 环境变量 · 设进 os.environ 后所有 gsql 都用它
+if len(sys.argv) > 2 and sys.argv[2].strip():
+    os.environ['PGPORT'] = sys.argv[2].strip()
+TIMEOUT = int(os.environ['COLLECT_TIMEOUT']) if os.environ.get('COLLECT_TIMEOUT') else None  # 默认 None=不超时
 os.environ.setdefault('TERM', 'dumb')  # top/sar 等 tty 工具非交互需 TERM
-(OUTDIR / 'stdout').mkdir(parents=True, exist_ok=True)
-(OUTDIR / 'stderr').mkdir(parents=True, exist_ok=True)
+OUTDIR.mkdir(parents=True, exist_ok=True)
 
 # ── 部署形态自识别 (集中式 / 分布式 / 单节点) ──────────────────────────────
 # 用 GaussDB 内置函数 pg_catalog.gs_deployment() (C immutable · 返回 text).
@@ -704,26 +713,11 @@ for (const c of auto) {
   pyBody += `    (${JSON.stringify(c.check_id)}, ${JSON.stringify(c.name)}, ${JSON.stringify(c.collection_layer)}, ${JSON.stringify(c.method)}, ${JSON.stringify(c.topology || 'common')}),\n`;
 }
 
-let pyMid = `]
-
-# (check_id, name, layer, method) · ${manual.length} 条 manual · 描述性 · 不自动跑
-MANUAL = [
+// 只闭合 CHECKS · 不再内嵌 MANUAL/SKIP 数组(已拆到独立 manual-audit.md · 不进现场采集脚本)
+const pyMid = `]
 `;
-for (const c of manual) {
-  pyMid += `    (${JSON.stringify(c.check_id)}, ${JSON.stringify(c.name)}, ${JSON.stringify(c.collection_layer)}, ${JSON.stringify(c.method)}),\n`;
-}
 
-let pyTail = `]
-
-# (check_id, name, layer) · ${skip.length} 条 skip · 蒸馏没抽到 method
-SKIP = [
-`;
-for (const c of skip) {
-  pyTail += `    (${JSON.stringify(c.check_id)}, ${JSON.stringify(c.name)}, ${JSON.stringify(c.collection_layer)}),\n`;
-}
-
-pyTail += `]
-
+let pyTail = `
 # ── 主循环 ────────────────────────────────────────────────────────────────
 print(f'开始: {len(CHECKS)} 个 auto 命令 · timeout {TIMEOUT}s · outdir {OUTDIR}', flush=True)
 report = OUTDIR / 'report.tsv'
@@ -733,6 +727,7 @@ with open(report, 'w', encoding='utf-8') as rf:
     rf.write(f'# detected_at\\t{datetime.now().astimezone().isoformat(timespec="seconds")}\\n')
     rf.write(f'# host\\t{_sk.gethostname()}\\n')
     rf.write(f'# user\\t{os.environ.get("USER", "unknown")}\\n')
+    rf.write('# 注: 只记异常(skip-topology/error/timeout/ghost/unsupported) · ok 的数据在 <check_id>.txt\\n')
     rf.write('check_id\\texit_code\\tstatus\\n')
     # 自动 dispatch: SQL 起始词走 gsql -f, 其他走 bash -c
     SQL_FIRST = {'SELECT','EXPLAIN','SHOW','WITH','SET','VACUUM','ANALYZE','CREATE',
@@ -763,8 +758,10 @@ with open(report, 'w', encoding='utf-8') as rf:
             else:
                 r = subprocess.run(['bash','-c', method], capture_output=True, timeout=TIMEOUT)
             rc = r.returncode
-            (OUTDIR / 'stdout' / f'{cid}.txt').write_bytes(r.stdout)
-            (OUTDIR / 'stderr' / f'{cid}.txt').write_bytes(r.stderr)
+            (OUTDIR / f'{cid}.txt').write_bytes(r.stdout)
+            if r.stderr:
+                with open(OUTDIR / 'errors.log', 'ab') as _ef:
+                    _ef.write(f'===== {cid} =====\\n'.encode() + r.stderr + b'\\n')
             # ghost-ok detector: gsql -f 默认 batch · SQL 报错也 exit 0
             # rc=0 且 sql 类时 grep stderr 含 ERROR/FATAL/PANIC → ghost-ok-sql-error
             if rc == 0 and is_sql and r.stderr:
@@ -785,34 +782,22 @@ with open(report, 'w', encoding='utf-8') as rf:
         except subprocess.TimeoutExpired as e:
             rc = 124
             status = 'timeout'
-            (OUTDIR / 'stdout' / f'{cid}.txt').write_bytes(e.stdout or b'')
-            (OUTDIR / 'stderr' / f'{cid}.txt').write_bytes((e.stderr or b'') + f'\\n[TIMEOUT {TIMEOUT}s]'.encode())
-        rf.write(f'{cid}\\t{rc}\\t{status}\\n')
+            (OUTDIR / f'{cid}.txt').write_bytes(e.stdout or b'')
+            with open(OUTDIR / 'errors.log', 'ab') as _ef:
+                _ef.write(f'===== {cid} =====\\n'.encode() + (e.stderr or b'') + f'\\n[TIMEOUT {TIMEOUT}s]\\n'.encode())
+        # report.tsv 只记异常(非 ok) · ok 的数据在 <cid>.txt 不再冗余记一行
+        if status != 'ok':
+            rf.write(f'{cid}\\t{rc}\\t{status}\\n')
         if i % 30 == 0 or i == len(CHECKS):
             print(f'  [{i}/{len(CHECKS)}] {cid}', file=sys.stderr, flush=True)
 
-# manual.md
-manual_lines = [f'# 需人审 method (描述性中文 · 不自动跑 · 共 {len(MANUAL)} 项)', '',
-                '> distill-v2 蒸馏的描述性文本 · 不能直接 shell 跑 · 请人工解读后手工执行', '']
-for cid, name, layer, method in MANUAL:
-    manual_lines += [f'## {cid} · {name}', f'- layer: \`{layer}\`',
-                     '- method:', '  \`\`\`', f'  {method}', '  \`\`\`', '']
-(OUTDIR / 'manual.md').write_text('\\n'.join(manual_lines), encoding='utf-8')
-
-# skip.md
-skip_lines = [f'# Skip-empty method (蒸馏没抽到 · 共 {len(SKIP)} 项)', '']
-for cid, name, layer in SKIP:
-    skip_lines.append(f'- \`{cid}\` · {name} (layer=\`{layer}\`)')
-(OUTDIR / 'skip.md').write_text('\\n'.join(skip_lines), encoding='utf-8')
-
 print()
 print('─────────────────────────────────────────────')
-print(f'完成 · TOTAL={len(CHECKS)+len(MANUAL)+len(SKIP)} · auto={len(CHECKS)} · manual={len(MANUAL)} · skip={len(SKIP)}')
-print(f'  报告:         {report}')
-print(f'  stdout 目录:  {OUTDIR}/stdout/')
-print(f'  stderr 目录:  {OUTDIR}/stderr/')
-print(f'  人审 ({len(MANUAL)}): {OUTDIR}/manual.md')
-print(f'  空 method ({len(SKIP)}): {OUTDIR}/skip.md')
+print(f'完成 · auto={len(CHECKS)}(本脚本只跑这些)')
+print(f'  异常清单:     {report} (只记非 ok)')
+print(f'  数据文件:    {OUTDIR}/<check_id>.txt (每条 check 一个)')
+print(f'  报错汇总:    {OUTDIR}/errors.log')
+print('  人审清单:     见 kit 内独立文件 manual-audit.md (不在本采集脚本内)')
 `;
 
 writeFileSync(OUT_PY, pyHead + pyBody + pyMid + pyTail);

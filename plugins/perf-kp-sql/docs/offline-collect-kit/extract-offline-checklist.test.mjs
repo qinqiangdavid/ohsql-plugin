@@ -23,9 +23,10 @@ describe('checkTopology · 多 case 取最宽松', () => {
 describe('CURATED_CHECKS · 慢 SQL 采集', () => {
   const slow = CURATED_CHECKS.find(c => c.check_id === 'chk-slow-sql-statement-history');
   it('存在慢 SQL check', () => assert.ok(slow, '应有 chk-slow-sql-statement-history'));
-  it('查 statement_history · 可执行(非描述性)', () => {
-    assert.match(slow.collection_method, /^gsql .*-c /);
-    assert.match(slow.collection_method, /statement_history/);
+  it('查 statement_history · 可执行(裸 SELECT · 走 gsql -f 派发 · 不套 gsql -c 外壳避免 heredoc 引号 EOF)', () => {
+    assert.match(slow.collection_method, /^SELECT /i);          // 裸 SQL · run_check 见 SELECT 自动 gsql -f
+    assert.doesNotMatch(slow.collection_method, /^gsql /);      // 不再套 gsql -c "..." 外壳
+    assert.match(slow.collection_method, /FROM statement_history/);
   });
   it('用内核 is_slow_sql 标记 · 不写死 execution_time 阈值', () => {
     assert.match(slow.collection_method, /WHERE is_slow_sql/);
@@ -34,8 +35,9 @@ describe('CURATED_CHECKS · 慢 SQL 采集', () => {
   it('解析 details 看等待事件', () => {
     assert.match(slow.collection_method, /statement_detail_decode\(details/);
   });
-  it('LIMIT 是可选入参 SLOW_SQL_LIMIT(默认 20)', () => {
-    assert.match(slow.collection_method, /LIMIT \$\{SLOW_SQL_LIMIT:-20\}/);
+  it('LIMIT 硬编码 20(gsql -f 不展开 shell 变量 · 故不用 ${SLOW_SQL_LIMIT})', () => {
+    assert.match(slow.collection_method, /LIMIT 20;?\s*$/);
+    assert.doesNotMatch(slow.collection_method, /\$\{SLOW_SQL_LIMIT/);  // 不能留 shell 变量(gsql -f 下不展开)
   });
   it('linked 到慢 SQL 相关 common case → topology=common(集中式主机可跑)', () => {
     assert.equal(checkTopology(slow.linked_case_ids.map(() => 'common')), 'common');

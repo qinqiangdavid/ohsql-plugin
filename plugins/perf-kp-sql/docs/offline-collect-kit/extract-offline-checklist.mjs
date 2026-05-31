@@ -46,7 +46,9 @@ export const CURATED_CHECKS = [
     // LIMIT ${SLOW_SQL_LIMIT:-20}: 脚本可选入参(SLOW_SQL_LIMIT=N ./collect-precompiled.sh)· 默认 20。
     // gsql -x: 宽行展开显示(~75 列)。shell 形式 → collector 经 bash 跑 → 环境变量展开。
     // 假定采集在主机跑(statement_history 是 unlogged 表 · 仅主机可读)。
-    collection_method: 'gsql -x -d postgres -c "SELECT db_name, schema_name, origin_node, user_name, application_name, client_addr, client_port, unique_query_id, debug_query_id, substr(query,1,200) AS query, start_time, finish_time, slow_sql_threshold, transaction_id, thread_id, session_id, n_soft_parse, n_hard_parse, n_returned_rows, n_tuples_fetched, n_tuples_returned, n_tuples_inserted, n_tuples_updated, n_tuples_deleted, n_blocks_fetched, n_blocks_hit, (n_blocks_fetched-n_blocks_hit) AS phys_read, db_time, cpu_time, execution_time, parse_time, plan_time, rewrite_time, pl_execution_time, pl_compilation_time, data_io_time, net_send_info, net_recv_info, net_stream_send_info, net_stream_recv_info, lock_count, lock_time, lock_wait_count, lock_wait_time, lock_max_count, lwlock_count, lwlock_wait_count, lwlock_time, lwlock_wait_time, statement_detail_decode(details, \'plaintext\', true) AS wait_events, is_slow_sql, trace_id, advise, parent_unique_sql_id, finish_status, used_memory, lock_max_local_count, lock_max_fastpath_count, lock_max_global_count, sql_hash, plan_hash, plan_hash_prev, driver_start_time, driver_wait_response, driver_finish_time, driver_info, kernel_info, adaptive_join_states, aplan_count, aplan_parse_time, aplan_execution_time, relids, query_plan FROM statement_history WHERE is_slow_sql ORDER BY start_time DESC LIMIT ${SLOW_SQL_LIMIT:-20};"',
+    // 裸 SQL(不套 gsql -c 外壳)· run_check 见 SELECT 自动走 gsql -f · 不过 shell · 无嵌套引号 EOF 问题
+    // LIMIT 硬编码 20(gsql -f 不展开 shell 变量,故不用 ${SLOW_SQL_LIMIT})
+    collection_method: "SELECT db_name, schema_name, origin_node, user_name, application_name, client_addr, client_port, unique_query_id, debug_query_id, substr(query,1,200) AS query, start_time, finish_time, slow_sql_threshold, transaction_id, thread_id, session_id, n_soft_parse, n_hard_parse, n_returned_rows, n_tuples_fetched, n_tuples_returned, n_tuples_inserted, n_tuples_updated, n_tuples_deleted, n_blocks_fetched, n_blocks_hit, (n_blocks_fetched-n_blocks_hit) AS phys_read, db_time, cpu_time, execution_time, parse_time, plan_time, rewrite_time, pl_execution_time, pl_compilation_time, data_io_time, net_send_info, net_recv_info, net_stream_send_info, net_stream_recv_info, lock_count, lock_time, lock_wait_count, lock_wait_time, lock_max_count, lwlock_count, lwlock_wait_count, lwlock_time, lwlock_wait_time, statement_detail_decode(details, 'plaintext', true) AS wait_events, is_slow_sql, trace_id, advise, parent_unique_sql_id, finish_status, used_memory, lock_max_local_count, lock_max_fastpath_count, lock_max_global_count, sql_hash, plan_hash, plan_hash_prev, driver_start_time, driver_wait_response, driver_finish_time, driver_info, kernel_info, adaptive_join_states, aplan_count, aplan_parse_time, aplan_execution_time, relids, query_plan FROM statement_history WHERE is_slow_sql ORDER BY start_time DESC LIMIT 20;",
     abnormal_patterns: '内核标记 is_slow_sql 的慢 SQL(阈值由 log_min_duration_statement / slow_sql_threshold 定)· 看 execution_time / 等待事件 / 锁等待定位',
     recommended_value: '',
     rationales: '',
@@ -180,6 +182,17 @@ function isDocExample(method) {
   if (tables.length > 0 && tables.some(t => !isTrustedView(t))) return true;
   return false;
 }
+// 剔除人工动作步:collection_layer=manual-* 或 method 以 [需确认/[需外部确认 开头 ·
+// 这些是需人工确认业务/代码/外部的步,不是可在 db 上跑的命令,绝不能拼进离线采集清单。
+function isManualStep(c) {
+  const lay = (c.collection_layer || '').trim();
+  const m = (c.collection_method || '').trim();
+  return lay.startsWith('manual-') || /^\[需(确认|外部确认)/.test(m);
+}
+const manualSteps = gaussChecks.filter(isManualStep);
+gaussChecks = gaussChecks.filter(c => !isManualStep(c));
+console.log(`剔除人工动作步(manual-business/code/external): ${manualSteps.length} 条 (不进离线采集 · 走人工确认)`);
+
 const docExamples = gaussChecks.filter(c => isDocExample(c.collection_method));
 gaussChecks = gaussChecks.filter(c => !isDocExample(c.collection_method));
 console.log(`剔除文档示例 SQL: ${docExamples.length} 条 (写操作 DDL/DML + 只读查询 FROM 跟非 trusted 表)`);
@@ -212,6 +225,37 @@ for (const c of gaussChecks) {
       c.collection_method = `gsql -d postgres -c "SHOW ${pname};"  -- 或 SELECT name,setting,unit,context FROM pg_settings WHERE name='${pname}';`;
     }
   }
+}
+
+// ── 3.7 iostat 归一化 + 按命令去重 ────────────────────────────────────────
+// iostat 带间隔本质是时间序列命令 · 统一成可配 ${IOSTAT_INTERVAL}/${IOSTAT_COUNT}
+// (有限次 · 默认 1×2≈1s · 可调长 · 去掉超时杀进程后也不会无限刷挂死)。
+// 规范成 -c -x -m:-x 才有 %util/r_await/w_await,-c 带 CPU,-m 用 MB。
+const stripMd = s => (s || '').trim().replace(/^`+|`+$/g, '').trim();              // 去 markdown 反引号
+const stripWrap = s => stripMd(s).replace(/^["']+|["']+$/g, '').trim();            // 再去包裹引号(识别/归一用)
+function normalizeIostat(method) {
+  if (/^iostat\b/.test(stripWrap(method))) return 'iostat -c -x -m ${IOSTAT_INTERVAL:-1} ${IOSTAT_COUNT:-2}';
+  return stripMd(method);   // 非 iostat:只去反引号(markdown 残留)· 内部引号保留
+}
+for (const c of gaussChecks) c.collection_method = normalizeIostat(c.collection_method);
+
+// 按命令去重:同 collection_method = 同一次采集 · 跑一次即可(原来 3 条 iostat / 多条同 SQL 各跑各的、重复)。
+// 保留首条 · 合并 linked_case_ids(topology 在 ndjson 时按合并后的 linked 重算 · 自动取最宽松)。
+{
+  const byMethod = new Map();
+  const deduped = [];
+  for (const c of gaussChecks) {
+    const key = (c.collection_method || '').trim();
+    if (!key) { deduped.push(c); continue; }
+    if (!byMethod.has(key)) { byMethod.set(key, c); deduped.push(c); }
+    else {
+      const keep = byMethod.get(key);
+      keep.linked_case_ids = [...new Set([...(keep.linked_case_ids || []), ...(c.linked_case_ids || [])])];
+    }
+  }
+  const before = gaussChecks.length;
+  gaussChecks = deduped;
+  console.log(`按命令去重(含 iostat 3→1): ${before} → ${gaussChecks.length}`);
 }
 
 // ── 4. 按 type + collection_layer 分组渲染 ────────────────────────────────

@@ -9,32 +9,36 @@
 
 ## 总览
 
-- 总 manual 数: **153**
-- 有派生命令的: **151** / 153 (98.7%)
-- 完全靠人脑解读的: **2**
+- 总 manual 数: **199**
+- 有派生命令的: **176** / 199 (88.4%)
+- 完全靠人脑解读的: **23**
 
 ### 切人审规则分布
 
 | 规则 | 数量 | 含义 |
 |---|---:|---|
-| `r1-cjk-ge-4` | 128 | 含 ≥4 个汉字 · 描述性中文 · 不是命令 |
-| `r5-single-ident` | 12 | 单 token 视图 / 表名 · 没 SELECT FROM · 不能直跑 |
-| `r3-distill-leak` | 5 | distill 字段残留 (- **field**: ...) · 不是命令 |
-| `r6-cjk-placeholder` | 3 | 含占位符 (进程号 / 实例号 / xxx / <var>) · 需人填值 |
+| `r1-cjk-ge-4` | 152 | 含 ≥4 个汉字 · 描述性中文 · 不是命令 |
+| `r6-cjk-placeholder` | 13 | 含占位符 (进程号 / 实例号 / xxx / <var>) · 需人填值 |
+| `r12-not-blind-runnable` | 9 | 起始非无参只读命令(explain/set-only/copy/perf/日志片段等) · 不能盲跑 |
+| `r11-explain-needs-target` | 7 | explain 类 · 需诊断时目标 SQL · 不能盲跑 |
+| `r3-distill-leak` | 4 | distill 字段残留 (- **field**: ...) · 不是命令 |
+| `r5-single-ident` | 4 | 单 token 视图 / 表名 · 没 SELECT FROM · 不能直跑 |
+| `r10-cluster-tool` | 2 | GaussDB 集群工具 (gs_ssh / gs_om / cm_ctl ...) · 需集群拓扑 |
+| `r13-placeholder-objname` | 2 | 占位对象名字面量(tablename/table_name 等)· 需填具体表名才能跑 |
+| `r8-cjk-verb-start` | 2 | 起始中文动词 (查询 / 查看 / 检测 ...) · 非 ready-to-run |
 | `r4-cjk-only` | 2 | 纯中文 metric 名 · ASCII alphanumeric 太少 |
-| `r8-cjk-verb-start` | 1 | 起始中文动词 (查询 / 查看 / 检测 ...) · 非 ready-to-run |
-| `r10-cluster-tool` | 1 | GaussDB 集群工具 (gs_ssh / gs_om / cm_ctl ...) · 需集群拓扑 |
+| `r14-hadr-deploy-only` | 1 | 异地容灾(HADR)专用视图 gs_hadr_* · 没配容灾的部署上不存在 · 不盲采 |
 | `r9-pid-literal` | 1 | 含真 PID/OID 数字占位 · 需替换实际 PID 才能跑 |
 
 ### 派生命令类型分布
 
 | 类型 | 命中条数 |
 |---|---:|
-| `sql` | 81 |
-| `sql-stub` | 50 |
-| `view` | 45 |
-| `os` | 39 |
-| `guc` | 9 |
+| `sql` | 96 |
+| `sql-stub` | 55 |
+| `view` | 53 |
+| `os` | 44 |
+| `guc` | 12 |
 
 派生命令 kind 含义:
 
@@ -66,7 +70,7 @@
   - `[sql]` `SELECT datname, blks_hit::numeric/NULLIF(blks_hit+blks_read,0) AS hit_ratio FROM pg_stat_database WHERE blks_hit+blks_read > 0 ORDER BY hit_ratio LIMIT 10;`  — 按"buffer 命中率"派生
   - `[sql]` `SELECT generate_wdr_report(<begin_snap_id>, <end_snap_id>, 1, 'all', 'all');`  — 按"WDR 报告生成 (需 snap id)"派生
 
-## chk-explain-analyze · EXPLAIN ANALYZE 算子落盘标志
+## chk-explain-analyze-2 · EXPLAIN ANALYZE 算子落盘标志
 - layer: `db-interactive-cmd` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -207,6 +211,429 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[view]` `SELECT * FROM gs_asp LIMIT 50;`
 
+## chk-costs · 执行计划costs
+- layer: `db-interactive-cmd` · type: `metric`
+- matched_rule: `r6-cjk-placeholder` · 含占位符 (进程号 / 实例号 / xxx / <var>) · 需人填值
+- 蒸馏原文:
+  ```
+  explain (analyze, verbose, buffers) <目标SQL>;
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql-stub]` `EXPLAIN <你的 SQL>;`  — 把 <你的 SQL> 换成实际 SQL
+
+## chk-explain-performance · explain performance结果
+- layer: `db-interactive-cmd` · type: `metric`
+- matched_rule: `r6-cjk-placeholder` · 含占位符 (进程号 / 实例号 / xxx / <var>) · 需人填值
+- 蒸馏原文:
+  ```
+  explain performance <目标SQL>;
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql-stub]` `EXPLAIN <你的 SQL>;`  — 把 <你的 SQL> 换成实际 SQL
+
+## chk-print-redo-wal-count-info-print-redo-wal-time-info · print_redo_wal_count_info/print_redo_wal_time_info
+- layer: `log-grep` · type: `metric`
+- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- 蒸馏原文:
+  ```
+  在备机的gs_log检索“print_redo_wal”关键字
+  ```
+- 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
+
+## chk-redo-unlink-ddl · redo_unlink_ddl
+- layer: `log-grep` · type: `metric`
+- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- 蒸馏原文:
+  ```
+  在gs_log中检索“redo_unlink_ddl”关键字
+  ```
+- 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
+
+## chk-buffer-hit-rate-wait-read-data · buffer_hit_rate / WAIT_READ_DATA
+- layer: `log-grep` · type: `metric`
+- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- 蒸馏原文:
+  ```
+  在gs_log中检索“buffer_hit_rate”、“WAIT_READ_DATA”关键字
+  ```
+- 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
+
+## chk-q-use-q-max-use-rec-cnt · q_use / q_max_use / rec_cnt
+- layer: `db-shell` · type: `metric`
+- matched_rule: `r10-cluster-tool` · GaussDB 集群工具 (gs_ssh / gs_om / cm_ctl ...) · 需集群拓扑
+- 蒸馏原文:
+  ```
+  cm_ctl query -rv或者select * from local_redo_stat();
+  ```
+- 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
+
+## chk-queue-usage · queue usage
+- layer: `log-grep` · type: `metric`
+- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- 蒸馏原文:
+  ```
+  在日志中搜索queue statistic
+  ```
+- 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
+
+## chk--3 · 索引页面元组分布
+- layer: `db-interactive-cmd` · type: `metric`
+- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- 蒸馏原文:
+  ```
+  使用gs_parse_page_bypath函数解析索引表页面，分析表页面使用情况。
+  ```
+- 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
+
+## chk-last-analyze-time · last_analyze_time
+- layer: `db-system-view` · type: `metric`
+- matched_rule: `r13-placeholder-objname` · 占位对象名字面量(tablename/table_name 等)· 需填具体表名才能跑
+- 蒸馏原文:
+  ```
+  select * from PG_STAT_ALL_TABLES where relname='tablename';
+  ```
+- 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
+
+## chk-autoanalyze-threshold · autoanalyze_threshold
+- layer: `db-interactive-cmd` · type: `metric`
+- matched_rule: `r13-placeholder-objname` · 占位对象名字面量(tablename/table_name 等)· 需填具体表名才能跑
+- 蒸馏原文:
+  ```
+  select * from pg_stat_get_tuples_changed('table_name'::REGCLASS); select pg_autovac_status('table_name'::REGCLASS);
+  ```
+- 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
+
+## chk-pg-index-indisusable · pg_index_indisusable
+- layer: `db-system-view` · type: `metric`
+- matched_rule: `r6-cjk-placeholder` · 含占位符 (进程号 / 实例号 / xxx / <var>) · 需人填值
+- 蒸馏原文:
+  ```
+  SELECT indexrelid，indisusable FROM pg_index WHERE indrelid = '<table>'::regclass;
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[view]` `SELECT * FROM pg_index LIMIT 50;`
+
+## chk-cpu-io · CPU、IO、内存使用率
+- layer: `os` · type: `metric`
+- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- 蒸馏原文:
+  ```
+  通过htop查看CPU、IO、内存使用情况
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql]` `SELECT * FROM dbe_perf.memory_node_detail;`  — 按"内存使用"派生
+
+## chk-offcpu · offcpu火焰图
+- layer: `flamegraph` · type: `metric`
+- matched_rule: `r6-cjk-placeholder` · 含占位符 (进程号 / 实例号 / xxx / <var>) · 需人填值
+- 蒸馏原文:
+  ```
+  /usr/share/bcc/tools/offcputime -df -p <pid> 30 > off.stacks && flamegraph.pl off.stacks > offcpu.svg
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[os]` `ls -la $GAUSSLOG/gs_flamegraph/`  — 按"GaussDB 内置火焰图"派生
+  - `[os]` `perf top -p $(pgrep -f gaussdb | head -1) || gstack $(pgrep -f gaussdb | head -1)`  — 按"perf top / gstack"派生
+
+## chk-n-tuples-fetched-n-tuples-returned · n_tuples_fetched / n_tuples_returned
+- layer: `db-system-view` · type: `metric`
+- matched_rule: `r8-cjk-verb-start` · 起始中文动词 (查询 / 查看 / 检测 ...) · 非 ready-to-run
+- 蒸馏原文:
+  ```
+  查询dbe_perf.statement_history
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[view]` `SELECT * FROM dbe_perf.statement_history LIMIT 50;`
+  - `[view]` `SELECT * FROM statement_history LIMIT 50;`
+
+## chk-subtransactions-log · subtransactions log
+- layer: `log-grep` · type: `metric`
+- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- 蒸馏原文:
+  ```
+  日志中可以尝试搜索关键字Transaction %lu has reached %d subtransactions!
+  ```
+- 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
+
+## chk--5 · 索引列过滤性
+- layer: `db-interactive-cmd` · type: `metric`
+- matched_rule: `r6-cjk-placeholder` · 含占位符 (进程号 / 实例号 / xxx / <var>) · 需人填值
+- 蒸馏原文:
+  ```
+  select attname, n_distinct, most_common_vals from pg_stats where tablename='<表>';
+  ```
+- 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
+
+## chk--6 · 活跃会话数
+- layer: `db-system-view` · type: `metric`
+- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- 蒸馏原文:
+  ```
+  查看gs_asp视图查看活跃会话数在冲高时间点
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[view]` `SELECT * FROM gs_asp LIMIT 50;`
+  - `[sql]` `SELECT count(*) FROM pg_stat_activity WHERE state='active';`  — 按"活跃会话数"派生
+  - `[sql]` `SELECT state, count(*) FROM pg_stat_activity GROUP BY state;`  — 按"会话状态分布"派生
+
+## chk-provolatile-proshippable · 函数属性(provolatile/proshippable)
+- layer: `db-system-view` · type: `metric`
+- matched_rule: `r6-cjk-placeholder` · 含占位符 (进程号 / 实例号 / xxx / <var>) · 需人填值
+- 蒸馏原文:
+  ```
+  select proname, provolatile, proshippable from pg_proc where proname='<函数名>';
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[view]` `SELECT * FROM pg_proc LIMIT 50;`
+
+## chk--11 · 备机日志刷盘影响
+- layer: `db-interactive-cmd` · type: `metric`
+- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- 蒸馏原文:
+  ```
+  将GUC参数synchronous_commit设置为local进行长稳测试。
+  ```
+- 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
+
+## chk--14 · 语句执行情况与执行计划
+- layer: `db-interactive-cmd` · type: `metric`
+- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- 蒸馏原文:
+  ```
+  通过gs_asp查看对应时间段的语句执行情况
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[view]` `SELECT * FROM gs_asp LIMIT 50;`
+
+## chk--15 · 代价估算与页面数
+- layer: `db-system-view` · type: `metric`
+- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- 蒸馏原文:
+  ```
+  识别上面的代价估算较低，仅为18，证明pg_class中记录的页面数较少。
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[view]` `SELECT * FROM pg_class LIMIT 50;`
+
+## chk-vacuum · vacuum执行记录
+- layer: `log-grep` · type: `metric`
+- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- 蒸馏原文:
+  ```
+  通过pg_log,发现在某时刻开始，针对<库名> 中的分区sys_p22进行了vacuum。
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[os]` `find $GAUSSLOG/pg_log -name '*.log' -mtime -1 | xargs grep -E '<keyword>'`  — 把 <keyword> 换成实际想抓的字符串
+  - `[sql]` `VACUUM (VERBOSE, ANALYZE) <schema.table>;  -- 把 <schema.table> 换成实际表名`  — 按"VACUUM (谨慎: 影响业务)"派生
+
+## chk-sql-4 · 慢SQL与计划跳变排查
+- layer: `db-system-view` · type: `metric`
+- matched_rule: `r6-cjk-placeholder` · 含占位符 (进程号 / 实例号 / xxx / <var>) · 需人填值
+- 蒸馏原文:
+  ```
+  select unique_query_id, count(*) from dbe_perf.statement_history where start_time > 'XXX' and start_time < 'XXX' group by 1 order by 2 desc; <br> select unique_query_id, query, query_plan from dbe_perf.statement_history where unique_query_id in (XXX,XXX); <br> select unique_query_id, count(*) from dbe_perf.local_active_session where sample_time > 'XXX' and sample_time < 'XXX' group by 1 order by 2 desc; <br> select unique_sql_id, query from dbe_perf.summary_statement where unique_sql_id in ('XXX', 'XXX');
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[view]` `SELECT * FROM dbe_perf.statement_history LIMIT 50;`
+  - `[view]` `SELECT * FROM dbe_perf.local_active_session LIMIT 50;`
+  - `[view]` `SELECT * FROM dbe_perf.summary_statement LIMIT 50;`
+  - `[view]` `SELECT * FROM statement_history LIMIT 50;`
+  - `[sql]` `SHOW log_min_duration_statement; SELECT * FROM statement_history WHERE duration > 1000 ORDER BY duration DESC LIMIT 20;`  — 按"慢查询"派生
+  - `[sql]` `SELECT * FROM dbe_perf.local_active_session ORDER BY sample_time DESC LIMIT 50;`  — 按"active session"派生
+
+## chk-last-vacuum · last_vacuum
+- layer: `db-system-view` · type: `metric`
+- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- 蒸馏原文:
+  ```
+  查看相关表的日志，以及pg_stat_all_tables视图，通过其中的last_vacuum字段
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql]` `VACUUM (VERBOSE, ANALYZE) <schema.table>;  -- 把 <schema.table> 换成实际表名`  — 按"VACUUM (谨慎: 影响业务)"派生
+
+## chk-n-tup-hot-upd-n-tup-upd-n-dead-tup-n-live-tup · n_tup_hot_upd / n_tup_upd / n_dead_tup / n_live_tup
+- layer: `db-system-view` · type: `metric`
+- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- 蒸馏原文:
+  ```
+  在pg_stat_all_tables中表现如下
+  ```
+- 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
+
+## chk-rpo · 容灾RPO
+- layer: `db-system-view` · type: `metric`
+- matched_rule: `r14-hadr-deploy-only` · 异地容灾(HADR)专用视图 gs_hadr_* · 没配容灾的部署上不存在 · 不盲采
+- 蒸馏原文:
+  ```
+  select* from gs_hadr_remote_rto_and_rpo_stat();
+  ```
+- 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
+
+## chk-cpu-4 · 线程CPU占用率
+- layer: `os` · type: `metric`
+- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- 蒸馏原文:
+  ```
+  top分析线程CPU占用
+  ```
+- 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
+
+## chk-wal · WAL日志产生量
+- layer: `log-grep` · type: `metric`
+- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- 蒸馏原文:
+  ```
+  通过计算日志里的LSN节点可知
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql]` `SELECT pg_current_wal_lsn(), pg_size_pretty(sum(size)) FROM pg_ls_waldir() GROUP BY ();`  — 按"WAL 日志"派生
+
+## chk-wal-2 · WAL日志类型占比
+- layer: `log-grep` · type: `metric`
+- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- 蒸馏原文:
+  ```
+  对WAL日志分析可知
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql]` `SELECT pg_current_wal_lsn(), pg_size_pretty(sum(size)) FROM pg_ls_waldir() GROUP BY ();`  — 按"WAL 日志"派生
+
+## chk-freeze-page · Freeze Page操作有效性
+- layer: `log-grep` · type: `metric`
+- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- 蒸馏原文:
+  ```
+  对产生的Freeze Page 类型WAL日志分析
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql]` `SELECT pg_current_wal_lsn(), pg_size_pretty(sum(size)) FROM pg_ls_waldir() GROUP BY ();`  — 按"WAL 日志"派生
+
+## chk--22 · 磁盘读写线程
+- layer: `db-system-view` · type: `metric`
+- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- 蒸馏原文:
+  ```
+  识别磁盘读异常SQL(根据异常IO线程号查询pg_stat_activity + pg_thread_wait_status)
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[view]` `SELECT * FROM pg_stat_activity LIMIT 50;`
+  - `[view]` `SELECT * FROM pg_thread_wait_status LIMIT 50;`
+
+## chk-gs-log · gs_log日志清理时长
+- layer: `log-grep` · type: `metric`
+- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- 蒸馏原文:
+  ```
+  检查gs_log日志
+  ```
+- 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
+
+## chk-wal-3 · WAL日志清理模式
+- layer: `log-grep` · type: `metric`
+- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- 蒸馏原文:
+  ```
+  检查WAL日志
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql]` `SELECT pg_current_wal_lsn(), pg_size_pretty(sum(size)) FROM pg_ls_waldir() GROUP BY ();`  — 按"WAL 日志"派生
+
+## chk--24 · 事务日志内容
+- layer: `db-interactive-cmd` · type: `metric`
+- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- 蒸馏原文:
+  ```
+  使用gs_xlogdump_xid()系统函数获取被查杀事务对应的日志
+  ```
+- 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
+
+## chk-poll-interrupt · poll_interrupt接口耗时/线程唤醒耗时
+- layer: `log-grep / flamegraph` · type: `metric`
+- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- 蒸馏原文:
+  ```
+  从日志中我们发现，CN在调用poll_interrupt接口等待DN回复消息时存在偶现时延增大到4ms的情况。 / 我们抓取了火焰图
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[os]` `ls -la $GAUSSLOG/gs_flamegraph/`  — 按"GaussDB 内置火焰图"派生
+
+## chk-rx-dropped-call-stack · rx_dropped call stack
+- layer: `os` · type: `metric`
+- matched_rule: `r12-not-blind-runnable` · 起始非无参只读命令(explain/set-only/copy/perf/日志片段等) · 不能盲跑
+- 蒸馏原文:
+  ```
+  perf record -o perf_lo_drop.data -a -g -e mem:0xffff920fc37b31c8:w
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[os]` `perf record`
+
+## chk--26 · 死元组数/表占用空间
+- layer: `db-system-view` · type: `metric`
+- matched_rule: `r6-cjk-placeholder` · 含占位符 (进程号 / 实例号 / xxx / <var>) · 需人填值
+- 蒸馏原文:
+  ```
+  select relname, n_dead_tup, pg_relation_size(relid) sz from pg_stat_all_tables where relname='<表>';
+  ```
+- 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
+
+## chk-toast · toast表空间占用
+- layer: `db-system-view` · type: `metric`
+- matched_rule: `r6-cjk-placeholder` · 含占位符 (进程号 / 实例号 / xxx / <var>) · 需人填值
+- 蒸馏原文:
+  ```
+  select pg_relation_size(reltoastrelid) from pg_class where relname='<表>';
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[view]` `SELECT * FROM pg_class LIMIT 50;`
+
+## chk-palm-hang-detect-main · palm_hang_detect_main等待锁日志
+- layer: `log-grep` · type: `metric`
+- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- 蒸馏原文:
+  ```
+  gaussdb-<日期>_180856.log.gz:<日期> 某时刻.054 dn_6007_6008_6009 [unkown] [unknown] localhost 281279935201968 0[0:0#0] 0 dn_6007 0 [BACKEND] WARNING: palm_hang_detect_main Cur time is 785847582052464, need_wait_time is 785847577052464, oldest_time is 785847564558141; wait_lock_type(4).
+  ```
+- 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
+
+## chk-lwlock-event-procarraylock · LWLOCK_EVENT ProcArrayLock等待事件
+- layer: `db-system-view` · type: `metric`
+- matched_rule: `r12-not-blind-runnable` · 起始非无参只读命令(explain/set-only/copy/perf/日志片段等) · 不能盲跑
+- 蒸馏原文:
+  ```
+  Wait Events Area: ‘1’ LWLOCK_EVENT ProcArrayLock 11700 (us)
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql]` `SELECT wait_status, wait_event, count(*) FROM pg_thread_wait_status GROUP BY 1,2 ORDER BY 3 DESC;`  — 按"等待事件聚合"派生
+
+## chk-unlink-half-dead-page · unlink_half_dead_page索引日志
+- layer: `log-grep` · type: `metric`
+- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- 蒸馏原文:
+  ```
+  <日期> 某时刻.143 dn_6001_6002_6003 mecs mecs <IP> 281222782959760 375685[11206835某时刻7457#30802] 213523483 cn_5001 73183494132910882 [UBTREE] LOG: [unlink_half_dead_page:1386] IndexRnode:{16某时刻7某时刻227:-1} Xid:{213523483}. valid left sibling for deletion target could not be located: left sibling postmaster pool start, fd nums:4
+  ```
+- 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
+
+## chk-cpu-io-2 · CPU、内存、IO使用率
+- layer: `os` · type: `metric`
+- matched_rule: `r6-cjk-placeholder` · 含占位符 (进程号 / 实例号 / xxx / <var>) · 需人填值
+- 蒸馏原文:
+  ```
+  top -Hp <pid>
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[os]` `top -Hp`
+  - `[sql]` `SELECT * FROM dbe_perf.memory_node_detail;`  — 按"内存使用"派生
+
+## chk--28 · 轻量级锁排他锁等待时间日志
+- layer: `log-grep` · type: `metric`
+- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- 蒸馏原文:
+  ```
+  登录客户生产环境进行查询，确实找到了对应的日志打印
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql]` `SELECT * FROM pg_locks WHERE NOT granted;`  — 按"锁等待"派生
+
 ## chk-data-node-scan · 执行计划下推标识（Data Node Scan）
 - layer: `db-interactive-cmd` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
@@ -226,6 +653,26 @@
   ```
 - 派生命令 (启发式 · 仅作参考起点):
   - `[view]` `SELECT * FROM pg_proc LIMIT 50;`
+
+## chk-explain-verbose-remotequery · explain verbose · RemoteQuery 计划
+- layer: `db-interactive-cmd` · type: `metric`
+- matched_rule: `r12-not-blind-runnable` · 起始非无参只读命令(explain/set-only/copy/perf/日志片段等) · 不能盲跑
+- 蒸馏原文:
+  ```
+  set rewrite_rule='none'; SET explain (verbose on, costs off)  select two_sum(tt.c1, tt.c2) from (select t1.c1,t2.c2 from t1,t2 where t1.c1=t2.c2) tt(c1,c2);
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql-stub]` `EXPLAIN <你的 SQL>;`  — 把 <你的 SQL> 换成实际 SQL
+
+## chk-explain-verbose-subplan · explain verbose · SubPlan 执行方式
+- layer: `db-interactive-cmd` · type: `metric`
+- matched_rule: `r12-not-blind-runnable` · 起始非无参只读命令(explain/set-only/copy/perf/日志片段等) · 不能盲跑
+- 蒸馏原文:
+  ```
+  set rewrite_rule='none'; SET explain (verbose on, costs off) select c1,(select avg(c2) from t2 where t2.c2=t1.c2) from t1 where t1.c1<100 order by t1.c2;
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql-stub]` `EXPLAIN <你的 SQL>;`  — 把 <你的 SQL> 换成实际 SQL
 
 ## chk-pg-proc-provolatile · pg_proc.provolatile
 - layer: `db-system-view` · type: `metric`
@@ -259,7 +706,17 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql-stub]` `EXPLAIN <你的 SQL>;`  — 从 name 提取 · 需填实际 SQL
 
-## chk-explain-verbose-warning · EXPLAIN VERBOSE WARNING · 未收集统计信息的表/列列表
+## chk-enable-hashjoin · enable_hashjoin 关闭后执行计划
+- layer: `db-interactive-cmd` · type: `metric`
+- matched_rule: `r12-not-blind-runnable` · 起始非无参只读命令(explain/set-only/copy/perf/日志片段等) · 不能盲跑
+- 蒸馏原文:
+  ```
+  SET enable_hashjoin = off;
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[guc]` `SHOW enable_hashjoin;`
+
+## chk-explain-verbose-warning-2 · EXPLAIN VERBOSE WARNING · 未收集统计信息的表/列列表
 - layer: `db-interactive-cmd` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -282,15 +739,25 @@
   - `[os]` `find $GAUSSLOG/pg_log -name '*.log' -mtime -1 | xargs grep -E '<keyword>'`  — 把 <keyword> 换成实际想抓的字符串
   - `[sql]` `ANALYZE <schema.table>;  -- 把 <schema.table> 换成实际表`  — 按"收集统计信息"派生
 
-## chk-explain-join · EXPLAIN 执行计划 · Join 算子类型及耗时
+## chk-explain-verbose-streaming-vs-data-node-scan · EXPLAIN VERBOSE · 执行计划是否含 Streaming 节点 vs Data Node Scan
 - layer: `db-interactive-cmd` · type: `metric`
-- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- matched_rule: `r12-not-blind-runnable` · 起始非无参只读命令(explain/set-only/copy/perf/日志片段等) · 不能盲跑
 - 蒸馏原文:
   ```
-  分析该执行计划发现，扫描节点已使用Index Scan，耗时主要在最外层Nest Loop Join的Join Filter计算中，且该计算执行了字符串的加减法和不等值比较。
+  set rewrite_rule='none'; SET explain (verbose on, costs off)  select group_concat(tt.c1, tt.c2) from (select t1.c1,t2.c2 from t1,t2 where t1.c1=t2.c2) tt(c1,c2);
   ```
 - 派生命令 (启发式 · 仅作参考起点):
-  - `[sql-stub]` `EXPLAIN ANALYZE <你的 SQL>;  -- 看每个算子 A-time 列`  — 按"算子耗时"派生
+  - `[sql-stub]` `EXPLAIN <你的 SQL>;`  — 把 <你的 SQL> 换成实际 SQL
+
+## chk-explain-verbose-subplan-2 · EXPLAIN VERBOSE · SubPlan 算子出现在目标列
+- layer: `db-interactive-cmd` · type: `metric`
+- matched_rule: `r12-not-blind-runnable` · 起始非无参只读命令(explain/set-only/copy/perf/日志片段等) · 不能盲跑
+- 蒸馏原文:
+  ```
+  set rewrite_rule='none'; SET explain (verbose on, costs off) select c1,(select avg(c2) from t2 where t2.c2=t1.c2) from t1 where t1.c1<100 order by t1.c2;
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql-stub]` `EXPLAIN <你的 SQL>;`  — 把 <你的 SQL> 换成实际 SQL
 
 ## chk-savepoint · 存储过程中 SAVEPOINT 的创建/释放配对
 - layer: `db-shell` · type: `metric`
@@ -322,6 +789,16 @@
   ```
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql-stub]` `EXPLAIN ANALYZE <你的 SQL>;`  — 从 name 提取 · 需填实际 SQL
+
+## chk-explain-verbose-warning-3 · EXPLAIN VERBOSE 执行计划 Warning
+- layer: `db-interactive-cmd` · type: `metric`
+- matched_rule: `r11-explain-needs-target` · explain 类 · 需诊断时目标 SQL · 不能盲跑
+- 蒸馏原文:
+  ```
+  explain verbose
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql-stub]` `EXPLAIN VERBOSE <你的 SQL>;`  — 把 <你的 SQL> 换成实际慢 SQL
 
 ## chk-rds001-cpu-util · rds001_cpu_util
 - layer: `db-internal-counter` · type: `metric`
@@ -479,6 +956,26 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql]` `SHOW enable_thread_pool; SHOW thread_pool_attr;`  — 按"线程池配置"派生
 
+## chk-copy · COPY 导入是否存在约束冲突类容错需求
+- layer: `db-shell` · type: `metric`
+- matched_rule: `r12-not-blind-runnable` · 起始非无参只读命令(explain/set-only/copy/perf/日志片段等) · 不能盲跑
+- 蒸馏原文:
+  ```
+  SET a_format_load_with_constraints_violation = 's2';
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql]` `SELECT n_tup_ins, n_tup_upd, n_tup_del, last_vacuum FROM pg_stat_user_tables ORDER BY n_tup_ins DESC LIMIT 20;`  — 按"写入操作分布"派生
+
+## chk-explain-verbose-hashjoin · EXPLAIN VERBOSE hashjoin 行数估算
+- layer: `db-interactive-cmd` · type: `metric`
+- matched_rule: `r11-explain-needs-target` · explain 类 · 需诊断时目标 SQL · 不能盲跑
+- 蒸馏原文:
+  ```
+  set cost_param=2; explain verbose
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql-stub]` `EXPLAIN VERBOSE <你的 SQL>;`  — 把 <你的 SQL> 换成实际慢 SQL
+
 ## chk-top-gsql-cpu · top · gsql 进程 CPU 占用
 - layer: `os` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
@@ -509,7 +1006,27 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql-stub]` `EXPLAIN ANALYZE <你的 SQL>;  -- 看是否含 HashAgg / GroupAgg 算子`  — 按"Agg 算子"派生
 
-## chk-explain-analyze · EXPLAIN ANALYZE 顺序扫描耗时
+## chk-explain-analyze-hashjoin-dn · EXPLAIN ANALYZE HashJoin 各 DN 执行时间范围
+- layer: `db-interactive-cmd` · type: `metric`
+- matched_rule: `r11-explain-needs-target` · explain 类 · 需诊断时目标 SQL · 不能盲跑
+- 蒸馏原文:
+  ```
+  EXPLAIN ANALYZE
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql-stub]` `EXPLAIN ANALYZE <你的 SQL>;`  — 把 <你的 SQL> 换成实际慢 SQL
+
+## chk-memory-information-dn · Memory Information 各 DN 内存消耗分布
+- layer: `db-interactive-cmd` · type: `metric`
+- matched_rule: `r11-explain-needs-target` · explain 类 · 需诊断时目标 SQL · 不能盲跑
+- 蒸馏原文:
+  ```
+  EXPLAIN ANALYZE` (Memory Information 段)
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql-stub]` `EXPLAIN ANALYZE <你的 SQL>;`  — 把 <你的 SQL> 换成实际慢 SQL
+
+## chk-explain-analyze-4 · EXPLAIN ANALYZE 顺序扫描耗时
 - layer: `db-interactive-cmd` · type: `metric`
 - matched_rule: `r5-single-ident` · 单 token 视图 / 表名 · 没 SELECT FROM · 不能直跑
 - 蒸馏原文:
@@ -528,16 +1045,6 @@
   ```
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql-stub]` `EXPLAIN <你的 SQL>;`  — 从 name 提取 · 需填实际 SQL
-
-## chk-explain-join · EXPLAIN 执行计划 Join 类型
-- layer: `db-interactive-cmd` · type: `metric`
-- matched_rule: `r5-single-ident` · 单 token 视图 / 表名 · 没 SELECT FROM · 不能直跑
-- 蒸馏原文:
-  ```
-  EXPLAIN
-  ```
-- 派生命令 (启发式 · 仅作参考起点):
-  - `[sql-stub]` `EXPLAIN <你的 SQL>;`  — 把 <你的 SQL> 换成实际 SQL
 
 ## chk-pidstat-iotop-i-o · pidstat / iotop 显示线程 I/O 消耗
 - layer: `os` · type: `metric`
@@ -571,7 +1078,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql]` `SELECT generate_wdr_report(<begin_snap_id>, <end_snap_id>, 1, 'all', 'all');`  — 按"WDR 报告生成 (需 snap id)"派生
 
-## chk-null-001 · 内核代码热点函数火焰图
+## chk--35 · 内核代码热点函数火焰图
 - layer: `flamegraph` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -603,16 +1110,6 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql]` `SELECT * FROM dbe_perf.memory_node_detail;`  — 按"内存使用"派生
 
-## chk-explain-filter · EXPLAIN 执行计划 Filter 条件分析
-- layer: `db-interactive-cmd` · type: `metric`
-- matched_rule: `r5-single-ident` · 单 token 视图 / 表名 · 没 SELECT FROM · 不能直跑
-- 蒸馏原文:
-  ```
-  EXPLAIN
-  ```
-- 派生命令 (启发式 · 仅作参考起点):
-  - `[sql-stub]` `EXPLAIN <你的 SQL>;`  — 把 <你的 SQL> 换成实际 SQL
-
 ## chk-pg-proc-volatility · pg_proc 函数 volatility 类型查询
 - layer: `db-system-view` · type: `metric`
 - matched_rule: `r8-cjk-verb-start` · 起始中文动词 (查询 / 查看 / 检测 ...) · 非 ready-to-run
@@ -622,26 +1119,6 @@
   ```
 - 派生命令 (启发式 · 仅作参考起点):
   - `[view]` `SELECT * FROM pg_proc LIMIT 50;`
-
-## chk-explain · EXPLAIN 执行计划算子估算行数
-- layer: `db-interactive-cmd` · type: `metric`
-- matched_rule: `r5-single-ident` · 单 token 视图 / 表名 · 没 SELECT FROM · 不能直跑
-- 蒸馏原文:
-  ```
-  EXPLAIN
-  ```
-- 派生命令 (启发式 · 仅作参考起点):
-  - `[sql-stub]` `EXPLAIN <你的 SQL>;`  — 把 <你的 SQL> 换成实际 SQL
-
-## chk-explain-stream · EXPLAIN 执行计划 Stream 算子类型
-- layer: `db-interactive-cmd` · type: `metric`
-- matched_rule: `r5-single-ident` · 单 token 视图 / 表名 · 没 SELECT FROM · 不能直跑
-- 蒸馏原文:
-  ```
-  EXPLAIN
-  ```
-- 派生命令 (启发式 · 仅作参考起点):
-  - `[sql-stub]` `EXPLAIN <你的 SQL>;`  — 把 <你的 SQL> 换成实际 SQL
 
 ## chk-exception · 存储过程 EXCEPTION 块使用频率与上下文创建/销毁开销
 - layer: `db-shell` · type: `metric`
@@ -654,7 +1131,7 @@
   - `[os]` `grep -E 'SAVEPOINT|RELEASE|EXCEPTION' $GAUSSLOG/pg_log/*.log | tail -100`  — 按"SAVEPOINT / EXCEPTION 日志"派生
   - `[os]` `grep -E 'EXCEPTION|SQLERRM' $GAUSSLOG/pg_log/*.log | tail -50`  — 按"EXCEPTION 块日志"派生
 
-## chk-null-002 · 存储过程默认权限模式
+## chk--36 · 存储过程默认权限模式
 - layer: `db-shell` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -674,15 +1151,16 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql-stub]` `EXPLAIN <你的 SQL>;`  — 从 name 提取 · 需填实际 SQL
 
-## chk-explain-cn-vs-dn · EXPLAIN 执行计划算子位置（CN vs DN）
+## chk-explain-performance-2 · EXPLAIN PERFORMANCE 算子耗时
 - layer: `db-interactive-cmd` · type: `metric`
-- matched_rule: `r5-single-ident` · 单 token 视图 / 表名 · 没 SELECT FROM · 不能直跑
+- matched_rule: `r11-explain-needs-target` · explain 类 · 需诊断时目标 SQL · 不能盲跑
 - 蒸馏原文:
   ```
-  EXPLAIN
+  EXPLAIN PERFORMANCE
   ```
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql-stub]` `EXPLAIN <你的 SQL>;`  — 把 <你的 SQL> 换成实际 SQL
+  - `[sql-stub]` `EXPLAIN ANALYZE <你的 SQL>;  -- 看每个算子 A-time 列`  — 按"算子耗时"派生
 
 ## chk-group-by-groupagg-sort · GROUP BY 查询计划中是否包含 GroupAgg+Sort
 - layer: `db-interactive-cmd` · type: `metric`
@@ -694,7 +1172,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql-stub]` `EXPLAIN ANALYZE <你的 SQL>;  -- 看是否含 HashAgg / GroupAgg 算子`  — 按"Agg 算子"派生
 
-## chk-explain · EXPLAIN · 计划与实际行数比对
+## chk-explain-2 · EXPLAIN · 计划与实际行数比对
 - layer: `db-interactive-cmd` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -710,16 +1188,6 @@
 - 蒸馏原文:
   ```
   通常而言explain语句后没有显示具体的执行计划算子，执行计划中关键字\"Data Node Scan on\"出现在第一行（不包含计划格式）则说明语句已下推给DN去执行。
-  ```
-- 派生命令 (启发式 · 仅作参考起点):
-  - `[sql-stub]` `EXPLAIN <你的 SQL>;`  — 把 <你的 SQL> 换成实际 SQL
-
-## chk-explain-subplan · EXPLAIN 执行计划 SubPlan 存在
-- layer: `db-interactive-cmd` · type: `metric`
-- matched_rule: `r5-single-ident` · 单 token 视图 / 表名 · 没 SELECT FROM · 不能直跑
-- 蒸馏原文:
-  ```
-  EXPLAIN
   ```
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql-stub]` `EXPLAIN <你的 SQL>;`  — 把 <你的 SQL> 换成实际 SQL
@@ -777,7 +1245,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql-stub]` `EXPLAIN ANALYZE <你的 SQL>;`  — 从 name 提取 · 需填实际 SQL
 
-## chk-nestloop · 语句执行时间 / 执行计划中 NestLoop 算子
+## chk-nestloop-2 · 语句执行时间 / 执行计划中 NestLoop 算子
 - layer: `db-interactive-cmd` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -797,27 +1265,6 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[view]` `SELECT * FROM pgxc_wlm_session_history LIMIT 50;`
 
-## chk-pgxc-wlm-session-history · pgxc_wlm_session_history · 同期并发作业数
-- layer: `db-system-view` · type: `metric`
-- matched_rule: `r5-single-ident` · 单 token 视图 / 表名 · 没 SELECT FROM · 不能直跑
-- 蒸馏原文:
-  ```
-  pgxc_wlm_session_history
-  ```
-- 派生命令 (启发式 · 仅作参考起点):
-  - `[view]` `SELECT * FROM pgxc_wlm_session_history LIMIT 50;`
-
-## chk-pgxc-wlm-session-history-min-dn-time-max-dn-time-average-dn- · pgxc_wlm_session_history · min_dn_time / max_dn_time / average_dn_time / dntime_skew_percent
-- layer: `db-system-view` · type: `metric`
-- matched_rule: `r5-single-ident` · 单 token 视图 / 表名 · 没 SELECT FROM · 不能直跑
-- 蒸馏原文:
-  ```
-  pgxc_wlm_session_history
-  ```
-- 派生命令 (启发式 · 仅作参考起点):
-  - `[view]` `SELECT * FROM pgxc_wlm_session_history LIMIT 50;`
-  - `[sql]` `SELECT * FROM gs_table_skewness LIMIT 50;`  — 按"数据倾斜"派生
-
 ## chk-gs-wlm-instance-history-io-await-io-util-disk-read-disk-writ · GS_WLM_INSTANCE_HISTORY · io_await / io_util / disk_read / disk_write / process_read / process_write
 - layer: `db-system-view` · type: `metric`
 - matched_rule: `r5-single-ident` · 单 token 视图 / 表名 · 没 SELECT FROM · 不能直跑
@@ -828,6 +1275,17 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[view]` `SELECT * FROM GS_WLM_INSTANCE_HISTORY LIMIT 50;`
   - `[view]` `SELECT * FROM gs_wlm_instance_history LIMIT 50;`  — 从 name 提取视图 gs_wlm_instance_history
+
+## chk-explain-performance-windowagg-sort · EXPLAIN PERFORMANCE 执行计划 · WindowAgg/Sort 算子耗时
+- layer: `db-interactive-cmd` · type: `metric`
+- matched_rule: `r11-explain-needs-target` · explain 类 · 需诊断时目标 SQL · 不能盲跑
+- 蒸馏原文:
+  ```
+  explain performance
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql-stub]` `EXPLAIN <你的 SQL>;`  — 把 <你的 SQL> 换成实际 SQL
+  - `[sql-stub]` `EXPLAIN ANALYZE <你的 SQL>;  -- 看每个算子 A-time 列`  — 按"算子耗时"派生
 
 ## chk-explain-performance-sql-streaming-redistribute · EXPLAIN PERFORMANCE · SQL自诊断信息（Streaming REDISTRIBUTE 计算倾斜）
 - layer: `db-interactive-cmd` · type: `metric`
@@ -872,30 +1330,6 @@
   - `[view]` `SELECT * FROM gs_wlm_session_history LIMIT 50;`
   - `[view]` `SELECT * FROM pgxc_wlm_session_history LIMIT 50;`
 
-## chk-pgxc-wlm-session-history-spill · pgxc_wlm_session_history · Spill告警
-- layer: `db-system-view` · type: `metric`
-- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
-- 蒸馏原文:
-  ```
-  可通过pgxc_wlm_session_history或gs_wlm_session_history视图查看。
-  ```
-- 派生命令 (启发式 · 仅作参考起点):
-  - `[view]` `SELECT * FROM gs_wlm_session_history LIMIT 50;`
-  - `[view]` `SELECT * FROM pgxc_wlm_session_history LIMIT 50;`
-  - `[sql]` `SELECT * FROM gs_wlm_session_history WHERE warning LIKE '%spill%' ORDER BY start_time DESC LIMIT 20;`  — 按"算子落盘"派生
-
-## chk-pgxc-wlm-session-history-nestloop · pgxc_wlm_session_history · NestLoop大表告警
-- layer: `db-system-view` · type: `metric`
-- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
-- 蒸馏原文:
-  ```
-  可通过pgxc_wlm_session_history或gs_wlm_session_history视图查看。
-  ```
-- 派生命令 (启发式 · 仅作参考起点):
-  - `[view]` `SELECT * FROM gs_wlm_session_history LIMIT 50;`
-  - `[view]` `SELECT * FROM pgxc_wlm_session_history LIMIT 50;`
-  - `[sql-stub]` `EXPLAIN ANALYZE <你的 SQL>;  -- 看是否含 Nested Loop 算子`  — 按"嵌套循环排查"派生
-
 ## chk-dn · 各DN磁盘利用率
 - layer: `os` · type: `metric`
 - matched_rule: `r10-cluster-tool` · GaussDB 集群工具 (gs_ssh / gs_om / cm_ctl ...) · 需集群拓扑
@@ -927,7 +1361,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql-stub]` `EXPLAIN VERBOSE <你的 SQL>;`  — 把 <你的 SQL> 换成实际慢 SQL
 
-## chk-nestloop · 执行计划算子类型（NestLoop）
+## chk-nestloop-3 · 执行计划算子类型（NestLoop）
 - layer: `db-interactive-cmd` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -990,7 +1424,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql-stub]` `EXPLAIN <你的含 CASE WHEN 的 SQL>;`  — 按"CASE WHEN 执行计划"派生
 
-## chk-null-005 · 系统表/用户表膨胀情况
+## chk--40 · 系统表/用户表膨胀情况
 - layer: `db-system-view` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -1054,7 +1488,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[os]` `find $GAUSSLOG -name 'pg_log' -type d | head -1 | xargs -I{} grep -E 'modifyJdbc|createParameterized' {}/*.log 2>/dev/null | tail -50`  — 按"JDBC 阶段耗时"派生
 
-## chk-analyze · ANALYZE 后的查询性能
+## chk-analyze-2 · ANALYZE 后的查询性能
 - layer: `db-interactive-cmd` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -1064,7 +1498,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql-stub]` `ANALYZE <schema.table>;  -- 或 ANALYZE; 收集全库统计`  — 按"ANALYZE 命令"派生
 
-## chk-null-006 · 查询返回行数
+## chk--41 · 查询返回行数
 - layer: `db-interactive-cmd` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -1074,7 +1508,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql]` `SELECT query_id, n_tuples_returned FROM statement_history ORDER BY n_tuples_returned DESC NULLS LAST LIMIT 20;`  — 按"返回行数"派生
 
-## chk-null-007 · 主机负载下查询单独运行时延
+## chk--42 · 主机负载下查询单独运行时延
 - layer: `db-interactive-cmd` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -1083,7 +1517,7 @@
   ```
 - 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
 
-## chk-null-008 · 重复执行同一查询语句的执行时间
+## chk--43 · 重复执行同一查询语句的执行时间
 - layer: `db-interactive-cmd` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -1153,7 +1587,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql-stub]` `EXPLAIN <你的 SQL>;`  — 从 name 提取 · 需填实际 SQL
 
-## chk-cn · CN日志中不下推原因
+## chk-cn-2 · CN日志中不下推原因
 - layer: `log-grep` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -1163,7 +1597,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[os]` `find $GAUSSLOG/pg_log -name '*.log' -mtime -1 | xargs grep -E '<keyword>'`  — 把 <keyword> 换成实际想抓的字符串
 
-## chk-explain-verbose-warning · EXPLAIN VERBOSE WARNING信息 · 统计信息缺失
+## chk-explain-verbose-warning-4 · EXPLAIN VERBOSE WARNING信息 · 统计信息缺失
 - layer: `db-interactive-cmd` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -1185,6 +1619,15 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[view]` `SELECT * FROM pgxc_wlm_session_info LIMIT 50;`
   - `[sql]` `SELECT * FROM gs_wlm_session_history WHERE warning LIKE '%spill%' ORDER BY start_time DESC LIMIT 20;`  — 按"算子落盘"派生
+
+## chk-resource-track-level-operator-realtime · resource_track_level · operator_realtime 级别实时算子监控
+- layer: `db-system-view` · type: `metric`
+- matched_rule: `r12-not-blind-runnable` · 起始非无参只读命令(explain/set-only/copy/perf/日志片段等) · 不能盲跑
+- 蒸馏原文:
+  ```
+  SET resource_track_level = 'operator_realtime';
+  ```
+- 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
 
 ## chk-pgxc-stat-activity-state-waiting-enqueue · PGXC_STAT_ACTIVITY · state / waiting / enqueue
 - layer: `db-system-view` · type: `metric`
@@ -1228,7 +1671,7 @@
   - `[view]` `SELECT * FROM pg_stat_activity LIMIT 50;`  — 从 name 提取视图 pg_stat_activity
   - `[view]` `SELECT * FROM pg_locks LIMIT 50;`  — 从 name 提取视图 pg_locks
 
-## chk-null-009 · 写入方式
+## chk--44 · 写入方式
 - layer: `db-shell` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -1238,7 +1681,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql]` `SELECT n_tup_ins, n_tup_upd, n_tup_del, last_vacuum FROM pg_stat_user_tables ORDER BY n_tup_ins DESC LIMIT 20;`  — 按"写入操作分布"派生
 
-## chk-null-010 · 各节点磁盘使用率均衡性
+## chk--45 · 各节点磁盘使用率均衡性
 - layer: `db-system-view` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -1258,7 +1701,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql-stub]` `EXPLAIN VERBOSE <你的 SQL>;`  — 把 <你的 SQL> 换成实际慢 SQL
 
-## chk-cn · CN日志 · 不下推原因
+## chk-cn-3 · CN日志 · 不下推原因
 - layer: `log-grep` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -1268,7 +1711,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[os]` `find $GAUSSLOG/pg_log -name '*.log' -mtime -1 | xargs grep -E '<keyword>'`  — 把 <keyword> 换成实际想抓的字符串
 
-## chk-nestloop · 执行计划算子类型（NestLoop出现）
+## chk-nestloop-4 · 执行计划算子类型（NestLoop出现）
 - layer: `db-interactive-cmd` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -1361,7 +1804,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql-stub]` `EXPLAIN <你的 SQL>;`  — 从 name 提取 · 需填实际 SQL
 
-## chk-null-012 · 表脏页率
+## chk--47 · 表脏页率
 - layer: `db-system-view` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -1381,7 +1824,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql-stub]` `EXPLAIN ANALYZE <你的 SQL>;  -- 看每个算子 A-time 列`  — 按"算子耗时"派生
 
-## chk-table-distribution-dn · table_distribution 各DN数据行数
+## chk-table-distribution-dn-2 · table_distribution 各DN数据行数
 - layer: `db-system-view` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -1423,7 +1866,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[guc]` `SHOW max_process_memory;`  — 从 name 提取 GUC max_process_memory
 
-## chk-null-013 · 列存表文件大小监控
+## chk--48 · 列存表文件大小监控
 - layer: `db-system-view` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -1433,7 +1876,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[os]` `find $PGDATA -name 'cu_*' -size +100M 2>/dev/null | head -20`  — 按"列存文件大小"派生
 
-## chk-pgxc-get-table-skewness · PGXC_GET_TABLE_SKEWNESS 视图
+## chk-pgxc-get-table-skewness-3 · PGXC_GET_TABLE_SKEWNESS 视图
 - layer: `db-system-view` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -1454,15 +1897,15 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[os]` `df -h $PGDATA $GAUSSDATA 2>/dev/null`  — 按"磁盘"派生
 
-## chk-dms-max-min · DMS · 节点磁盘使用率排序 (max - min)
-- layer: `db-system-view` · type: `metric`
-- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+## chk-explain-verbose-hashjoin-2 · EXPLAIN VERBOSE · HashJoin 行数估算偏差
+- layer: `db-interactive-cmd` · type: `metric`
+- matched_rule: `r11-explain-needs-target` · explain 类 · 需诊断时目标 SQL · 不能盲跑
 - 蒸馏原文:
   ```
-  选择“监控 > 节点监控 > 磁盘”，单击“磁盘使用率”右侧的![](https://support.huaweicloud.com/trouble-dws/figure/zh-cn_image_0000001393399197.png)进行排序，可查看当前集群各个节点的磁盘使用率。
+  set cost_param=2; explain verbose select nation, sum(amount) as sum_profit from (...) as profit group by nation order by nation
   ```
 - 派生命令 (启发式 · 仅作参考起点):
-  - `[os]` `df -h $PGDATA $GAUSSDATA 2>/dev/null`  — 按"磁盘"派生
+  - `[sql-stub]` `EXPLAIN VERBOSE <你的 SQL>;`  — 把 <你的 SQL> 换成实际慢 SQL
 
 ## chk-cpu-1-3-12-24 · 节点 CPU 使用率 (1/3/12/24 小时)
 - layer: `os` · type: `metric`
@@ -1474,7 +1917,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[os]` `top -b -n 1 | head -20`  — 按"CPU 使用率"派生
 
-## chk-cpu · 资源池 CPU 限额 / 配额配置
+## chk-cpu-6 · 资源池 CPU 限额 / 配额配置
 - layer: `db-system-view` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -1484,17 +1927,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql]` `SELECT * FROM pg_settings WHERE name LIKE 'cgroup%' OR name LIKE 'workload%';`  — 按"资源池配置"派生
 
-## chk-explain-in-join · EXPLAIN · in 条件是否转为 join
-- layer: `db-interactive-cmd` · type: `metric`
-- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
-- 蒸馏原文:
-  ```
-  打印语句的执行计划
-  ```
-- 派生命令 (启发式 · 仅作参考起点):
-  - `[sql-stub]` `EXPLAIN <含 IN 子句的 SQL>;`  — 按"IN 条件处理"派生
-
-## chk-explain · EXPLAIN · 执行计划顺序扫描阶段耗时
+## chk-explain-4 · EXPLAIN · 执行计划顺序扫描阶段耗时
 - layer: `db-interactive-cmd` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -1545,7 +1978,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql]` `SELECT * FROM gs_wlm_session_history WHERE warning LIKE '%spill%' ORDER BY start_time DESC LIMIT 20;`  — 按"算子落盘"派生
 
-## chk-explain-analyze-join · EXPLAIN ANALYZE · JOIN 算子类型及执行时间
+## chk-explain-analyze-join-2 · EXPLAIN ANALYZE · JOIN 算子类型及执行时间
 - layer: `db-interactive-cmd` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -1555,7 +1988,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql-stub]` `EXPLAIN ANALYZE <你的 SQL>;`  — 把 <你的 SQL> 换成实际慢 SQL
 
-## chk-explain-analyze-agg · EXPLAIN ANALYZE · Agg 算子类型及执行时间
+## chk-explain-analyze-agg-2 · EXPLAIN ANALYZE · Agg 算子类型及执行时间
 - layer: `db-interactive-cmd` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -1585,7 +2018,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql-stub]` `EXPLAIN <你的 SQL>;`  — 从 name 提取 · 需填实际 SQL
 
-## chk-explain-performance · EXPLAIN PERFORMANCE · 执行计划是否走向量化（列执行引擎）算子
+## chk-explain-performance-5 · EXPLAIN PERFORMANCE · 执行计划是否走向量化（列执行引擎）算子
 - layer: `db-interactive-cmd` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -1595,7 +2028,7 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql-stub]` `EXPLAIN <你的 SQL>;`  — 把 <你的 SQL> 换成实际 SQL
 
-## chk-copy · COPY 语句等待视图 · 轻量级锁等待
+## chk-copy-2 · COPY 语句等待视图 · 轻量级锁等待
 - layer: `db-system-view` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
@@ -1636,13 +2069,34 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql]` `SELECT * FROM gs_table_skewness LIMIT 50;`  — 按"数据倾斜"派生
 
-## chk-a-time-dn · 算子 A-time(在单 DN 上的运行耗时)
-- layer: `db-interactive-cmd` · type: `metric`
-- matched_rule: `r3-distill-leak` · distill 字段残留 (- **field**: ...) · 不是命令
+## chk-ubtree · ubtree页面分裂策略
+- layer: `gaussdb-guc-param` · type: `parameter-current-value`
+- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
   ```
-  - **abnormal_patterns**: ["NULL"]
+  gsql -d postgres -c "SHOW ubtree页面分裂策略;"
+  ```
+- 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
+
+## chk-autovacuum · autovacuum相关参数
+- layer: `gaussdb-guc-param` · type: `parameter-current-value`
+- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- 蒸馏原文:
+  ```
+  gsql -d postgres -c "SHOW autovacuum相关参数;"
   ```
 - 派生命令 (启发式 · 仅作参考起点):
-  - `[sql-stub]` `EXPLAIN ANALYZE <你的 SQL>;  -- 看每个算子 A-time 列`  — 按"算子耗时"派生
+  - `[guc]` `SHOW autovacuum;`
+  - `[sql]` `VACUUM (VERBOSE, ANALYZE) <schema.table>;  -- 把 <schema.table> 换成实际表名`  — 按"VACUUM (谨慎: 影响业务)"派生
+
+## chk-autovacuum-ustore · autovacuum (ustore表的自动清理)
+- layer: `gaussdb-guc-param` · type: `parameter-current-value`
+- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- 蒸馏原文:
+  ```
+  gsql -d postgres -c "SHOW autovacuum (ustore表的自动清理);"
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[guc]` `SHOW autovacuum;`
+  - `[sql]` `VACUUM (VERBOSE, ANALYZE) <schema.table>;  -- 把 <schema.table> 换成实际表名`  — 按"VACUUM (谨慎: 影响业务)"派生
 

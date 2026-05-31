@@ -47,11 +47,11 @@ describe('firstThreshold', () => {
 describe('集成 · 集中式不撞 distributed-only(check 级 + case 级双重过滤)', () => {
   it('centralized: distributed-only check 不撞;common check 的 distributed case 也被剔', () => {
     const dir = mkdtempSync(join(tmpdir(), 'match-test-'));
-    mkdirSync(join(dir, 'stdout'), { recursive: true });
+    
     writeFileSync(join(dir, 'deploy.txt'), 'centralized\n');
-    writeFileSync(join(dir, 'stdout', 'chk-common-hot.txt'), '47\n');      // common check · 越界
-    writeFileSync(join(dir, 'stdout', 'chk-dist-skew.txt'), '99\n');       // distributed-only check
-    writeFileSync(join(dir, 'stdout', 'chk-mixed-cfg.txt'), 'work_mem 64MB\n'); // common check · 阈值 NULL · link 跨 topology
+    writeFileSync(join(dir, 'chk-common-hot.txt'), '47\n');      // common check · 越界
+    writeFileSync(join(dir, 'chk-dist-skew.txt'), '99\n');       // distributed-only check
+    writeFileSync(join(dir, 'chk-mixed-cfg.txt'), 'work_mem 64MB\n'); // common check · 阈值 NULL · link 跨 topology
     const checklist = join(dir, 'checklist.ndjson');
     writeFileSync(checklist, [
       JSON.stringify({ check_id: 'chk-common-hot', topology: 'common', abnormal_patterns: '"> 40"', linked_case_ids: ['gaussdb-cpu-01'] }),

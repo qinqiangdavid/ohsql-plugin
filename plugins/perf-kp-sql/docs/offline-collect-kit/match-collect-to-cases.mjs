@@ -94,7 +94,7 @@ if (IS_MAIN) {
   for (const c of checks) {
     const topo = c.topology || 'common';
     if (!allowed.has(topo)) continue;                 // 形态不相关的 check 不撞(集中式不撞 distributed-only)
-    const stdoutPath = join(collectDir, 'stdout', `${c.check_id}.txt`);
+    const stdoutPath = join(collectDir, `${c.check_id}.txt`);
     if (!existsSync(stdoutPath)) continue;             // 未采集到(被跳/未跑)
     const linkedCases = allowedCases(c.linked_case_ids);
     if (linkedCases.length === 0) continue;            // 该 check 的相关 case 在本形态下全被剔 → 不出候选
