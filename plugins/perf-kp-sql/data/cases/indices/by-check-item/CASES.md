@@ -285,7 +285,7 @@
 - **abnormal_patterns**: ["< 99%"]
 - **linked_case_ids**: ["gaussdb-memory-shared-buffer-miss-01"]
 
-## check_id: chk-explain-analyze
+## check_id: chk-explain-analyze-2
 
 - **type**: metric
 - **metric_name**: EXPLAIN ANALYZE 算子落盘标志
@@ -393,6 +393,1140 @@
 - **abnormal_patterns**: ["\"分析相应时间点的gs_asp表\""]
 - **linked_case_ids**: ["gaussdb-perf-jitter-asp-analysis-01"]
 
+## check_id: chk-costs
+
+- **type**: metric
+- **metric_name**: 执行计划costs
+- **collection_layer**: db-interactive-cmd
+- **collection_method**: `explain (analyze, verbose, buffers) <目标SQL>;`
+- **abnormal_patterns**: ["costs > 1000"]
+- **linked_case_ids**: ["gaussdb-plan-suboptimal-sql-x01"]
+
+## check_id: chk-seqscan
+
+- **type**: metric
+- **metric_name**: SeqScan算子
+- **collection_layer**: db-interactive-cmd
+- **collection_method**: `explain (analyze, verbose, buffers) <目标SQL>;`
+- **abnormal_patterns**: ["如果有seqscan需要根据rows情况判断执行计划是否高效"]
+- **linked_case_ids**: ["gaussdb-plan-suboptimal-sql-x01"]
+
+## check_id: chk-nestloop
+
+- **type**: metric
+- **metric_name**: NestLoop算子
+- **collection_layer**: db-interactive-cmd
+- **collection_method**: `explain (analyze, verbose, buffers) <目标SQL>;`
+- **abnormal_patterns**: ["如果有nestloop需要考虑是否有参数下推的可能，同时也需要考虑数据量的情况，来判定nestloop是否高效"]
+- **linked_case_ids**: ["gaussdb-plan-suboptimal-sql-x01"]
+
+## check_id: chk-cpu
+
+- **type**: metric
+- **metric_name**: CPU使用率
+- **collection_layer**: manual-external
+- **collection_method**: `[需外部确认] 在监控平台查看CPU`
+- **abnormal_patterns**: ["100%","80%","tps下降时段cpu使用率升高"]
+- **linked_case_ids**: ["gaussdb-cpu-high-cpu-x02","gaussdb-other-rto-x40","gaussdb-plan-suboptimal-x47"]
+
+## check_id: chk-cpu-2
+
+- **type**: metric
+- **metric_name**: CPU核使用率
+- **collection_layer**: manual-external
+- **collection_method**: `[需外部确认] 使用杀猪刀工具抓取CPU使用率峰值时的数据`
+- **abnormal_patterns**: ["99%"]
+- **linked_case_ids**: ["gaussdb-cpu-high-cpu-x02"]
+
+## check_id: chk-cpu-3
+
+- **type**: metric
+- **metric_name**: CPU堆栈
+- **collection_layer**: flamegraph
+- **collection_method**: `NULL`
+- **abnormal_patterns**: ["这段时间的堆栈属于正常的业务流程，并无异常堆栈"]
+- **linked_case_ids**: ["gaussdb-cpu-high-cpu-x02"]
+
+## check_id: chk-sql
+
+- **type**: metric
+- **metric_name**: 慢SQL及调用频次
+- **collection_layer**: db-system-view
+- **collection_method**: `select unique_query_id, substr(query,1,80) q, db_time, cpu_time, execution_time from dbe_perf.statement_history order by db_time desc limit 20;`
+- **abnormal_patterns**: ["30w次/s"]
+- **linked_case_ids**: ["gaussdb-cpu-high-cpu-x02"]
+
+## check_id: chk-explain-performance
+
+- **type**: metric
+- **metric_name**: explain performance结果
+- **collection_layer**: db-interactive-cmd
+- **collection_method**: `explain performance <目标SQL>;`
+- **abnormal_patterns**: ["没有语句不过滤分区键，未分区剪枝导致全表扫描的情况"]
+- **linked_case_ids**: ["gaussdb-plan-suboptimal-sql-x03"]
+
+## check_id: chk-
+
+- **type**: metric
+- **metric_name**: 管理平台告警及通信层报错
+- **collection_layer**: manual-external
+- **collection_method**: `[需外部确认] 查看管理平台无网络、慢盘等告警，通信层无报错`
+- **abnormal_patterns**: ["无网络、慢盘等告警，通信层无报错"]
+- **linked_case_ids**: ["gaussdb-plan-suboptimal-sql-x03"]
+
+## check_id: chk-analyze
+
+- **type**: metric
+- **metric_name**: 业务数据入库及analyze情况与执行计划
+- **collection_layer**: manual-business
+- **collection_method**: `[需确认业务] 了解业务，发现业务每天该分区表都有近2亿条数据入库，入库后未做过analyze`
+- **abnormal_patterns**: ["入库后未做过analyze，查看计划确实大的结果集条数走了nest loop导致较慢"]
+- **linked_case_ids**: ["gaussdb-plan-suboptimal-sql-x03"]
+
+## check_id: chk-recovery-max-workers-recovery-parse-workers-recovery-redo-wo
+
+- **type**: metric
+- **metric_name**: recovery_max_workers/recovery_parse_workers/recovery_redo_workers
+- **collection_layer**: db-shell
+- **collection_method**: `show recovery_max_workers; show recovery_parse_workers; show recovery_redo_workers; show shared_buffers;`
+- **abnormal_patterns**: ["可以结合环境的机器规格和资料判断配置是否合理"]
+- **linked_case_ids**: ["gaussdb-other-x05"]
+
+## check_id: chk--2
+
+- **type**: metric
+- **metric_name**: 回放日志类型统计
+- **collection_layer**: db-interactive-cmd
+- **collection_method**: `select * from local_xlog_redo_statics()`
+- **abnormal_patterns**: ["关注特殊日志类型，尤其是ddl相关的xlog"]
+- **linked_case_ids**: ["gaussdb-other-ddl-x07"]
+
+## check_id: chk-print-redo-wal-count-info-print-redo-wal-time-info
+
+- **type**: metric
+- **metric_name**: print_redo_wal_count_info/print_redo_wal_time_info
+- **collection_layer**: log-grep
+- **collection_method**: `在备机的gs_log检索“print_redo_wal”关键字`
+- **abnormal_patterns**: ["print_redo_wal_count_info显示的是该周期内新增回放数量（total num）最多的10种日志...print_redo_wal_time"]
+- **linked_case_ids**: ["gaussdb-other-ddl-x07"]
+
+## check_id: chk-redo-unlink-ddl
+
+- **type**: metric
+- **metric_name**: redo_unlink_ddl
+- **collection_layer**: log-grep
+- **collection_method**: `在gs_log中检索“redo_unlink_ddl”关键字`
+- **abnormal_patterns**: ["可查看每10分钟周期内回放涉及删除文件的DDL数量"]
+- **linked_case_ids**: ["gaussdb-other-ddl-x07"]
+
+## check_id: chk-buffer-hit-rate-read-buffer-io
+
+- **type**: metric
+- **metric_name**: buffer_hit_rate / read_buffer_io
+- **collection_layer**: db-interactive-cmd
+- **collection_method**: `select * from gs_redo_stat_info()`
+- **abnormal_patterns**: ["90%"]
+- **linked_case_ids**: ["gaussdb-disk-io-saturation-x08"]
+
+## check_id: chk-wait-read-data
+
+- **type**: metric
+- **metric_name**: WAIT_READ_DATA
+- **collection_layer**: db-system-view
+- **collection_method**: `select * from dbe_perf.GLOBAL_WAIT_EVENTS where wait!=0 order by total_wait_time desc;`
+- **abnormal_patterns**: ["查看读写data的等待事件时延等判断回放的瓶颈"]
+- **linked_case_ids**: ["gaussdb-disk-io-saturation-x08"]
+
+## check_id: chk-buffer-hit-rate-wait-read-data
+
+- **type**: metric
+- **metric_name**: buffer_hit_rate / WAIT_READ_DATA
+- **collection_layer**: log-grep
+- **collection_method**: `在gs_log中检索“buffer_hit_rate”、“WAIT_READ_DATA”关键字`
+- **abnormal_patterns**: ["可查看历史时间段上十分钟内回放线程的缓存命中率和等待事件统计信息"]
+- **linked_case_ids**: ["gaussdb-disk-io-saturation-x08"]
+
+## check_id: chk-q-use-q-max-use-rec-cnt
+
+- **type**: metric
+- **metric_name**: q_use / q_max_use / rec_cnt
+- **collection_layer**: db-shell
+- **collection_method**: `cm_ctl query -rv或者select * from local_redo_stat();`
+- **abnormal_patterns**: ["主要观察q_use几个现场是否不均衡，如果不均衡的严重，那就是当前业务的特点导致cpu利用不充分"]
+- **linked_case_ids**: ["gaussdb-data-skew-x09"]
+
+## check_id: chk-queue-usage
+
+- **type**: metric
+- **metric_name**: queue usage
+- **collection_layer**: log-grep
+- **collection_method**: `在日志中搜索queue statistic`
+- **abnormal_patterns**: ["有历史上各个线程队列的queue usage信息...可以从这里观察分发是否均匀"]
+- **linked_case_ids**: ["gaussdb-data-skew-x09"]
+
+## check_id: chk--3
+
+- **type**: metric
+- **metric_name**: 索引页面元组分布
+- **collection_layer**: db-interactive-cmd
+- **collection_method**: `使用gs_parse_page_bypath函数解析索引表页面，分析表页面使用情况。`
+- **abnormal_patterns**: ["大部分叶子页面内保存的索引元组中只有10+条，而页面1中保存了200+索引元组。"]
+- **linked_case_ids**: ["gaussdb-other-key-x10"]
+
+## check_id: chk-v-logfile
+
+- **type**: metric
+- **metric_name**: v$logfile
+- **collection_layer**: db-system-view
+- **collection_method**: `select * from v$logfile;`
+- **abnormal_patterns**: ["NULL"]
+- **linked_case_ids**: ["gaussdb-lock-contention-sql-x11"]
+
+## check_id: chk-pg-stat-activity
+
+- **type**: metric
+- **metric_name**: pg_stat_activity长事务执行时长
+- **collection_layer**: db-system-view
+- **collection_method**: `select current_timestamp - query_start as runtime,datname,usename,sessionid,substr(query,0,100) from pg_stat_activity where state != 'idle' and datname in('$database') and usename in ('$user') and extract(epoch from current_timestamp-xact_start)/60 > 1 order by 1 desc;`
+- **abnormal_patterns**: ["> 1 (分钟)"]
+- **linked_case_ids**: ["gaussdb-lock-contention-x12"]
+
+## check_id: chk-pg-thread-wait-status
+
+- **type**: metric
+- **metric_name**: pg_thread_wait_status等待事件
+- **collection_layer**: db-system-view
+- **collection_method**: `select * from pg_thread_wait_status where sessionid in (select sessionid from pg_stat_activity where state != 'idle' and datname in('$database') and usename in ('$user') and extract(epoch from current_timestamp-xact_start)/60 > 1);`
+- **abnormal_patterns**: ["NULL"]
+- **linked_case_ids**: ["gaussdb-lock-contention-x12"]
+
+## check_id: chk-pg-thread-wait-status-2
+
+- **type**: metric
+- **metric_name**: pg_thread_wait_status阻塞源会话
+- **collection_layer**: db-system-view
+- **collection_method**: `select * from pg_thread_wait_status where sessionid in (select block_sessionid from pg_thread_wait_status where sessionid in (select sessionid from pg_stat_activity where state != 'idle' and datname in('$database') and usename in ('$user') and extract(epoch from current_timestamp-xact_start)/60 > 1));`
+- **abnormal_patterns**: ["NULL"]
+- **linked_case_ids**: ["gaussdb-lock-contention-x12"]
+
+## check_id: chk-gs-asp-2
+
+- **type**: metric
+- **metric_name**: gs_asp历史长事务采样记录
+- **collection_layer**: db-system-view
+- **collection_method**: `SELECT DISTINCT a.xact_start_time, (a.sample_time - a.xact_start_time) as xact_run_time, a.thread_id, a.sessionid, d.datname AS database_name, u.usename AS username, a.application_name,a.client_addr, a.client_hostname FROM gs_asp a JOIN pg_database d ON a.databaseid = d.oid JOIN pg_user u ON a.userid = u.usesysid WHERE a.xact_start_time is not null AND username not in ('rdsAdmin') AND sample_time between '<日期> 某时刻' and '<日期> 某时刻' AND extract(epoch from xact_run_time)/60 > 1 --自定义执行时长，表示执行时间超过1min的事务 ORDER BY xact_run_time DESC;`
+- **abnormal_patterns**: ["> 1 (分钟)"]
+- **linked_case_ids**: ["gaussdb-lock-contention-x12"]
+
+## check_id: chk-io
+
+- **type**: metric
+- **metric_name**: 磁盘IO信息
+- **collection_layer**: os
+- **collection_method**: `iostat -c -x -m -t 5`
+- **abnormal_patterns**: ["磁盘的iowait过高"]
+- **linked_case_ids**: ["gaussdb-disk-io-saturation-bm25-x13"]
+
+## check_id: chk-wait-event-count
+
+- **type**: metric
+- **metric_name**: wait_event_count
+- **collection_layer**: db-system-view
+- **collection_method**: `select wait_status,wait_event,count(*) from pg_thread_wait_status group by wait_status,wait_event order by 3 desc;`
+- **abnormal_patterns**: ["NULL"]
+- **linked_case_ids**: ["gaussdb-lock-contention-x14"]
+
+## check_id: chk-blocked-query
+
+- **type**: metric
+- **metric_name**: blocked_query
+- **collection_layer**: db-system-view
+- **collection_method**: `select pid,sessionid,substr(query,0,100) from pg_stat_activity where sessionid in(select sessionid from pg_thread_wait_status where wait_event='wait_event');`
+- **abnormal_patterns**: ["NULL"]
+- **linked_case_ids**: ["gaussdb-lock-contention-x14"]
+
+## check_id: chk-blocking-query
+
+- **type**: metric
+- **metric_name**: blocking_query
+- **collection_layer**: db-system-view
+- **collection_method**: `select pid,sessionid,substr(query,0,100) from pg_stat_activity where sessionid in(select block_sessionid from pg_thread_wait_status where wait_event='wait_event');`
+- **abnormal_patterns**: ["NULL"]
+- **linked_case_ids**: ["gaussdb-lock-contention-x14"]
+
+## check_id: chk-pg-total-memory-detail
+
+- **type**: metric
+- **metric_name**: pg_total_memory_detail
+- **collection_layer**: db-system-view
+- **collection_method**: `select * from pg_total_memory_detail;`
+- **abnormal_patterns**: ["如果dynamic_used_memory较大，dynamic_used_shrctx较小，则可以确认是线程和session上内存占用较多；如果dynamic_"]
+- **linked_case_ids**: ["gaussdb-memory-pressure-x16"]
+
+## check_id: chk-thread-session-memory-context
+
+- **type**: metric
+- **metric_name**: thread_session_memory_context
+- **collection_layer**: db-system-view
+- **collection_method**: `select contextname, sum(totalsize)/1024/1024 totalsize, sum(freesize)/1024/1024 freesize, count(*) sum from gs_thread_memory_context group by contextname order by sum desc limit 10;`
+- **abnormal_patterns**: ["NULL"]
+- **linked_case_ids**: ["gaussdb-memory-pressure-x16"]
+
+## check_id: chk-last-analyze-time
+
+- **type**: metric
+- **metric_name**: last_analyze_time
+- **collection_layer**: db-system-view
+- **collection_method**: `select * from PG_STAT_ALL_TABLES where relname='tablename';`
+- **abnormal_patterns**: ["确定系统/手动上一次 ANALYZE 是否过久。"]
+- **linked_case_ids**: ["gaussdb-plan-suboptimal-x17"]
+
+## check_id: chk-autovacuum-settings
+
+- **type**: metric
+- **metric_name**: autovacuum_settings
+- **collection_layer**: db-system-view
+- **collection_method**: `select * from pg_settings where name like '%vacuum%';`
+- **abnormal_patterns**: ["如果 autovacuum 被关闭或配置阈值过高，则表更新后可能长期没有触发自动分析。"]
+- **linked_case_ids**: ["gaussdb-plan-suboptimal-x17"]
+
+## check_id: chk-autoanalyze-threshold
+
+- **type**: metric
+- **metric_name**: autoanalyze_threshold
+- **collection_layer**: db-interactive-cmd
+- **collection_method**: `select * from pg_stat_get_tuples_changed('table_name'::REGCLASS); select pg_autovac_status('table_name'::REGCLASS);`
+- **abnormal_patterns**: ["确认是否达到触发autoanalyze阈值"]
+- **linked_case_ids**: ["gaussdb-plan-suboptimal-x17"]
+
+## check_id: chk-pg-index-indisusable
+
+- **type**: metric
+- **metric_name**: pg_index_indisusable
+- **collection_layer**: db-system-view
+- **collection_method**: `SELECT indexrelid，indisusable FROM pg_index WHERE indrelid = '<table>'::regclass;`
+- **abnormal_patterns**: ["false"]
+- **linked_case_ids**: ["gaussdb-plan-suboptimal-x18"]
+
+## check_id: chk-cpu-io
+
+- **type**: metric
+- **metric_name**: CPU、IO、内存使用率
+- **collection_layer**: os
+- **collection_method**: `通过htop查看CPU、IO、内存使用情况`
+- **abnormal_patterns**: ["CPU还没有压满，内存充足。未发现异常"]
+- **linked_case_ids**: ["gaussdb-other-tps-x19"]
+
+## check_id: chk-wait-cmd
+
+- **type**: metric
+- **metric_name**: wait cmd计数
+- **collection_layer**: db-system-view
+- **collection_method**: `select wait_status, wait_event, count(*) from pg_thread_wait_status group by 1,2 order by 3 desc;`
+- **abnormal_patterns**: ["发现wait cmd计数很多，属于异常现象。"]
+- **linked_case_ids**: ["gaussdb-other-tps-x19"]
+
+## check_id: chk-tplworker-cpu-idle
+
+- **type**: metric
+- **metric_name**: TPLworker数量 / CPU idle空闲
+- **collection_layer**: flamegraph
+- **collection_method**: `NULL`
+- **abnormal_patterns**: ["正常节点的TPLworker数量达到690个，但是异常节点的TPLworker数量只有380个"]
+- **linked_case_ids**: ["gaussdb-other-tps-x19"]
+
+## check_id: chk-offcpu
+
+- **type**: metric
+- **metric_name**: offcpu火焰图
+- **collection_layer**: flamegraph
+- **collection_method**: `/usr/share/bcc/tools/offcputime -df -p <pid> 30 > off.stacks && flamegraph.pl off.stacks > offcpu.svg`
+- **abnormal_patterns**: ["波动时（即下图中红框CPU利用率低的区段），由于受到日志扩页的影响，TPLworker线程都在等待日志插入","备机日志预扩同样存在阻塞"]
+- **linked_case_ids**: ["gaussdb-other-tpcc-x20","gaussdb-other-tpcc-x21"]
+
+## check_id: chk-n-tuples-fetched-n-tuples-returned
+
+- **type**: metric
+- **metric_name**: n_tuples_fetched / n_tuples_returned
+- **collection_layer**: db-system-view
+- **collection_method**: `查询dbe_perf.statement_history`
+- **abnormal_patterns**: ["n_tuples_fetched = 2 * n_tuples_returned"]
+- **linked_case_ids**: ["gaussdb-other-astore-x22"]
+
+## check_id: chk-t-tuples-fetched
+
+- **type**: metric
+- **metric_name**: t_tuples_fetched累加次数
+- **collection_layer**: manual-code
+- **collection_method**: `[需确认代码] 通过gdb获取上述t_counts中的t_tuples_returned变量地址，通过watch该地址观察到t_tupl`
+- **abnormal_patterns**: ["单轮获取过程中累加2次"]
+- **linked_case_ids**: ["gaussdb-other-astore-x22"]
+
+## check_id: chk-subtransactions-log
+
+- **type**: metric
+- **metric_name**: subtransactions log
+- **collection_layer**: log-grep
+- **collection_method**: `日志中可以尝试搜索关键字Transaction %lu has reached %d subtransactions!`
+- **abnormal_patterns**: ["50000"]
+- **linked_case_ids**: ["gaussdb-memory-pressure-other-x23"]
+
+## check_id: chk-xact-is-current-xid
+
+- **type**: metric
+- **metric_name**: 事务可见性判断函数(xact_is_current_xid)耗时
+- **collection_layer**: flamegraph
+- **collection_method**: `NULL`
+- **abnormal_patterns**: ["子事务嵌套，导致访问数据时，事务可见性判断代价大，也即火焰图中xact_is_current_xid函数；判断所访问数据可见性时，会遍历查询当前事务块管理的事务"]
+- **linked_case_ids**: ["gaussdb-query-slow-autosave-x24"]
+
+## check_id: chk--4
+
+- **type**: metric
+- **metric_name**: 保存点数量开销
+- **collection_layer**: manual-code
+- **collection_method**: `[需确认代码] NULL`
+- **abnormal_patterns**: ["查询语句，也会生成保存点，存在不必要的保存点开销，并且使“瓶颈1”加剧"]
+- **linked_case_ids**: ["gaussdb-query-slow-autosave-x24"]
+
+## check_id: chk-sql-2
+
+- **type**: metric
+- **metric_name**: 保存点SQL解析开销
+- **collection_layer**: manual-code
+- **collection_method**: `[需确认代码] NULL`
+- **abnormal_patterns**: ["显式保存点，存在SQL解析开销"]
+- **linked_case_ids**: ["gaussdb-query-slow-autosave-x24"]
+
+## check_id: chk-sql-cpu
+
+- **type**: metric
+- **metric_name**: SQL CPU消耗
+- **collection_layer**: db-system-view
+- **collection_method**: `select * from gs_asp where sample_time > now() - interval '10 minute' order by sample_time;`
+- **abnormal_patterns**: ["消耗CP高的SQL"]
+- **linked_case_ids**: ["gaussdb-cpu-high-cpu-x25"]
+
+## check_id: chk--5
+
+- **type**: metric
+- **metric_name**: 索引列过滤性
+- **collection_layer**: db-interactive-cmd
+- **collection_method**: `select attname, n_distinct, most_common_vals from pg_stats where tablename='<表>';`
+- **abnormal_patterns**: ["cus_idr过滤性不好，crt_dttm的过滤性好一些"]
+- **linked_case_ids**: ["gaussdb-cpu-high-cpu-x25"]
+
+## check_id: chk--6
+
+- **type**: metric
+- **metric_name**: 活跃会话数
+- **collection_layer**: db-system-view
+- **collection_method**: `查看gs_asp视图查看活跃会话数在冲高时间点`
+- **abnormal_patterns**: ["92并发在同时运行"]
+- **linked_case_ids**: ["gaussdb-cpu-high-index-x26"]
+
+## check_id: chk--7
+
+- **type**: metric
+- **metric_name**: 执行计划索引扫描范围
+- **collection_layer**: db-interactive-cmd
+- **collection_method**: `explain (analyze, verbose, buffers) <目标SQL>;`
+- **abnormal_patterns**: ["在索引扫描时扫描大量的页面，会消耗大量的CPU。使用的主键索引的后两列，没有使用第一列，导致扫描索引的所有页面"]
+- **linked_case_ids**: ["gaussdb-cpu-high-index-x26"]
+
+## check_id: chk-asp
+
+- **type**: metric
+- **metric_name**: ASP数据/等待事件
+- **collection_layer**: db-system-view
+- **collection_method**: `select * from gs_asp where sample_time > now() - interval '10 minute' order by sample_time;`
+- **abnormal_patterns**: ["大量的线程正在等待LockMgrLock。"]
+- **linked_case_ids**: ["gaussdb-lock-contention-ddl-x27"]
+
+## check_id: chk-other
+
+- **type**: metric
+- **metric_name**: other内存增长趋势
+- **collection_layer**: db-system-view
+- **collection_method**: `select * from pg_total_memory_detail;`
+- **abnormal_patterns**: ["jemalloc调优对于业务场景没有生效，other内存依然稳定斜率上涨。"]
+- **linked_case_ids**: ["gaussdb-memory-pressure-other-x28"]
+
+## check_id: chk--8
+
+- **type**: metric
+- **metric_name**: 内存泄漏信息
+- **collection_layer**: manual-code
+- **collection_method**: `[需确认代码] memcheck，1:1展开复现业务，打印如下泄露信息`
+- **abnormal_patterns**: ["确认到是使用CRYPTO_zalloc存在未释放现象。"]
+- **linked_case_ids**: ["gaussdb-memory-pressure-other-x28"]
+
+## check_id: chk--9
+
+- **type**: metric
+- **metric_name**: 代码调用栈/未释放函数
+- **collection_layer**: manual-code
+- **collection_method**: `[需确认代码] 进一步排查代码发现在pymysql驱动建连时，RSA鉴权过程中存在内存未及时释放的情况`
+- **abnormal_patterns**: ["调用了 EVP_PKEY_CTX_new，但未调用对应的 EVP_PKEY_CTX_free"]
+- **linked_case_ids**: ["gaussdb-memory-pressure-other-x28"]
+
+## check_id: chk--10
+
+- **type**: metric
+- **metric_name**: 执行计划
+- **collection_layer**: db-interactive-cmd
+- **collection_method**: `explain (analyze, verbose, buffers) <目标SQL>;`
+- **abnormal_patterns**: ["计划中未提升","NestLoop Anti Join的内表是大表，且无过滤条件，导致全表扫描数据","查看计划显示SEQSCAN","性能瓶颈在两处seqscan上，且上面有一层Stream算子","存在seq scan全表扫描导致耗时长（1000ms+）","筛选条件有索引，但没走上索引，说明优化器评估SeqScan的代价比IndexScan更低","通过TID SCAN更新一行记录遍历了289个分区","t表走了seqscan","过滤条件client_acnt_id = '1221'没有触发索引扫描","理论上恒为false的第二个union all并未被提前过滤掉"]
+- **linked_case_ids**: ["gaussdb-plan-suboptimal-exists-x29","gaussdb-plan-suboptimal-not-x30","gaussdb-plan-suboptimal-x31","gaussdb-plan-suboptimal-seqscan-x33","gaussdb-query-slow-sql-x42","gaussdb-other-ustore-x45","gaussdb-plan-suboptimal-x47","gaussdb-plan-suboptimal-union-x56","gaussdb-plan-suboptimal-x57","gaussdb-plan-suboptimal-union-x58"]
+
+## check_id: chk-provolatile-proshippable
+
+- **type**: metric
+- **metric_name**: 函数属性(provolatile/proshippable)
+- **collection_layer**: db-system-view
+- **collection_method**: `select proname, provolatile, proshippable from pg_proc where proname='<函数名>';`
+- **abnormal_patterns**: ["clock_timestamp函数的provolatile属性为‘v’不稳定的，而且proshippable为空"]
+- **linked_case_ids**: ["gaussdb-plan-suboptimal-sysdate-x32"]
+
+## check_id: chk-sql-3
+
+- **type**: metric
+- **metric_name**: 慢SQL数量及系统库大小
+- **collection_layer**: db-system-view
+- **collection_method**: `select unique_query_id, substr(query,1,80) q, db_time, cpu_time, execution_time from dbe_perf.statement_history order by db_time desc limit 20;`
+- **abnormal_patterns**: ["系统库大小8GB，慢SQL数量600万条"]
+- **linked_case_ids**: ["gaussdb-disk-io-saturation-tps-x34"]
+
+## check_id: chk--11
+
+- **type**: metric
+- **metric_name**: 备机日志刷盘影响
+- **collection_layer**: db-interactive-cmd
+- **collection_method**: `将GUC参数synchronous_commit设置为local进行长稳测试。`
+- **abnormal_patterns**: ["将参数设置为local后，测试结果仍然存在TPS波动问题，排除备机日志刷盘对TPS波动的影响。"]
+- **linked_case_ids**: ["gaussdb-disk-io-saturation-tps-x34"]
+
+## check_id: chk-wdr
+
+- **type**: metric
+- **metric_name**: WDR报告与等待事件
+- **collection_layer**: db-system-view
+- **collection_method**: `select wait_status, wait_event, count(*) from pg_thread_wait_status group by 1,2 order by 3 desc;`
+- **abnormal_patterns**: ["随着压测的进行，数据量增大，导致内存和磁盘之间的缓冲池buffer pool被填满，需要和磁盘进行换入换出，CPU的IO等待占比增大，导致TPS下降。"]
+- **linked_case_ids**: ["gaussdb-disk-io-saturation-tps-x34"]
+
+## check_id: chk--12
+
+- **type**: metric
+- **metric_name**: 线程等待磁盘返回结果
+- **collection_layer**: manual-external
+- **collection_method**: `[需外部确认] 在长稳测试TPS出现抖动时，抓取当前系统内的所有线程信息，通过杀猪刀工具分析发现`
+- **abnormal_patterns**: ["等待时间为20ms~50ms"]
+- **linked_case_ids**: ["gaussdb-disk-io-saturation-tps-x34"]
+
+## check_id: chk-procarraylock
+
+- **type**: metric
+- **metric_name**: 等待事件ProcArrayLock
+- **collection_layer**: db-system-view
+- **collection_method**: `select wait_status, wait_event, count(*) from pg_thread_wait_status group by 1,2 order by 3 desc;`
+- **abnormal_patterns**: ["数据库TOP1 等待事件ProcArrayLock"]
+- **linked_case_ids**: ["gaussdb-lock-contention-procarraylock-x35"]
+
+## check_id: chk--13
+
+- **type**: metric
+- **metric_name**: 分布式事务两阶段提交火焰图
+- **collection_layer**: flamegraph
+- **collection_method**: `NULL`
+- **abnormal_patterns**: ["ProcArrayLock大锁的现在表现最明显的是在prepare阶段"]
+- **linked_case_ids**: ["gaussdb-lock-contention-procarraylock-x35"]
+
+## check_id: chk--14
+
+- **type**: metric
+- **metric_name**: 语句执行情况与执行计划
+- **collection_layer**: db-interactive-cmd
+- **collection_method**: `通过gs_asp查看对应时间段的语句执行情况`
+- **abnormal_patterns**: ["大批量语句计划变为seqscan，导致消耗大量资源，引发CPU冲高。"]
+- **linked_case_ids**: ["gaussdb-cpu-high-cpu-x36"]
+
+## check_id: chk--15
+
+- **type**: metric
+- **metric_name**: 代价估算与页面数
+- **collection_layer**: db-system-view
+- **collection_method**: `识别上面的代价估算较低，仅为18，证明pg_class中记录的页面数较少。`
+- **abnormal_patterns**: ["18"]
+- **linked_case_ids**: ["gaussdb-cpu-high-cpu-x36"]
+
+## check_id: chk-vacuum
+
+- **type**: metric
+- **metric_name**: vacuum执行记录
+- **collection_layer**: log-grep
+- **collection_method**: `通过pg_log,发现在某时刻开始，针对<库名> 中的分区sys_p22进行了vacuum。`
+- **abnormal_patterns**: ["此表在导数后，直到25日前，未触发vacuum 并且此表分区间存在严重的数据倾斜"]
+- **linked_case_ids**: ["gaussdb-cpu-high-cpu-x36"]
+
+## check_id: chk-sql-4
+
+- **type**: metric
+- **metric_name**: 慢SQL与计划跳变排查
+- **collection_layer**: db-system-view
+- **collection_method**: `select unique_query_id, count(*) from dbe_perf.statement_history where start_time > 'XXX' and start_time < 'XXX' group by 1 order by 2 desc; <br> select unique_query_id, query, query_plan from dbe_perf.statement_history where unique_query_id in (XXX,XXX); <br> select unique_query_id, count(*) from dbe_perf.local_active_session where sample_time > 'XXX' and sample_time < 'XXX' group by 1 order by 2 desc; <br> select unique_sql_id, query from dbe_perf.summary_statement where unique_sql_id in ('XXX', 'XXX');`
+- **abnormal_patterns**: ["若预期该语句应该index_scan但plan中出现seq_scan，则初步判断出现了计划跳变。"]
+- **linked_case_ids**: ["gaussdb-cpu-high-cpu-x36"]
+
+## check_id: chk--16
+
+- **type**: metric
+- **metric_name**: 分区表统计信息准确性
+- **collection_layer**: db-system-view
+- **collection_method**: `with sizeinfo as (select relname, parentid, pg_partition_size(parentid, oid) partsize, relpages from pg_partition where parttype = 'p') select tablename,tablesize/1024 as "size(KB)", pages*8.192 as "page(KB)" from (select parentid::regclass as tablename, sum(partsize) as tablesize, sum(relpages) as pages from sizeinfo group by parentid) where tablesize > 1000000 and pages < 10000 and pages*8192.0/tablesize < 0.1;`
+- **abnormal_patterns**: ["pages*8192.0/tablesize < 0.1"]
+- **linked_case_ids**: ["gaussdb-cpu-high-cpu-x36"]
+
+## check_id: chk-last-vacuum
+
+- **type**: metric
+- **metric_name**: last_vacuum
+- **collection_layer**: db-system-view
+- **collection_method**: `查看相关表的日志，以及pg_stat_all_tables视图，通过其中的last_vacuum字段`
+- **abnormal_patterns**: ["确认相关表在创建后从未vacuum"]
+- **linked_case_ids**: ["gaussdb-query-slow-dataarts-x37"]
+
+## check_id: chk-n-tup-hot-upd-n-tup-upd-n-dead-tup-n-live-tup
+
+- **type**: metric
+- **metric_name**: n_tup_hot_upd / n_tup_upd / n_dead_tup / n_live_tup
+- **collection_layer**: db-system-view
+- **collection_method**: `在pg_stat_all_tables中表现如下`
+- **abnormal_patterns**: ["HOT更新（n_tup_hot_upd），即一个元组的更新在同一block内，在所有更新（n_tup_upd）中占比很小。说明变长更新导致本来的原地更新，由于没"]
+- **linked_case_ids**: ["gaussdb-query-slow-dataarts-x37"]
+
+## check_id: chk--17
+
+- **type**: metric
+- **metric_name**: 变长更新语句
+- **collection_layer**: manual-business
+- **collection_method**: `[需确认业务] 对业务语句检查`
+- **abnormal_patterns**: ["发现有很多变长更新的语句，如对某列更新为null之后，又更新为128长度char类型"]
+- **linked_case_ids**: ["gaussdb-query-slow-dataarts-x37"]
+
+## check_id: chk-thread-pool-attr
+
+- **type**: metric
+- **metric_name**: thread_pool_attr
+- **collection_layer**: db-shell
+- **collection_method**: `show thread_pool_attr;`
+- **abnormal_patterns**: ["在现有的出口参数线程池CPU亲和设置模式下会经常触发跨NUMA"]
+- **linked_case_ids**: ["gaussdb-other-tpcc-x38"]
+
+## check_id: chk-rpo
+
+- **type**: metric
+- **metric_name**: 容灾RPO
+- **collection_layer**: db-system-view
+- **collection_method**: `select* from gs_hadr_remote_rto_and_rpo_stat();`
+- **abnormal_patterns**: ["确实发现容灾RPO高"]
+- **linked_case_ids**: ["gaussdb-other-rpo-x39"]
+
+## check_id: chk--18
+
+- **type**: metric
+- **metric_name**: 复制槽推动速度
+- **collection_layer**: db-system-view
+- **collection_method**: `select * from dbe_perf.global_replication_stat;`
+- **abnormal_patterns**: ["主集群产生的xlog速度，明显比接收的速度要快的多"]
+- **linked_case_ids**: ["gaussdb-other-rpo-x39"]
+
+## check_id: chk--19
+
+- **type**: metric
+- **metric_name**: 网络带宽使用率
+- **collection_layer**: manual-external
+- **collection_method**: `[需外部确认] 向客户方网络侧确认`
+- **abnormal_patterns**: ["确实在异常时间段网络带宽占满"]
+- **linked_case_ids**: ["gaussdb-other-rpo-x39"]
+
+## check_id: chk-io-2
+
+- **type**: metric
+- **metric_name**: IO相关等待事件平均时间
+- **collection_layer**: db-system-view
+- **collection_method**: `select wait_status, wait_event, count(*) from pg_thread_wait_status group by 1,2 order by 3 desc;`
+- **abnormal_patterns**: ["读取数据页面、读取wal日志等回放相关等待事件平均时间更长"]
+- **linked_case_ids**: ["gaussdb-other-rto-x40"]
+
+## check_id: chk-io-io
+
+- **type**: metric
+- **metric_name**: 磁盘IO性能和IO调度算法
+- **collection_layer**: os
+- **collection_method**: `grep -H . /sys/block/*/queue/scheduler 2>/dev/null`
+- **abnormal_patterns**: ["无明显区别"]
+- **linked_case_ids**: ["gaussdb-other-rto-x40"]
+
+## check_id: chk-cpu-4
+
+- **type**: metric
+- **metric_name**: 线程CPU占用率
+- **collection_layer**: os
+- **collection_method**: `top分析线程CPU占用`
+- **abnormal_patterns**: ["问题节点某问题DN回放相关线程CPU占用率较低（相对于对照节点某对照DN），同时某问题DN整体CPU占用率也低于某对照DN"]
+- **linked_case_ids**: ["gaussdb-other-rto-x40"]
+
+## check_id: chk-xlog
+
+- **type**: metric
+- **metric_name**: xlog生成速率
+- **collection_layer**: db-system-view
+- **collection_method**: `select * from dbe_perf.global_replication_stat;`
+- **abnormal_patterns**: ["20%"]
+- **linked_case_ids**: ["gaussdb-other-rto-x40"]
+
+## check_id: chk-pgxc-stat-activity-state
+
+- **type**: metric
+- **metric_name**: pgxc_stat_activity state
+- **collection_layer**: db-system-view
+- **collection_method**: `select state, count(*) from pgxc_stat_activity group by state;`
+- **abnormal_patterns**: ["基本活跃会话很少，事务执行过程中状态较多，基本都在等待业务服务器向数据库发数据"]
+- **linked_case_ids**: ["gaussdb-other-tps-x41"]
+
+## check_id: chk-io-3
+
+- **type**: metric
+- **metric_name**: IO使用率
+- **collection_layer**: os
+- **collection_method**: `iostat -x -m 5 3`
+- **abnormal_patterns**: ["数据库的IO使用率非常高"]
+- **linked_case_ids**: ["gaussdb-other-tps-x41"]
+
+## check_id: chk-cn
+
+- **type**: metric
+- **metric_name**: CN节点压力分布
+- **collection_layer**: db-system-view
+- **collection_method**: `select node_name, count(*) from pgxc_stat_activity group by node_name order by 2 desc;`
+- **abnormal_patterns**: ["微服务压力只发往AZ1内一个CN，另外一个CN无压力"]
+- **linked_case_ids**: ["gaussdb-other-tps-x41"]
+
+## check_id: chk-druid
+
+- **type**: metric
+- **metric_name**: druid连接配置
+- **collection_layer**: manual-business
+- **collection_method**: `[需确认业务] NULL`
+- **abnormal_patterns**: ["druid最小连接配置较小，仅20，会导致压测过程开始时建连排队"]
+- **linked_case_ids**: ["gaussdb-other-tps-x41"]
+
+## check_id: chk-druid-monitor
+
+- **type**: metric
+- **metric_name**: druid monitor排队情况
+- **collection_layer**: manual-external
+- **collection_method**: `[需外部确认] NULL`
+- **abnormal_patterns**: ["在微服务连接池druid上，出现排队"]
+- **linked_case_ids**: ["gaussdb-other-tps-x41"]
+
+## check_id: chk--20
+
+- **type**: metric
+- **metric_name**: 锁等待事件
+- **collection_layer**: db-system-view
+- **collection_method**: `select wait_status, wait_event, count(*) from pg_thread_wait_status group by 1,2 order by 3 desc;`
+- **abnormal_patterns**: ["出现了并发更新"]
+- **linked_case_ids**: ["gaussdb-query-slow-sql-x42"]
+
+## check_id: chk--21
+
+- **type**: metric
+- **metric_name**: 业务代码逻辑
+- **collection_layer**: manual-business
+- **collection_method**: `[需确认业务] 排查业务代码发现主键更新语句的条件（主键）为单一固定值`
+- **abnormal_patterns**: ["高并发压测时会出现并发更新等待事务锁和元组锁的现象"]
+- **linked_case_ids**: ["gaussdb-query-slow-sql-x42"]
+
+## check_id: chk-wal
+
+- **type**: metric
+- **metric_name**: WAL日志产生量
+- **collection_layer**: log-grep
+- **collection_method**: `通过计算日志里的LSN节点可知`
+- **abnormal_patterns**: ["10GB/h"]
+- **linked_case_ids**: ["gaussdb-disk-io-saturation-wal-x43"]
+
+## check_id: chk-wal-2
+
+- **type**: metric
+- **metric_name**: WAL日志类型占比
+- **collection_layer**: log-grep
+- **collection_method**: `对WAL日志分析可知`
+- **abnormal_patterns**: [">50%"]
+- **linked_case_ids**: ["gaussdb-disk-io-saturation-wal-x43"]
+
+## check_id: chk-freeze-page
+
+- **type**: metric
+- **metric_name**: Freeze Page操作有效性
+- **collection_layer**: log-grep
+- **collection_method**: `对产生的Freeze Page 类型WAL日志分析`
+- **abnormal_patterns**: ["nfrozen = 0"]
+- **linked_case_ids**: ["gaussdb-disk-io-saturation-wal-x43"]
+
+## check_id: chk--22
+
+- **type**: metric
+- **metric_name**: 磁盘读写线程
+- **collection_layer**: db-system-view
+- **collection_method**: `识别磁盘读异常SQL(根据异常IO线程号查询pg_stat_activity + pg_thread_wait_status)`
+- **abnormal_patterns**: ["磁盘读都是Vacuum操作 / 磁盘写主要是pagewriter线程"]
+- **linked_case_ids**: ["gaussdb-disk-io-saturation-wal-x43"]
+
+## check_id: chk--23
+
+- **type**: metric
+- **metric_name**: 运行时堆栈
+- **collection_layer**: manual-code
+- **collection_method**: `[需确认代码] 检查运行时堆栈`
+- **abnormal_patterns**: ["发现在清理该Ustore分区表上的其中一个GPI索引"]
+- **linked_case_ids**: ["gaussdb-other-autovacuum-x44"]
+
+## check_id: chk-gs-log
+
+- **type**: metric
+- **metric_name**: gs_log日志清理时长
+- **collection_layer**: log-grep
+- **collection_method**: `检查gs_log日志`
+- **abnormal_patterns**: ["13天"]
+- **linked_case_ids**: ["gaussdb-other-autovacuum-x44"]
+
+## check_id: chk-wal-3
+
+- **type**: metric
+- **metric_name**: WAL日志清理模式
+- **collection_layer**: log-grep
+- **collection_method**: `检查WAL日志`
+- **abnormal_patterns**: ["O(n²)"]
+- **linked_case_ids**: ["gaussdb-other-autovacuum-x44"]
+
+## check_id: chk--24
+
+- **type**: metric
+- **metric_name**: 事务日志内容
+- **collection_layer**: db-interactive-cmd
+- **collection_method**: `使用gs_xlogdump_xid()系统函数获取被查杀事务对应的日志`
+- **abnormal_patterns**: ["事务生成的日志中，全都是对heap进行WAL_UHEAP_CLEAN操作，并非元组删除操作。"]
+- **linked_case_ids**: ["gaussdb-other-ustore-x45"]
+
+## check_id: chk-undo-retention-time
+
+- **type**: metric
+- **metric_name**: undo_retention_time
+- **collection_layer**: db-system-view
+- **collection_method**: `show undo_retention_time;`
+- **abnormal_patterns**: ["900s"]
+- **linked_case_ids**: ["gaussdb-other-ustore-x45"]
+
+## check_id: chk-wait-node
+
+- **type**: metric
+- **metric_name**: wait node等待事件耗时
+- **collection_layer**: db-system-view
+- **collection_method**: `select wait_status, wait_event, count(*) from pg_thread_wait_status group by 1,2 order by 3 desc;`
+- **abnormal_patterns**: ["等待事件的计时是从pgstat_report_waitstatus_comm函数上报“wait node”时开始的，但是在pgstat_reset_waitSt"]
+- **linked_case_ids**: ["gaussdb-query-slow-insert-x46"]
+
+## check_id: chk-cn-dn
+
+- **type**: metric
+- **metric_name**: CN和DN间网络交互次数
+- **collection_layer**: manual-code
+- **collection_method**: `[需确认代码] 从代码流程上看，单条INSERT语句在执行过程中，CN和DN间会有多次网络交互`
+- **abnormal_patterns**: ["CN上wait node事件统计的是3次网络交互的总体开销，而DN上慢SQL视图里面记录的只是一次INSERT语句的耗时"]
+- **linked_case_ids**: ["gaussdb-query-slow-insert-x46"]
+
+## check_id: chk-poll-interrupt
+
+- **type**: metric
+- **metric_name**: poll_interrupt接口耗时/线程唤醒耗时
+- **collection_layer**: log-grep / flamegraph
+- **collection_method**: `从日志中我们发现，CN在调用poll_interrupt接口等待DN回复消息时存在偶现时延增大到4ms的情况。 / 我们抓取了火焰图`
+- **abnormal_patterns**: ["4ms"]
+- **linked_case_ids**: ["gaussdb-query-slow-insert-x46"]
+
+## check_id: chk-oncpu
+
+- **type**: metric
+- **metric_name**: oncpu信息
+- **collection_layer**: flamegraph
+- **collection_method**: `NULL`
+- **abnormal_patterns**: ["cpu主要消耗在事务提交时关闭文件操作"]
+- **linked_case_ids**: ["gaussdb-plan-suboptimal-x47"]
+
+## check_id: chk-sql-5
+
+- **type**: metric
+- **metric_name**: 慢sql语句
+- **collection_layer**: db-system-view
+- **collection_method**: `select unique_query_id, substr(query,1,80) q, db_time, cpu_time, execution_time from dbe_perf.statement_history order by db_time desc limit 20;`
+- **abnormal_patterns**: ["找到commit语句，然后根据事务id找到对应事务的sql语句"]
+- **linked_case_ids**: ["gaussdb-plan-suboptimal-x47"]
+
+## check_id: chk--25
+
+- **type**: metric
+- **metric_name**: 网络包时延
+- **collection_layer**: manual-external
+- **collection_method**: `[需外部确认] 针对建连报错的应用环境上进行抓包`
+- **abnormal_patterns**: ["4s"]
+- **linked_case_ids**: ["gaussdb-cpu-high-jdbc-x48"]
+
+## check_id: chk-cpu-5
+
+- **type**: metric
+- **metric_name**: CPU消耗分布
+- **collection_layer**: flamegraph
+- **collection_method**: `NULL`
+- **abnormal_patterns**: ["客户端大部分CPU消耗在密码迭代加密的流程上"]
+- **linked_case_ids**: ["gaussdb-cpu-high-jdbc-x48"]
+
+## check_id: chk-dropped-packets-count
+
+- **type**: metric
+- **metric_name**: dropped packets count
+- **collection_layer**: db-shell
+- **collection_method**: `cat /proc/net/dev`
+- **abnormal_patterns**: ["NULL"]
+- **linked_case_ids**: ["gaussdb-other-x49"]
+
+## check_id: chk-rx-dropped-call-stack
+
+- **type**: metric
+- **metric_name**: rx_dropped call stack
+- **collection_layer**: os
+- **collection_method**: `perf record -o perf_lo_drop.data -a -g -e mem:0xffff920fc37b31c8:w -- sleep 10`
+- **abnormal_patterns**: ["调用栈数量也基本和ifconfig lo统计dropped的差值相同，所以只需分析以上调用栈即可。...实际晚上perf监控一晚发现所有lo的丢包都来自于avc"]
+- **linked_case_ids**: ["gaussdb-other-x49"]
+
+## check_id: chk-net-core-netdev-max-backlog
+
+- **type**: metric
+- **metric_name**: net.core.netdev_max_backlog
+- **collection_layer**: os
+- **collection_method**: `sysctl net.core.netdev_max_backlog`
+- **abnormal_patterns**: ["1000"]
+- **linked_case_ids**: ["gaussdb-other-x49"]
+
+## check_id: chk-cpu-cpu-io-tpmc-xlog
+
+- **type**: metric
+- **metric_name**: 备机CPU、主机CPU、内存使用率、IO、TPMC、Xlog回放速度、日志生成速度
+- **collection_layer**: manual-business
+- **collection_method**: `[需确认业务] 8C规格极致RTO和并行回放对资源的消耗，跑TPCC数据量 70仓，70并发，分别测试极致RTO场景`
+- **abnormal_patterns**: ["极致RTO配置三相比并行回放CPU和内存消耗高20%，且回放略有下降；配置三线程数量较多，资源争用严重，效果不太明显"]
+- **linked_case_ids**: ["gaussdb-other-rto-x50"]
+
+## check_id: chk--26
+
+- **type**: metric
+- **metric_name**: 死元组数/表占用空间
+- **collection_layer**: db-system-view
+- **collection_method**: `select relname, n_dead_tup, pg_relation_size(relid) sz from pg_stat_all_tables where relname='<表>';`
+- **abnormal_patterns**: ["死元组3600w+，表占用309GB"]
+- **linked_case_ids**: ["gaussdb-other-ustore-x51"]
+
+## check_id: chk-toast
+
+- **type**: metric
+- **metric_name**: toast表空间占用
+- **collection_layer**: db-system-view
+- **collection_method**: `select pg_relation_size(reltoastrelid) from pg_class where relname='<表>';`
+- **abnormal_patterns**: ["发现膨胀的主要再toast表上"]
+- **linked_case_ids**: ["gaussdb-other-ustore-x51"]
+
+## check_id: chk--27
+
+- **type**: metric
+- **metric_name**: 列长度/事务更新频次
+- **collection_layer**: manual-business
+- **collection_method**: `[需确认业务] NULL`
+- **abnormal_patterns**: ["列长度>2k字节; 单事务内大量update"]
+- **linked_case_ids**: ["gaussdb-other-ustore-x51"]
+
+## check_id: chk-wait-xact-commit-command
+
+- **type**: metric
+- **metric_name**: wait xact commit command耗时
+- **collection_layer**: db-system-view
+- **collection_method**: `select unique_query_id, substr(query,1,80) q, db_time, cpu_time, execution_time from dbe_perf.statement_history order by db_time desc limit 20;`
+- **abnormal_patterns**: ["1535511 (us)"]
+- **linked_case_ids**: ["gaussdb-lock-contention-commit-x52"]
+
+## check_id: chk-palm-hang-detect-main
+
+- **type**: metric
+- **metric_name**: palm_hang_detect_main等待锁日志
+- **collection_layer**: log-grep
+- **collection_method**: `gaussdb-<日期>_180856.log.gz:<日期> 某时刻.054 dn_6007_6008_6009 [unkown] [unknown] localhost 281279935201968 0[0:0#0] 0 dn_6007 0 [BACKEND] WARNING: palm_hang_detect_main Cur time is 785847582052464, need_wait_time is 785847577052464, oldest_time is 785847564558141; wait_lock_type(4).`
+- **abnormal_patterns**: ["WARNING: palm_hang_detect_main Cur time is 785847582052464, need_wait_time is 78"]
+- **linked_case_ids**: ["gaussdb-lock-contention-commit-x52"]
+
+## check_id: chk-execution-time
+
+- **type**: metric
+- **metric_name**: execution_time
+- **collection_layer**: db-system-view
+- **collection_method**: `select unique_query_id, substr(query,1,80) q, db_time, cpu_time, execution_time from dbe_perf.statement_history order by db_time desc limit 20;`
+- **abnormal_patterns**: ["583689 (us)"]
+- **linked_case_ids**: ["gaussdb-query-slow-x53"]
+
+## check_id: chk-lwlock-event-procarraylock
+
+- **type**: metric
+- **metric_name**: LWLOCK_EVENT ProcArrayLock等待事件
+- **collection_layer**: db-system-view
+- **collection_method**: `Wait Events Area: ‘1’ LWLOCK_EVENT ProcArrayLock 11700 (us)`
+- **abnormal_patterns**: ["11700 (us)"]
+- **linked_case_ids**: ["gaussdb-query-slow-x53"]
+
+## check_id: chk-unlink-half-dead-page
+
+- **type**: metric
+- **metric_name**: unlink_half_dead_page索引日志
+- **collection_layer**: log-grep
+- **collection_method**: `<日期> 某时刻.143 dn_6001_6002_6003 mecs mecs <IP> 281222782959760 375685[11206835某时刻7457#30802] 213523483 cn_5001 73183494132910882 [UBTREE] LOG: [unlink_half_dead_page:1386] IndexRnode:{16某时刻7某时刻227:-1} Xid:{213523483}. valid left sibling for deletion target could not be located: left sibling postmaster pool start, fd nums:4`
+- **abnormal_patterns**: ["valid left sibling for deletion target could not be located"]
+- **linked_case_ids**: ["gaussdb-query-slow-x53"]
+
+## check_id: chk-sql-6
+
+- **type**: metric
+- **metric_name**: 慢SQL等待事件统计
+- **collection_layer**: db-system-view
+- **collection_method**: `select unique_query_id, substr(query,1,80) q, db_time, cpu_time, execution_time from dbe_perf.statement_history order by db_time desc limit 20;`
+- **abnormal_patterns**: ["没有抓到长时间的等待事件"]
+- **linked_case_ids**: ["gaussdb-lock-contention-x54"]
+
+## check_id: chk-cpu-io-2
+
+- **type**: metric
+- **metric_name**: CPU、内存、IO使用率
+- **collection_layer**: os
+- **collection_method**: `top -Hp <pid>`
+- **abnormal_patterns**: ["CPU、内存、IO 使用率均很低"]
+- **linked_case_ids**: ["gaussdb-lock-contention-x54"]
+
+## check_id: chk--28
+
+- **type**: metric
+- **metric_name**: 轻量级锁排他锁等待时间日志
+- **collection_layer**: log-grep
+- **collection_method**: `登录客户生产环境进行查询，确实找到了对应的日志打印`
+- **abnormal_patterns**: ["5s"]
+- **linked_case_ids**: ["gaussdb-lock-contention-x54"]
+
+## check_id: chk--29
+
+- **type**: metric
+- **metric_name**: 轻量级锁持锁到放锁的时长
+- **collection_layer**: manual-code
+- **collection_method**: `[需确认代码] 统计轻量级锁持锁到放锁的时长`
+- **abnormal_patterns**: ["并没有发现单个轻量级锁持锁时间过长的情况"]
+- **linked_case_ids**: ["gaussdb-lock-contention-x54"]
+
+## check_id: chk--30
+
+- **type**: metric
+- **metric_name**: 持锁、等锁线程堆栈
+- **collection_layer**: manual-code
+- **collection_method**: `[需确认代码] 在一套生产环境部署了脚本，进行持锁、等锁线程堆栈的抓取`
+- **abnormal_patterns**: ["所有抓到的持锁线程都是 checkpoint；一般来说，出现该warning日志时查询gs_lwlock_status系统函数都会出现等锁的现象，但是在日志打印"]
+- **linked_case_ids**: ["gaussdb-lock-contention-x54"]
+
+## check_id: chk-sql-7
+
+- **type**: metric
+- **metric_name**: 防饿死线程日志与慢SQL现象
+- **collection_layer**: manual-business
+- **collection_method**: `[需确认业务] 对家里测试环境的 guc 参数进行了调整，加速了 checkpoint 的频率`
+- **abnormal_patterns**: ["家里也复现出了防饿死线程的日志打印与慢 SQL 现象"]
+- **linked_case_ids**: ["gaussdb-lock-contention-x54"]
+
+## check_id: chk-sql-8
+
+- **type**: metric
+- **metric_name**: 慢SQL出现频率
+- **collection_layer**: manual-business
+- **collection_method**: `[需确认业务] 观察关闭防饿死开关enable_wait_exclusive_lock 前后，问题出现频率`
+- **abnormal_patterns**: ["启用防饿死机制时，稳定复现原问题；不启用防饿死机制时，稳定不出现原问题"]
+- **linked_case_ids**: ["gaussdb-lock-contention-x54"]
+
+## check_id: chk-sql-details
+
+- **type**: metric
+- **metric_name**: 慢SQL details等待事件
+- **collection_layer**: db-system-view
+- **collection_method**: `select unique_query_id, substr(query,1,80) q, db_time, cpu_time, execution_time from dbe_perf.statement_history order by db_time desc limit 20;`
+- **abnormal_patterns**: ["主要是两个等待事件比较突出，和1.5s也比较接近 wait node: 主要是CN在等DN gtm get snapshot: CN向GTM请求快照信息"]
+- **linked_case_ids**: ["gaussdb-plan-suboptimal-jdbc-x55"]
+
+## check_id: chk-dn-sql
+
+- **type**: metric
+- **metric_name**: DN慢SQL信息
+- **collection_layer**: db-system-view
+- **collection_method**: `select unique_query_id, substr(query,1,80) q, db_time, cpu_time, execution_time from dbe_perf.statement_history order by db_time desc limit 20;`
+- **abnormal_patterns**: ["500ms"]
+- **linked_case_ids**: ["gaussdb-plan-suboptimal-jdbc-x55"]
+
+## check_id: chk-az
+
+- **type**: metric
+- **metric_name**: 网络时延与跨AZ请求
+- **collection_layer**: manual-external
+- **collection_method**: `[需外部确认] NULL`
+- **abnormal_patterns**: ["确实有CN_5003/CN_5004访问另外一个机房的GTM和DN主的情况，同时发现：此语句的所有慢SQL都是CN_5003/CN_5004发起（即跨AZ请求）"]
+- **linked_case_ids**: ["gaussdb-plan-suboptimal-jdbc-x55"]
+
+## check_id: chk-sql-9
+
+- **type**: metric
+- **metric_name**: 慢SQL锁次数与软解析次数
+- **collection_layer**: db-system-view
+- **collection_method**: `select unique_query_id, substr(query,1,80) q, db_time, cpu_time, execution_time from dbe_perf.statement_history order by db_time desc limit 20;`
+- **abnormal_patterns**: ["两者在单语句内都不应该出现这么多次数"]
+- **linked_case_ids**: ["gaussdb-plan-suboptimal-jdbc-x55"]
+
+## check_id: chk-client-encoding-server-encoding
+
+- **type**: metric
+- **metric_name**: client encoding与server encoding配置
+- **collection_layer**: db-shell
+- **collection_method**: `show client_encoding; show server_encoding;`
+- **abnormal_patterns**: ["业务库当前主要是encoding: GB18030-2022 （2）JDBC侧设置成非GB18030-2022和设置成GB18030-2022 （3）测试发现性"]
+- **linked_case_ids**: ["gaussdb-plan-suboptimal-jdbc-x55"]
+
+## check_id: chk--31
+
+- **type**: metric
+- **metric_name**: 代码分析
+- **collection_layer**: manual-code
+- **collection_method**: `[需确认代码] 通过代码分析发现`
+- **abnormal_patterns**: ["若两个不同union all分支的target列类型不一致 会导致谓词无法下推到子查询中","主要是存在窗口函数 但是在sql语句中default_flag并没有使用"]
+- **linked_case_ids**: ["gaussdb-plan-suboptimal-union-x56","gaussdb-plan-suboptimal-x57"]
+
+## check_id: chk--32
+
+- **type**: metric
+- **metric_name**: 代码定位
+- **collection_layer**: manual-code
+- **collection_method**: `[需确认代码] 定位发现`
+- **abnormal_patterns**: ["若存在union all，cte 不会自动内联"]
+- **linked_case_ids**: ["gaussdb-plan-suboptimal-union-x58"]
+
 ## check_id: chk-data-node-scan
 
 - **type**: metric
@@ -429,7 +1563,7 @@
 - **abnormal_patterns**: ["`由于目标列中的相关子查询(select avg(c2) from t2 where t2.c2=t1.c2)无法提升的缘故，导致每扫描t1的一行数据，就会触发"]
 - **linked_case_ids**: ["gaussdb-plan-suboptimal-rewrite-rule-intargetlist-01"]
 
-## check_id: chk-
+## check_id: chk--33
 
 - **type**: metric
 - **metric_name**: 执行计划下推标识
@@ -474,7 +1608,7 @@
 - **abnormal_patterns**: ["`分析上述执行计划，发现执行了Hash Join，对大表b_zyk_wbswxx（网吧上网信息）建立了Hash Table。由于该表数据量大，创建过程耗时较长。"]
 - **linked_case_ids**: ["gaussdb-plan-suboptimal-nestloop-large-table-unlogged-01"]
 
-## check_id: chk-explain-verbose-warning
+## check_id: chk-explain-verbose-warning-2
 
 - **type**: metric
 - **metric_name**: EXPLAIN VERBOSE WARNING · 未收集统计信息的表/列列表
@@ -546,7 +1680,7 @@
 - **abnormal_patterns**: ["`该计划很慢，原因是网络传输了大量数据，然后在CN上执行HASH JOIN，不能充分利用集群资源。`"]
 - **linked_case_ids**: ["gaussdb-query-slow-no-partial-pushdown-01"]
 
-## check_id: chk-explain-verbose-subplan
+## check_id: chk-explain-verbose-subplan-2
 
 - **type**: metric
 - **metric_name**: EXPLAIN VERBOSE · SubPlan 算子出现在目标列
@@ -618,7 +1752,7 @@
 - **abnormal_patterns**: ["查询时间从原来的382.624ms缩短到0.293 ms。"]
 - **linked_case_ids**: ["gaussdb-seqscan-without-index-slow-01"]
 
-## check_id: chk-explain-verbose-warning
+## check_id: chk-explain-verbose-warning-3
 
 - **type**: metric
 - **metric_name**: EXPLAIN VERBOSE 执行计划 Warning
@@ -663,7 +1797,7 @@
 - **abnormal_patterns**: ["\"GroupAggregate A-time: 2417.004ms，Sort A-time: 2304.329ms，Peak Memory: 26466KB\""]
 - **linked_case_ids**: ["gaussdb-query-slow-groupagg-sort-03"]
 
-## check_id: chk-explain-analyze
+## check_id: chk-explain-analyze-3
 
 - **type**: metric
 - **metric_name**: EXPLAIN ANALYZE 执行计划 · 算子耗时
@@ -699,7 +1833,7 @@
 - **abnormal_patterns**: ["\"Subquery Scan on s1 -> HashAggregate Group By Key: t1.c2 -> Seq Scan on t1\""]
 - **linked_case_ids**: ["gaussdb-rewrite-lazyagg-double-aggregate-slow-01"]
 
-## check_id: chk-
+## check_id: chk--34
 
 - **type**: metric
 - **metric_name**: 执行计划子查询关联方式
@@ -951,7 +2085,7 @@
 - **abnormal_patterns**: ["6 --Streaming(type: REDISTRIBUTE) datanode1 (rows=5050368) datanode2 (rows=15276"]
 - **linked_case_ids**: ["gaussdb-data-skew-compute-redistribute-01"]
 
-## check_id: chk-pg-stat-get-last-data-changed-time
+## check_id: chk-pg-stat-get-last-data-changed-time-2
 
 - **type**: metric
 - **metric_name**: pg_stat_get_last_data_changed_time 最近变更的表
@@ -987,7 +2121,7 @@
 - **abnormal_patterns**: ["则执行计划将存在\"Streaming\"，导致DN之间存在较大通信数据量。"]
 - **linked_case_ids**: ["gaussdb-dws-distkey-choice-01"]
 
-## check_id: chk-explain-streaming
+## check_id: chk-explain-streaming-2
 
 - **type**: metric
 - **metric_name**: 调整后 EXPLAIN 是否消除 Streaming
@@ -1032,7 +2166,7 @@
 - **abnormal_patterns**: ["进一步向HashJoin算子的下层分析发现Seq Scan on s_riskrate_setting也存在极为严重的计算倾斜[38.885,2940.983]"]
 - **linked_case_ids**: ["gaussdb-data-skew-hashjoin-dn-compute-skew-01"]
 
-## check_id: chk-explain-analyze
+## check_id: chk-explain-analyze-4
 
 - **type**: metric
 - **metric_name**: EXPLAIN ANALYZE 顺序扫描耗时
@@ -1050,7 +2184,7 @@
 - **abnormal_patterns**: ["NULL"]
 - **linked_case_ids**: ["gaussdb-missing-index-multi-join-05"]
 
-## check_id: chk-explain-join
+## check_id: chk-explain-join-2
 
 - **type**: metric
 - **metric_name**: EXPLAIN 执行计划 Join 类型
@@ -1059,7 +2193,7 @@
 - **abnormal_patterns**: ["join-condition实质上是一个不等式，这种不等值的join操作必须走nestloop"]
 - **linked_case_ids**: ["gaussdb-query-slow-nestloop-any-clause-01"]
 
-## check_id: chk-explain-analyze
+## check_id: chk-explain-analyze-5
 
 - **type**: metric
 - **metric_name**: EXPLAIN ANALYZE 执行计划耗时与过滤行数
@@ -1131,7 +2265,7 @@
 - **abnormal_patterns**: ["\"如果CPU一直较高，方法一：可直接使用WDR报告中SQL ordered by CPU Time部分，尝试优化分析相关语句\""]
 - **linked_case_ids**: ["gaussdb-overall-slow-cpu-high-01"]
 
-## check_id: chk-
+## check_id: chk--35
 
 - **type**: metric
 - **metric_name**: 内核代码热点函数火焰图
@@ -1203,7 +2337,7 @@
 - **abnormal_patterns**: ["\"频繁地捕获和处理异常可能会导致性能下降。每次异常处理都涉及上下文的创建和销毁，这会消耗额外的内存和资源。\""]
 - **linked_case_ids**: ["gaussdb-procedure-exception-frequent-perf-degrade-01"]
 
-## check_id: chk-
+## check_id: chk--36
 
 - **type**: metric
 - **metric_name**: 存储过程默认权限模式
@@ -1221,7 +2355,7 @@
 - **abnormal_patterns**: ["`Data Node Scan on t1 \"_REMOTE_TABLE_QUERY_\"`"]
 - **linked_case_ids**: ["gaussdb-rewrite-rule-partialpush-13"]
 
-## check_id: chk-explain-performance
+## check_id: chk-explain-performance-2
 
 - **type**: metric
 - **metric_name**: EXPLAIN PERFORMANCE 算子耗时
@@ -1266,7 +2400,7 @@
 - **abnormal_patterns**: ["\"NOT IN语句需要使用NESTLOOP ANTI JOIN来实现\""]
 - **linked_case_ids**: ["gaussdb-not-in-to-not-exists-rewrite-01"]
 
-## check_id: chk-explain
+## check_id: chk-explain-2
 
 - **type**: metric
 - **metric_name**: EXPLAIN · 计划与实际行数比对
@@ -1320,7 +2454,7 @@
 - **abnormal_patterns**: ["\"LOG:Statistics in some tables or columns(...) are not collected.\""]
 - **linked_case_ids**: ["gaussdb-plan-suboptimal-missing-analyze-01"]
 
-## check_id: chk-
+## check_id: chk--37
 
 - **type**: metric
 - **metric_name**: 执行计划子查询处理方式
@@ -1347,7 +2481,7 @@
 - **abnormal_patterns**: ["\"红框中的两个cost，分别是启动代价和总代价，在看Hash Join的cost，明显Hash Join的启动代价比Nest Loop的大很多（启动代价代表了输"]
 - **linked_case_ids**: ["gaussdb-dws-plan-suboptimal-nestloop-seqscan-cost-02"]
 
-## check_id: chk-nestloop
+## check_id: chk-nestloop-2
 
 - **type**: metric
 - **metric_name**: 语句执行时间 / 执行计划中 NestLoop 算子
@@ -1500,7 +2634,7 @@
 - **abnormal_patterns**: ["\"上述执行计划中有__REMOTE关键字，这就表明当前的语句是不下推执行的。\""]
 - **linked_case_ids**: ["gaussdb-dws-statement-not-pushed-down-slow-01"]
 
-## check_id: chk-nestloop
+## check_id: chk-nestloop-3
 
 - **type**: metric
 - **metric_name**: 执行计划算子类型（NestLoop）
@@ -1518,7 +2652,7 @@
 - **abnormal_patterns**: ["\"从执行计划中可以看出来，两条sql的耗时都集中在Partitioned CStore Scan on public.tb_motor_vehicle列存表的分"]
 - **linked_case_ids**: ["gaussdb-dws-no-partition-pruning-slow-01"]
 
-## check_id: chk-
+## check_id: chk--38
 
 - **type**: metric
 - **metric_name**: 线程等待状态
@@ -1545,7 +2679,7 @@
 - **abnormal_patterns**: ["\"查询当前活跃sql，发现有大量的create index语句\""]
 - **linked_case_ids**: ["gaussdb-dws-table-bloat-vacuum-slow-01"]
 
-## check_id: chk-
+## check_id: chk--39
 
 - **type**: metric
 - **metric_name**: 表数据倾斜
@@ -1581,7 +2715,7 @@
 - **abnormal_patterns**: ["\"该语句冗长，执行时每个分支的CASE WHEN均需执行，导致查询时间成倍增加\""]
 - **linked_case_ids**: ["dws-case-when-redundant-rewrite-01"]
 
-## check_id: chk-
+## check_id: chk--40
 
 - **type**: metric
 - **metric_name**: 系统表/用户表膨胀情况
@@ -1653,7 +2787,7 @@
 - **abnormal_patterns**: ["\"普通分区表无法自动创建新分区或清理过期分区，需维护人员定期手动操作\""]
 - **linked_case_ids**: ["dws-partition-auto-period-ttl-01"]
 
-## check_id: chk-analyze
+## check_id: chk-analyze-2
 
 - **type**: metric
 - **metric_name**: ANALYZE 后的查询性能
@@ -1662,7 +2796,7 @@
 - **abnormal_patterns**: ["\"如果此命令执行后性能恢复或者有所提升，则表明AUTOVACUUM未能很好的完成它的工作，有待进一步分析。\""]
 - **linked_case_ids**: ["dws-query-efficiency-degraded-01"]
 
-## check_id: chk-
+## check_id: chk--41
 
 - **type**: metric
 - **metric_name**: 查询返回行数
@@ -1671,7 +2805,7 @@
 - **abnormal_patterns**: ["\"对于包含50条记录的表，查询起来是很快的；但是，当表中包含的记录达到50000，查询效率将会有所下降。\""]
 - **linked_case_ids**: ["dws-query-efficiency-degraded-01"]
 
-## check_id: chk-
+## check_id: chk--42
 
 - **type**: metric
 - **metric_name**: 主机负载下查询单独运行时延
@@ -1680,7 +2814,7 @@
 - **abnormal_patterns**: ["\"如果效率较高，则说明可能是由于之前运行数据库系统的主机负载过大导致查询低效。\""]
 - **linked_case_ids**: ["dws-query-efficiency-degraded-01"]
 
-## check_id: chk-
+## check_id: chk--43
 
 - **type**: metric
 - **metric_name**: 重复执行同一查询语句的执行时间
@@ -1770,7 +2904,7 @@
 - **abnormal_patterns**: ["\"普通用户的or条件需要逐一判断，如果数据库中表个数比较多，最终会导致普通用户比dbadmin需要更长的执行时间。\""]
 - **linked_case_ids**: ["gaussdb-dws-query-slow-permission-or-filter-02"]
 
-## check_id: chk-dn
+## check_id: chk-dn-2
 
 - **type**: metric
 - **metric_name**: 各DN数据量分布
@@ -1779,7 +2913,7 @@
 - **abnormal_patterns**: ["> 10%"]
 - **linked_case_ids**: ["gaussdb-dws-data-skew-bad-dist-key-01"]
 
-## check_id: chk-cn
+## check_id: chk-cn-2
 
 - **type**: metric
 - **metric_name**: CN日志中不下推原因
@@ -1788,7 +2922,7 @@
 - **abnormal_patterns**: ["\"LOG: SQL can't be shipped, reason: With-Recursive does not contain \\\"ALL\\\" to b"]
 - **linked_case_ids**: ["gaussdb-dws-with-recursive-not-pushed-slow-01"]
 
-## check_id: chk-explain-verbose-warning
+## check_id: chk-explain-verbose-warning-4
 
 - **type**: metric
 - **metric_name**: EXPLAIN VERBOSE WARNING信息 · 统计信息缺失
@@ -1914,7 +3048,7 @@
 - **abnormal_patterns**: ["NULL"]
 - **linked_case_ids**: ["gaussdb-dws-lock-contention-wait-timeout-01"]
 
-## check_id: chk-
+## check_id: chk--44
 
 - **type**: metric
 - **metric_name**: 写入方式
@@ -1959,7 +3093,7 @@
 - **abnormal_patterns**: ["\"多次对列存表UPDATE，发现表大小膨胀了十多倍。\""]
 - **linked_case_ids**: ["gaussdb-dws-disk-space-column-table-bloat-01"]
 
-## check_id: chk-
+## check_id: chk--45
 
 - **type**: metric
 - **metric_name**: 各节点磁盘使用率均衡性
@@ -1977,7 +3111,7 @@
 - **abnormal_patterns**: ["`发现作业总是等待部分DN或者个别DN`"]
 - **linked_case_ids**: ["gaussdb-dws-data-skew-hash-dist-01"]
 
-## check_id: chk-explain-performance-dn
+## check_id: chk-explain-performance-dn-2
 
 - **type**: metric
 - **metric_name**: explain performance · DN 行数与耗时分布
@@ -1995,7 +3129,7 @@
 - **abnormal_patterns**: ["NULL"]
 - **linked_case_ids**: ["gaussdb-dws-data-skew-hash-dist-01"]
 
-## check_id: chk-pgxc-get-table-skewness
+## check_id: chk-pgxc-get-table-skewness-2
 
 - **type**: metric
 - **metric_name**: pgxc_get_table_skewness · 全库倾斜视图
@@ -2022,7 +3156,7 @@
 - **abnormal_patterns**: ["\"上述执行计划中出现__REMOTE关键字，表示当前的语句为不下推执行。\""]
 - **linked_case_ids**: ["gaussdb-dws-query-slow-function-not-shipped-01"]
 
-## check_id: chk-cn
+## check_id: chk-cn-3
 
 - **type**: metric
 - **metric_name**: CN日志 · 不下推原因
@@ -2031,7 +3165,7 @@
 - **abnormal_patterns**: ["\"不下推语句在pg_log中会打印不下推的原因\""]
 - **linked_case_ids**: ["gaussdb-dws-query-slow-function-not-shipped-01"]
 
-## check_id: chk-nestloop
+## check_id: chk-nestloop-4
 
 - **type**: metric
 - **metric_name**: 执行计划算子类型（NestLoop出现）
@@ -2058,7 +3192,7 @@
 - **abnormal_patterns**: ["NULL"]
 - **linked_case_ids**: ["gaussdb-dws-plan-nestloop-row-underestimate-01"]
 
-## check_id: chk-pg-thread-wait-status
+## check_id: chk-pg-thread-wait-status-3
 
 - **type**: metric
 - **metric_name**: pg_thread_wait_status · 线程等待状态
@@ -2085,7 +3219,7 @@
 - **abnormal_patterns**: ["\"发现有大量的CREATE INDEX语句\"","\"发现有大量的CREATE INDEX语句，需要和用户确认该业务是否合理。\""]
 - **linked_case_ids**: ["gaussdb-dws-query-slow-table-bloat-01","gaussdb-dws-query-slow-concurrent-index-01"]
 
-## check_id: chk-
+## check_id: chk--46
 
 - **type**: metric
 - **metric_name**: 表倾斜情况
@@ -2103,7 +3237,7 @@
 - **abnormal_patterns**: ["\"max_process_memory为12GB，设置过小。shared_buffers为32MB，设置过小。\""]
 - **linked_case_ids**: ["gaussdb-dws-query-slow-table-bloat-01"]
 
-## check_id: chk-vs
+## check_id: chk-vs-2
 
 - **type**: metric
 - **metric_name**: 脏数据膨胀率 / 表实际大小 vs 有效数据量
@@ -2112,7 +3246,7 @@
 - **abnormal_patterns**: ["\"发现表数据膨胀严重，对其中一张8GB大小的表，总数据量5万条，做完VACUUM FULL后大小减小为5.6MB。\""]
 - **linked_case_ids**: ["gaussdb-dws-query-slow-table-bloat-01"]
 
-## check_id: chk-explain
+## check_id: chk-explain-3
 
 - **type**: metric
 - **metric_name**: EXPLAIN执行计划耗时分布
@@ -2175,7 +3309,7 @@
 - **abnormal_patterns**: ["`扫描时间与扫描数据量严重不符，此现象可判断为由于脏数据多从而影响扫描和I/O效率。`"]
 - **linked_case_ids**: ["gaussdb-dws-disk-io-saturation-dirty-data-bloat-01"]
 
-## check_id: chk-
+## check_id: chk--47
 
 - **type**: metric
 - **metric_name**: 表脏页率
@@ -2193,7 +3327,7 @@
 - **abnormal_patterns**: ["> 10倍"]
 - **linked_case_ids**: ["gaussdb-dws-disk-io-saturation-data-skew-01"]
 
-## check_id: chk-table-distribution-dn
+## check_id: chk-table-distribution-dn-2
 
 - **type**: metric
 - **metric_name**: table_distribution 各DN数据行数
@@ -2292,7 +3426,7 @@
 - **abnormal_patterns**: ["\"查看psort_work_mem是否设置过小\""]
 - **linked_case_ids**: ["gaussdb-dws-query-slow-vacuum-pck-sort-01"]
 
-## check_id: chk-
+## check_id: chk--48
 
 - **type**: metric
 - **metric_name**: 列存表文件大小监控
@@ -2310,7 +3444,7 @@
 - **abnormal_patterns**: ["\"并发更新同一条记录发生冲突不会等待锁，直接报错：abort transaction due to concurrent update\""]
 - **linked_case_ids**: ["gaussdb-dws-lock-contention-concurrent-update-01"]
 
-## check_id: chk-dn
+## check_id: chk-dn-3
 
 - **type**: metric
 - **metric_name**: 各 DN 数据条数分布
@@ -2319,7 +3453,7 @@
 - **abnormal_patterns**: [">= 10%"]
 - **linked_case_ids**: ["dws-distkey-skew-10pct-01"]
 
-## check_id: chk-pgxc-get-table-skewness
+## check_id: chk-pgxc-get-table-skewness-3
 
 - **type**: metric
 - **metric_name**: PGXC_GET_TABLE_SKEWNESS 视图
@@ -2346,7 +3480,7 @@
 - **abnormal_patterns**: ["\"通常优化器总会选择最优的执行计划，但是众所周知代价估算，尤其是中间结果集的代价估算一般会有比较大的偏差，这种比较大的偏差就可能会导致agg的计算方式出现比较大"]
 - **linked_case_ids**: ["gaussdb-dws-agg-plan-tuning-01"]
 
-## check_id: chk-explain-verbose-anti-join
+## check_id: chk-explain-verbose-anti-join-2
 
 - **type**: metric
 - **metric_name**: EXPLAIN VERBOSE · Anti Join 执行计划及行数估算
@@ -2355,7 +3489,7 @@
 - **abnormal_patterns**: ["\"估算Anti Join的行数与实际行数相差很大，导致查询性能下降\""]
 - **linked_case_ids**: ["gaussdb-dws-cost-param-anti-join-01"]
 
-## check_id: chk-explain-verbose-hashjoin
+## check_id: chk-explain-verbose-hashjoin-2
 
 - **type**: metric
 - **metric_name**: EXPLAIN VERBOSE · HashJoin 行数估算偏差
@@ -2364,7 +3498,7 @@
 - **abnormal_patterns**: ["\"导致行数估算不准确，查询性能较差\""]
 - **linked_case_ids**: ["gaussdb-dws-cost-param-filter-selectivity-01"]
 
-## check_id: chk-dn
+## check_id: chk-dn-4
 
 - **type**: metric
 - **metric_name**: 磁盘利用率各 DN 差异
@@ -2382,7 +3516,7 @@
 - **abnormal_patterns**: ["\"基表scan的时间：最快的DN耗时5ms，最慢的DN耗时1173ms。数据分布情况：某些DN有22831616行，其他DN都是0行，数据有严重倾斜。\""]
 - **linked_case_ids**: ["gaussdb-dws-data-skew-storage-01"]
 
-## check_id: chk-table-skewness-table-distribution
+## check_id: chk-table-skewness-table-distribution-2
 
 - **type**: metric
 - **metric_name**: table_skewness / table_distribution · 表数据倾斜率
@@ -2427,7 +3561,7 @@
 - **abnormal_patterns**: ["判断是否有CPU使用率突然增大的情况。"]
 - **linked_case_ids**: ["gaussdb-dws-high-cpu-01"]
 
-## check_id: chk-cpu
+## check_id: chk-cpu-6
 
 - **type**: metric
 - **metric_name**: 资源池 CPU 限额 / 配额配置
@@ -2436,7 +3570,7 @@
 - **abnormal_patterns**: ["防止极端场景下某个语句占用CPU资源过多"]
 - **linked_case_ids**: ["gaussdb-dws-high-cpu-01"]
 
-## check_id: chk-pgxc-stat-activity-state
+## check_id: chk-pgxc-stat-activity-state-2
 
 - **type**: metric
 - **metric_name**: pgxc_stat_activity state 字段
@@ -2463,7 +3597,7 @@
 - **abnormal_patterns**: ["\"因此join-condition实质上是一个不等式，这种不等值的join操作必须走nestloop\""]
 - **linked_case_ids**: ["gaussdb-dws-in-clause-nestloop-01"]
 
-## check_id: chk-explain-performance
+## check_id: chk-explain-performance-3
 
 - **type**: metric
 - **metric_name**: EXPLAIN PERFORMANCE · 基表扫描方式及执行时间
@@ -2481,7 +3615,7 @@
 - **abnormal_patterns**: ["执行计划中 in 仍作为 Filter 而非 Hash Join"]
 - **linked_case_ids**: ["gaussdb-dws-inlist2join-large-constants-01"]
 
-## check_id: chk-explain
+## check_id: chk-explain-4
 
 - **type**: metric
 - **metric_name**: EXPLAIN · 执行计划顺序扫描阶段耗时
@@ -2544,7 +3678,7 @@
 - **abnormal_patterns**: ["spill_info IS NOT NULL"]
 - **linked_case_ids**: ["gaussdb-dws-operator-spill-23"]
 
-## check_id: chk-explain-analyze
+## check_id: chk-explain-analyze-6
 
 - **type**: metric
 - **metric_name**: EXPLAIN ANALYZE · 基表扫描算子类型及执行时间
@@ -2553,7 +3687,7 @@
 - **abnormal_patterns**: ["\"Seq Scan on store_sales [3594.611,3594.611] 3360 Rows Removed by Filter: 496893"]
 - **linked_case_ids**: ["gaussdb-dws-seqscan-vs-indexscan-01"]
 
-## check_id: chk-explain-analyze-join
+## check_id: chk-explain-analyze-join-2
 
 - **type**: metric
 - **metric_name**: EXPLAIN ANALYZE · JOIN 算子类型及执行时间
@@ -2562,7 +3696,7 @@
 - **abnormal_patterns**: ["\"NestLoop耗时181秒\""]
 - **linked_case_ids**: ["gaussdb-dws-nestloop-to-hashjoin-01"]
 
-## check_id: chk-explain-analyze-agg
+## check_id: chk-explain-analyze-agg-2
 
 - **type**: metric
 - **metric_name**: EXPLAIN ANALYZE · Agg 算子类型及执行时间
@@ -2616,7 +3750,7 @@
 - **abnormal_patterns**: ["\"使用partial cluster key后，5-- CStore Scan on public.lineitem的时间减少了1.2s，得益于有84个CU被过"]
 - **linked_case_ids**: ["gaussdb-dws-pck-scan-acceleration-01"]
 
-## check_id: chk-explain-performance
+## check_id: chk-explain-performance-4
 
 - **type**: metric
 - **metric_name**: explain performance 执行时间
@@ -2688,7 +3822,7 @@
 - **abnormal_patterns**: ["`Data Node Scan on store_sales \"_REMOTE_TABLE_QUERY_\"`"]
 - **linked_case_ids**: ["gaussdb-dws-pushdown-data-node-scan-12"]
 
-## check_id: chk-explain-performance
+## check_id: chk-explain-performance-5
 
 - **type**: metric
 - **metric_name**: EXPLAIN PERFORMANCE · 执行计划是否走向量化（列执行引擎）算子
@@ -2697,7 +3831,7 @@
 - **abnormal_patterns**: ["\"经过分析发现计划走了行引擎。根本原因是：临时计划表input_acct_id_tbl和中间结果转储表row_unlogged_table使用了行存表。\""]
 - **linked_case_ids**: ["gaussdb-dws-row-vs-column-store-01"]
 
-## check_id: chk-copy
+## check_id: chk-copy-2
 
 - **type**: metric
 - **metric_name**: COPY 语句等待视图 · 轻量级锁等待
@@ -2715,7 +3849,7 @@
 - **abnormal_patterns**: ["\"window agg和sort全部在CN端执行，耗时非常严重\""]
 - **linked_case_ids**: ["gaussdb-dws-sort-pushdown-cn-bottleneck-01"]
 
-## check_id: chk-explain-performance
+## check_id: chk-explain-performance-6
 
 - **type**: metric
 - **metric_name**: EXPLAIN PERFORMANCE 改写后执行计划 · 排序下推验证
@@ -2760,7 +3894,7 @@
 - **abnormal_patterns**: ["\"执行以下命令查询当前的事务XID。\""]
 - **linked_case_ids**: ["gaussdb-dws-vacuum-full-long-tx-01"]
 
-## check_id: chk-
+## check_id: chk--49
 
 - **type**: metric
 - **metric_name**: 活跃事务列表
@@ -2814,7 +3948,7 @@
 - **abnormal_patterns**: ["`non-active的个数表示空闲连接数，例如，non-active为508，说明当前有大量的空闲连接。`"]
 - **linked_case_ids**: ["gaussdb-too-many-clients-21"]
 
-## check_id: chk-explain-performance
+## check_id: chk-explain-performance-7
 
 - **type**: metric
 - **metric_name**: EXPLAIN PERFORMANCE · 算子分布
@@ -3525,7 +4659,7 @@
 - **abnormal_patterns**: ["minPoolSize 远小于启动期峰值并发(导致大量临时建连)"]
 - **linked_case_ids**: ["mongo-pool-minpoolsize-too-low-startup-creating-conns-03"]
 
-## check_id: chk-driver-maxpoolsize
+## check_id: chk-driver-maxpoolsize-2
 
 - **type**: metric
 - **metric_name**: driver maxPoolSize · 应用活跃线程数 / 实际每秒操作数
@@ -3768,7 +4902,7 @@
 - **abnormal_patterns**: ["operator ≤ v1.10 且 cr.yaml 中 cpu limit 缺失或为 0"]
 - **linked_case_ids**: ["mongo-k8s-operator-cachesize-bug-cpu-limit-required-02"]
 
-## check_id: chk-wiredtiger-cache-maximum-bytes-configured
+## check_id: chk-wiredtiger-cache-maximum-bytes-configured-2
 
 - **type**: metric
 - **metric_name**: wiredTiger.cache.maximum bytes configured
@@ -3979,15 +5113,15 @@
 - **violation_patterns**: ["`current = 0 (closed) ≠ 1 (recommended)`"]
 - **linked_case_ids**: ["mongo-client-os-tcp-tuning-01"]
 
-## check_id: chk-net-core-netdev-max-backlog
+## check_id: chk-net-core-netdev-max-backlog-2
 
 - **type**: parameter-current-value
 - **param_name**: net.core.netdev_max_backlog
-- **recommended_values**: []
-- **violation_patterns**: ["`current < 8096 (recommended)`"]
-- **linked_case_ids**: ["mongo-client-os-tcp-tuning-01"]
+- **recommended_values**: ["65535"]
+- **violation_patterns**: ["`current < 8096 (recommended)`","1000"]
+- **linked_case_ids**: ["mongo-client-os-tcp-tuning-01","gaussdb-other-x49"]
 
-## check_id: chk-net-ipv4-tcp-keepalive-time
+## check_id: chk-net-ipv4-tcp-keepalive-time-2
 
 - **type**: parameter-current-value
 - **param_name**: net.ipv4.tcp_keepalive_time
@@ -4003,7 +5137,7 @@
 - **violation_patterns**: ["`current = 0 (closed quick recycle) ≠ 30 (recommended)`"]
 - **linked_case_ids**: ["mongo-client-os-tcp-tuning-01"]
 
-## check_id: chk-bios-advanced-misc-config-support-smmu
+## check_id: chk-bios-advanced-misc-config-support-smmu-2
 
 - **type**: parameter-current-value
 - **param_name**: bios.advanced.misc_config.support_smmu
@@ -4011,7 +5145,7 @@
 - **violation_patterns**: ["`current = \"Enable\" AND scenario = non-virtualization`"]
 - **linked_case_ids**: ["kunpeng-bios-smmu-enabled-non-virt-01"]
 
-## check_id: chk-bios-advanced-misc-config-cpu-prefetching-configuration
+## check_id: chk-bios-advanced-misc-config-cpu-prefetching-configuration-2
 
 - **type**: parameter-current-value
 - **param_name**: bios.advanced.misc_config.cpu_prefetching_configuration
@@ -4043,7 +5177,7 @@
 - **violation_patterns**: ["`current < 2048 (most distros default = 128/256)`"]
 - **linked_case_ids**: ["linux-blockdev-nr-requests-too-low-01"]
 
-## check_id: chk-libvirt-domain-cputune-vcpupin
+## check_id: chk-libvirt-domain-cputune-vcpupin-2
 
 - **type**: parameter-current-value
 - **param_name**: libvirt.domain.cputune.vcpupin
@@ -4171,7 +5305,7 @@
 - **violation_patterns**: ["4096 (默认) ∧ workload=大文件"]
 - **linked_case_ids**: ["linux-fs-xfs-blocksize-audit-01"]
 
-## check_id: chk-vm-dirty-ratio-vm-dirty-background-ratio
+## check_id: chk-vm-dirty-ratio-vm-dirty-background-ratio-2
 
 - **type**: parameter-current-value
 - **param_name**: vm.dirty_ratio / vm.dirty_background_ratio
@@ -4213,6 +5347,135 @@
 - **linked_case_ids**: ["gaussdb-memory-work-mem-spill-01","gaussdb-groupagg-sort-vs-hashagg-08","gaussdb-overall-slow-config-shared-buffers-01","gaussdb-group-by-sort-perf-work-mem-01","gaussdb-dws-table-bloat-vacuum-slow-01","gaussdb-dws-query-slow-table-bloat-01","gaussdb-dws-operator-spill-23","gaussdb-dws-system-level-tuning-24"]
 - **rationales**: ["\"如果work_mem所限定的物理内存不够，算子运算的数据将被写入临时表空间，会带来5-10倍的性能下降。\"","`可能存在排序操作，即计划中包含GroupAgg+Sort算子，导致性能较差`","\"排序等算子可使用的work_mem过小，导致异常下盘过多\"","\"导致性能较差。\"","`当内存使用超过该参数后将触发算子下盘`","`超过阈值则下盘`"]
 
+## check_id: chk-recovery-max-workers-recovery-parse-workers-recovery-redo-wo-2
+
+- **type**: parameter-current-value
+- **param_name**: recovery_max_workers/recovery_parse_workers/recovery_redo_workers
+- **recommended_values**: []
+- **violation_patterns**: ["这三个参数都为1，是串行回放"]
+- **linked_case_ids**: ["gaussdb-other-x05"]
+
+## check_id: chk-ubtree
+
+- **type**: parameter-current-value
+- **param_name**: ubtree页面分裂策略
+- **recommended_values**: ["DEFAULT"]
+- **violation_patterns**: ["INSERTPT"]
+- **linked_case_ids**: ["gaussdb-other-key-x10"]
+
+## check_id: chk-autovacuum
+
+- **type**: parameter-current-value
+- **param_name**: autovacuum相关参数
+- **recommended_values**: []
+- **violation_patterns**: ["被关闭或配置阈值过高"]
+- **linked_case_ids**: ["gaussdb-plan-suboptimal-x17"]
+
+## check_id: chk-wal-file-init-num
+
+- **type**: parameter-current-value
+- **param_name**: wal file init num
+- **recommended_values**: ["增大"]
+- **violation_patterns**: ["过小"]
+- **linked_case_ids**: ["gaussdb-other-tpcc-x20"]
+
+## check_id: chk-advance-xlog-file-num
+
+- **type**: parameter-current-value
+- **param_name**: advance_xlog_file_num
+- **recommended_values**: ["增大"]
+- **violation_patterns**: ["过小"]
+- **linked_case_ids**: ["gaussdb-other-tpcc-x21"]
+
+## check_id: chk-query-dop
+
+- **type**: parameter-current-value
+- **param_name**: query_dop
+- **recommended_values**: ["16","0 (动态) — 需开启 use_workload_manager=on"]
+- **violation_patterns**: ["未开启SMP并行","未配置或为 0,未按系统资源动态获取并行度"]
+- **linked_case_ids**: ["gaussdb-plan-suboptimal-seqscan-x33","gaussdb-dws-system-level-tuning-24"]
+
+## check_id: chk-log-min-duration-statement
+
+- **type**: parameter-current-value
+- **param_name**: log_min_duration_statement
+- **recommended_values**: ["3000ms"]
+- **violation_patterns**: ["10ms"]
+- **linked_case_ids**: ["gaussdb-disk-io-saturation-tps-x34"]
+
+## check_id: chk-walwriter-cpu-bind
+
+- **type**: parameter-current-value
+- **param_name**: walwriter_cpu_bind
+- **recommended_values**: ["31"]
+- **violation_patterns**: ["未绑定指定CPU核"]
+- **linked_case_ids**: ["gaussdb-disk-io-saturation-tps-x34"]
+
+## check_id: chk-autovacuum-ustore
+
+- **type**: parameter-current-value
+- **param_name**: autovacuum (ustore表的自动清理)
+- **recommended_values**: []
+- **violation_patterns**: ["不会清理用户表"]
+- **linked_case_ids**: ["gaussdb-query-slow-dataarts-x37"]
+
+## check_id: chk-thread-pool-attr-2
+
+- **type**: parameter-current-value
+- **param_name**: thread_pool_attr
+- **recommended_values**: ["'1024,4,(numabind:0-31,32-63,64-95,96-127)'","NULL (按业务规模调大)"]
+- **violation_patterns**: ["'2048,2,(nobind)'","线程池 worker 参数设置过小,导致业务排队"]
+- **linked_case_ids**: ["gaussdb-other-tpcc-x38","gaussdb-overall-slow-config-shared-buffers-01"]
+- **rationales**: ["\"线程池worker参数thread_pool_attr设置过小，导致业务排队。\""]
+
+## check_id: chk-vacuum-cost-delay
+
+- **type**: parameter-current-value
+- **param_name**: vacuum_cost_delay
+- **recommended_values**: ["30ms"]
+- **violation_patterns**: ["1ms"]
+- **linked_case_ids**: ["gaussdb-other-tps-x41"]
+
+## check_id: chk-undo-retention-time-2
+
+- **type**: parameter-current-value
+- **param_name**: undo_retention_time
+- **recommended_values**: []
+- **violation_patterns**: ["900s (开启闪回特性)"]
+- **linked_case_ids**: ["gaussdb-other-ustore-x45"]
+
+## check_id: chk-sys-kernel-debug-sched-features
+
+- **type**: parameter-current-value
+- **param_name**: /sys/kernel/debug/sched_features
+- **recommended_values**: ["NO_SIS_PROP"]
+- **violation_patterns**: ["SIS_PROP"]
+- **linked_case_ids**: ["gaussdb-query-slow-insert-x46"]
+
+## check_id: chk-logintimeout
+
+- **type**: parameter-current-value
+- **param_name**: loginTimeout
+- **recommended_values**: ["30"]
+- **violation_patterns**: ["6"]
+- **linked_case_ids**: ["gaussdb-cpu-high-jdbc-x48"]
+
+## check_id: chk-recovery-parse-workers-recovery-redo-workers
+
+- **type**: parameter-current-value
+- **param_name**: recovery_parse_workers / recovery_redo_workers
+- **recommended_values**: ["极致RTO配置一：recovery_parse_workers = 1，recovery_redo_workers=2"]
+- **violation_patterns**: ["并行回放参数设置：recovery_parse_workers=1，recovery_redo_workers=1，recovery_max_workers=4"]
+- **linked_case_ids**: ["gaussdb-other-rto-x50"]
+
+## check_id: chk-client-encoding-server-encoding-2
+
+- **type**: parameter-current-value
+- **param_name**: client_encoding / server_encoding
+- **recommended_values**: ["保持client encoding和server encoding一致(JDBC连接串设置GB18030-2022)"]
+- **violation_patterns**: ["client encoding和server encoding不同(JDBC侧非GB18030-2022，而DB侧为GB18030-2022)"]
+- **linked_case_ids**: ["gaussdb-plan-suboptimal-jdbc-x55"]
+
 ## check_id: chk-rewrite-rule
 
 - **type**: parameter-current-value
@@ -4222,7 +5485,7 @@
 - **linked_case_ids**: ["gaussdb-plan-suboptimal-rewrite-rule-partialpush-01","gaussdb-plan-suboptimal-rewrite-rule-intargetlist-01","gaussdb-query-slow-no-partial-pushdown-01","gaussdb-query-slow-correlated-subquery-target-list-01","gaussdb-rewrite-lazyagg-double-aggregate-slow-01","gaussdb-rewrite-magicset-correlated-subquery-slow-01","gaussdb-rewrite-v8-intargetlist-subplan-slow-01","gaussdb-rewrite-rule-partialpush-13","gaussdb-rewrite-intargetlist-subplan-slow-01","gaussdb-rewrite-uniquecheck-subquery-join-01"]
 - **rationales**: ["`该计划很慢，原因是网络传输了大量数据，然后在CN上执行HASH JOIN，不能充分利用集群资源。`","`导致每扫描t1的一行数据，就会触发子查询的一次执行，效率低下。`","\"由于目标列中的相关子查询无法提升的缘故，导致每扫描t1的一行数据，就会触发子查询的一次执行，效率低下\"","`网络传输了大量数据，然后在CN上执行HASH JOIN，不能充分利用集群资源`","\"打开之后报错。ERROR: more than one row returned by a subquery used as an expression（当数据中存在重复时）\""]
 
-## check_id: chk-enable-hashjoin
+## check_id: chk-enable-hashjoin-2
 
 - **type**: parameter-current-value
 - **param_name**: enable_hashjoin
@@ -4292,15 +5555,6 @@
 - **violation_patterns**: ["默认值未开启倾斜优化","未启用或设置为 lazy 时，优化器不对已知倾斜做额外优化"]
 - **linked_case_ids**: ["gaussdb-data-skew-compute-redistribute-01","gaussdb-dws-data-skew-compute-01"]
 - **rationales**: ["由于倾斜节点所需要运算的数据量远大于其它节点，导致倾斜节点降低系统整体性能","\"倾斜节点需要处理更多的数据，导致倾斜节点的计算性能远低于其他节点\""]
-
-## check_id: chk-thread-pool-attr
-
-- **type**: parameter-current-value
-- **param_name**: thread_pool_attr
-- **recommended_values**: ["NULL (按业务规模调大)"]
-- **violation_patterns**: ["线程池 worker 参数设置过小,导致业务排队"]
-- **linked_case_ids**: ["gaussdb-overall-slow-config-shared-buffers-01"]
-- **rationales**: ["\"线程池worker参数thread_pool_attr设置过小，导致业务排队。\""]
 
 ## check_id: chk-default-statistics-target
 
@@ -4434,7 +5688,7 @@
 - **violation_patterns**: ["攒批大小过大"]
 - **linked_case_ids**: ["dws-3-0-batching-import-memory-01"]
 
-## check_id: chk-autovacuum
+## check_id: chk-autovacuum-2
 
 - **type**: parameter-current-value
 - **param_name**: autovacuum
@@ -4488,7 +5742,7 @@
 - **linked_case_ids**: ["gaussdb-dws-query-slow-hstore-delta-bloat-01"]
 - **rationales**: ["\"入库速度不得超过MERGE处理能力。通过控制入库并发防止Delta表膨胀。\""]
 
-## check_id: chk-enable-codegen
+## check_id: chk-enable-codegen-2
 
 - **type**: parameter-current-value
 - **param_name**: enable_codegen
@@ -4548,7 +5802,7 @@
 - **linked_case_ids**: ["gaussdb-dws-lock-contention-wait-timeout-01"]
 - **rationales**: ["\"当申请的锁等待时间超过GUC参数lockwait_timeout的设定值时，系统会报LOCK_WAIT_TIMEOUT的错误。\""]
 
-## check_id: chk-psort-work-mem
+## check_id: chk-psort-work-mem-2
 
 - **type**: parameter-current-value
 - **param_name**: psort_work_mem
@@ -4593,14 +5847,6 @@
 - **linked_case_ids**: ["gaussdb-dws-copy-cdm-sequence-cache-01"]
 - **rationales**: ["\"默认创建的sequence的cache为1，导致在并发COPY入库时，CN频繁与GTM建连，且多个并发之间存在轻量锁争抢，导致数据同步效率低\""]
 
-## check_id: chk-query-dop
-
-- **type**: parameter-current-value
-- **param_name**: query_dop
-- **recommended_values**: ["0 (动态) — 需开启 use_workload_manager=on"]
-- **violation_patterns**: ["未配置或为 0,未按系统资源动态获取并行度"]
-- **linked_case_ids**: ["gaussdb-dws-system-level-tuning-24"]
-
 ## check_id: chk-cstore-buffers
 
 - **type**: parameter-current-value
@@ -4618,7 +5864,7 @@
 - **linked_case_ids**: ["gaussdb-dws-system-level-tuning-24"]
 - **rationales**: ["`否则Stream个数不够`"]
 
-## check_id: chk-vacuum-defer-cleanup-age
+## check_id: chk-vacuum-defer-cleanup-age-2
 
 - **type**: parameter-current-value
 - **param_name**: vacuum_defer_cleanup_age
@@ -4813,7 +6059,7 @@
 - **violation_patterns**: ["直接 `mongod` 启动 · 未走 numactl interleave"]
 - **linked_case_ids**: ["mongo-numa-cross-node-memory-degradation-04"]
 
-## check_id: chk-vm-swappiness
+## check_id: chk-vm-swappiness-2
 
 - **type**: parameter-current-value
 - **param_name**: vm.swappiness
@@ -4845,7 +6091,7 @@
 - **violation_patterns**: ["`\"majority\"` 同时 secondary 不健康(写卡);或 < majority(读 stale)"]
 - **linked_case_ids**: ["mongo-psa-majority-writeconcern-perf-degradation-01"]
 
-## check_id: chk-storage-wiredtiger-engineconfig-cachesizegb-cachesizepct
+## check_id: chk-storage-wiredtiger-engineconfig-cachesizegb-cachesizepct-2
 
 - **type**: parameter-current-value
 - **param_name**: storage.wiredTiger.engineConfig.cacheSizeGB / cacheSizePct
@@ -5843,7 +7089,7 @@
 - **scope**: app-query-layer
 - **source_url**: https://www.mongodb.com/docs/manual/tutorial/connection-pool-performance-tuning/
 
-## check_id: chk-minpoolsize
+## check_id: chk-minpoolsize-2
 
 - **type**: parameter-current-value
 - **param_name**: 应用启动时连接创建占用过多时间 · 设 minPoolSize 预热池子

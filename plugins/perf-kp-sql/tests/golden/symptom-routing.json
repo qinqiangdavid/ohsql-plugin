@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
-  "generated_at": "2026-04-29",
-  "total": 98,
+  "generated_at": "2026-05-29",
+  "total": 153,
   "draft_status": "complete (M1.2 100/100 · 团队需 review 后定型)",
   "buckets": {
     "df-typical": 32,
@@ -9,7 +9,8 @@
     "nothing-mode": 10,
     "negative": 10,
     "narrow-edge": 12,
-    "cross-category": 19
+    "cross-category": 19,
+    "gaussdb-df": 55
   },
   "cases": [
     {
@@ -1036,6 +1037,611 @@
       ],
       "expected_count": 4,
       "notes": "cross-category：跨 disk-io-saturation（jumbo chunk 写热点）、lock-contention（WT ticket 耗尽）和 query-slow（profiler 指标解读 + workingMillis 区分）四个 case 的压测场景综合诊断。复杂多因压测诊断，需分层分析：先解分片热点，再看锁瓶颈，最后分析慢查询类型。"
+    },
+    {
+      "id": "gaussdb-df-x01",
+      "bucket": "gaussdb-df",
+      "symptom_category": "plan-suboptimal",
+      "user_input": "从 Oracle 迁到鲲鹏 GaussDB 后想做迁移慢 SQL 的执行计划算子特征筛查：批量找出计划里带 SeqScan、全表扫描算子、需要改造的语句。",
+      "expected_case_ids": [
+        "gaussdb-plan-suboptimal-sql-x01"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-plan-suboptimal-sql-x01"
+    },
+    {
+      "id": "gaussdb-df-x02",
+      "bucket": "gaussdb-df",
+      "symptom_category": "cpu-high",
+      "user_input": "鲲鹏 GaussDB 高并发压测，CPU 长时间打满 100% 超出 80% 目标，怀疑是某些小函数 SQL 调用频次太高，怎么定位高 CPU 的 SQL？",
+      "expected_case_ids": [
+        "gaussdb-cpu-high-cpu-x02"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-cpu-high-cpu-x02"
+    },
+    {
+      "id": "gaussdb-df-x03",
+      "bucket": "gaussdb-df",
+      "symptom_category": "plan-suboptimal",
+      "user_input": "一条带 LEFT JOIN 的 SQL 跑了好几个小时像 hang 住，把后面业务都堵了；这张分区表每天大量入库但好像没 analyze，是不是统计不准走了 nestloop？",
+      "expected_case_ids": [
+        "gaussdb-plan-suboptimal-sql-x03"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-plan-suboptimal-sql-x03"
+    },
+    {
+      "id": "gaussdb-df-x05",
+      "bucket": "gaussdb-df",
+      "symptom_category": "other",
+      "user_input": "GaussDB 备机回放很慢，想确认是不是 recovery_redo_workers / recovery_parse_workers 这些回放模式参数配得不合理。",
+      "expected_case_ids": [
+        "gaussdb-other-x05"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-other-x05"
+    },
+    {
+      "id": "gaussdb-df-x07",
+      "bucket": "gaussdb-df",
+      "symptom_category": "other",
+      "user_input": "备机回放慢，怀疑是某种特定日志类型（比如 DDL 删文件类的 xlog）拖慢的，怎么按日志类型统计回放耗时？",
+      "expected_case_ids": [
+        "gaussdb-other-ddl-x07"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-other-ddl-x07"
+    },
+    {
+      "id": "gaussdb-df-x08",
+      "bucket": "gaussdb-df",
+      "symptom_category": "disk-io-saturation",
+      "user_input": "GaussDB 备机回放慢，io 读时延高、buffer 命中率低，是不是磁盘随机 IO 慢导致 buffer 频繁换入换出拖慢回放？",
+      "expected_case_ids": [
+        "gaussdb-disk-io-saturation-x08"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-disk-io-saturation-x08"
+    },
+    {
+      "id": "gaussdb-df-x09",
+      "bucket": "gaussdb-df",
+      "symptom_category": "data-skew",
+      "user_input": "开了并行回放但还是慢，业务集中在个别物理表，怀疑回放线程负载不均、利用不充分。",
+      "expected_case_ids": [
+        "gaussdb-data-skew-x09"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-data-skew-x09"
+    },
+    {
+      "id": "gaussdb-df-x10",
+      "bucket": "gaussdb-df",
+      "symptom_category": "other",
+      "user_input": "GaussDB 一个 global 索引膨胀得比原表还大，但同字段的复合索引不膨胀，是高并发插入相同 key 值导致的吗？",
+      "expected_case_ids": [
+        "gaussdb-other-key-x10"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-other-key-x10"
+    },
+    {
+      "id": "gaussdb-df-x11",
+      "bucket": "gaussdb-df",
+      "symptom_category": "lock-contention",
+      "user_input": "大数据分批入库每次 1000 条还是 SQL 超时，session 都卡在等 log file switch (checkpoint incomplete) 事件。",
+      "expected_case_ids": [
+        "gaussdb-lock-contention-sql-x11"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-lock-contention-sql-x11"
+    },
+    {
+      "id": "gaussdb-df-x12",
+      "bucket": "gaussdb-df",
+      "symptom_category": "lock-contention",
+      "user_input": "压测时报长事务告警，大量业务等锁超时，还引起主备复制时延高、undo 回收不掉，怎么查长事务和阻塞源会话？",
+      "expected_case_ids": [
+        "gaussdb-lock-contention-x12"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-lock-contention-x12"
+    },
+    {
+      "id": "gaussdb-df-x13",
+      "bucket": "gaussdb-df",
+      "symptom_category": "disk-io-saturation",
+      "user_input": "GaussDB 建 BM25 索引特别慢，iostat 看 iowait 很高，是磁盘 IO 瓶颈吗？",
+      "expected_case_ids": [
+        "gaussdb-disk-io-saturation-bm25-x13"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-disk-io-saturation-bm25-x13"
+    },
+    {
+      "id": "gaussdb-df-x14",
+      "bucket": "gaussdb-df",
+      "symptom_category": "lock-contention",
+      "user_input": "GaussDB 锁冲突导致响应慢：pg_thread_wait_status 里大量 lock 等待事件，想定位阻塞会话和被阻塞会话。",
+      "expected_case_ids": [
+        "gaussdb-lock-contention-x14"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-lock-contention-x14"
+    },
+    {
+      "id": "gaussdb-df-x16",
+      "bucket": "gaussdb-df",
+      "symptom_category": "memory-pressure",
+      "user_input": "GaussDB 动态内存使用率告警很高，要应急定位是全局/线程/session 哪一层内存占用高。",
+      "expected_case_ids": [
+        "gaussdb-memory-pressure-x16"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-memory-pressure-x16"
+    },
+    {
+      "id": "gaussdb-df-x17",
+      "bucket": "gaussdb-df",
+      "symptom_category": "plan-suboptimal",
+      "user_input": "查询变慢，explain 看估算行数和实际差很多，怀疑统计信息不准/没 analyze，autovacuum 参数也想确认下。",
+      "expected_case_ids": [
+        "gaussdb-plan-suboptimal-x17"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-plan-suboptimal-x17"
+    },
+    {
+      "id": "gaussdb-df-x18",
+      "bucket": "gaussdb-df",
+      "symptom_category": "plan-suboptimal",
+      "user_input": "建了索引但查询还是不走索引、计划走全表，想确认是不是索引失效（隐式类型转换/函数/OR）。",
+      "expected_case_ids": [
+        "gaussdb-plan-suboptimal-x18"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-plan-suboptimal-x18"
+    },
+    {
+      "id": "gaussdb-df-x19",
+      "bucket": "gaussdb-df",
+      "symptom_category": "other",
+      "user_input": "600 并发压测中主动做主备切换，切主后 TPS 掉了 16%，资源没满，怎么查？",
+      "expected_case_ids": [
+        "gaussdb-other-tps-x19"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-other-tps-x19"
+    },
+    {
+      "id": "gaussdb-df-x20",
+      "bucket": "gaussdb-df",
+      "symptom_category": "other",
+      "user_input": "TPCC 压测性能波动大，波动时 CPU 利用率反而低，TPLworker 都在等日志插入，像是主机日志扩页影响。",
+      "expected_case_ids": [
+        "gaussdb-other-tpcc-x20"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-other-tpcc-x20"
+    },
+    {
+      "id": "gaussdb-df-x21",
+      "bucket": "gaussdb-df",
+      "symptom_category": "other",
+      "user_input": "TPCC 压测性能波动，定位是备机日志预扩阻塞，想确认备机的 advance_xlog_file_num 预扩参数（不是主机侧）。",
+      "expected_case_ids": [
+        "gaussdb-other-tpcc-x21"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-other-tpcc-x21"
+    },
+    {
+      "id": "gaussdb-df-x22",
+      "bucket": "gaussdb-df",
+      "symptom_category": "other",
+      "user_input": "做索引查询时发现 n_tuples_fetched 恒定是 n_tuples_returned 的 2 倍，统计值像被重复累加了。",
+      "expected_case_ids": [
+        "gaussdb-other-astore-x22"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-other-astore-x22"
+    },
+    {
+      "id": "gaussdb-df-x23",
+      "bucket": "gaussdb-df",
+      "symptom_category": "memory-pressure",
+      "user_input": "GaussDB other 内存小幅持续上涨，日志里有 'Transaction ... has reached ... subtransactions'，是大量子事务导致的吗？",
+      "expected_case_ids": [
+        "gaussdb-memory-pressure-other-x23"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-memory-pressure-other-x23"
+    },
+    {
+      "id": "gaussdb-df-x24",
+      "bucket": "gaussdb-df",
+      "symptom_category": "query-slow",
+      "user_input": "通过 JDBC 开了 autosave 做语句级回滚后性能劣化几倍到几十倍，跟 MySQL 比差很多，是保存点/子事务开销？",
+      "expected_case_ids": [
+        "gaussdb-query-slow-autosave-x24"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-query-slow-autosave-x24"
+    },
+    {
+      "id": "gaussdb-df-x25",
+      "bucket": "gaussdb-df",
+      "symptom_category": "cpu-high",
+      "user_input": "某 SQL 消耗 CPU 很高，看下来用到的索引第一个字段过滤性差，是不是该把过滤性好的列加进复合索引左侧？",
+      "expected_case_ids": [
+        "gaussdb-cpu-high-cpu-x25"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-cpu-high-cpu-x25"
+    },
+    {
+      "id": "gaussdb-df-x26",
+      "bucket": "gaussdb-df",
+      "symptom_category": "cpu-high",
+      "user_input": "在网版本不支持 index skip scan，某 SQL 扫了所有页面导致 CPU 冲高，怎么确认和规避？",
+      "expected_case_ids": [
+        "gaussdb-cpu-high-index-x26"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-cpu-high-index-x26"
+    },
+    {
+      "id": "gaussdb-df-x27",
+      "bucket": "gaussdb-df",
+      "symptom_category": "lock-contention",
+      "user_input": "业务高峰期线程池突然打满，紧接着多个 DN 触发主备切换，排查那段时间有大量 DDL，是 LockMgrLock 热点吗？",
+      "expected_case_ids": [
+        "gaussdb-lock-contention-ddl-x27"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-lock-contention-ddl-x27"
+    },
+    {
+      "id": "gaussdb-df-x28",
+      "bucket": "gaussdb-df",
+      "symptom_category": "memory-pressure",
+      "user_input": "GaussDB other 内存持续缓慢涨到 150G，把操作系统内存吃满触发了主备切换，怀疑短连接 RSA 鉴权内存泄漏。",
+      "expected_case_ids": [
+        "gaussdb-memory-pressure-other-x28"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-memory-pressure-other-x28"
+    },
+    {
+      "id": "gaussdb-df-x29",
+      "bucket": "gaussdb-df",
+      "symptom_category": "plan-suboptimal",
+      "user_input": "一个慢 SQL，执行计划里相关子连接没被提升，子连接里是两个 SQL 做 union 的 EXISTS。",
+      "expected_case_ids": [
+        "gaussdb-plan-suboptimal-exists-x29"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-plan-suboptimal-exists-x29"
+    },
+    {
+      "id": "gaussdb-df-x30",
+      "bucket": "gaussdb-df",
+      "symptom_category": "plan-suboptimal",
+      "user_input": "Not In 子连接走了 NestLoop Anti Join 且内表大表全表扫，是 not in 产生 or is null 用不上索引吗？",
+      "expected_case_ids": [
+        "gaussdb-plan-suboptimal-not-x30"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-plan-suboptimal-not-x30"
+    },
+    {
+      "id": "gaussdb-df-x31",
+      "bucket": "gaussdb-df",
+      "symptom_category": "plan-suboptimal",
+      "user_input": "OR 表达式不支持索引导致全表扫描：查询计划走 SEQSCAN，SQL 里用了 OR 条件。",
+      "expected_case_ids": [
+        "gaussdb-plan-suboptimal-x31"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-plan-suboptimal-x31"
+    },
+    {
+      "id": "gaussdb-df-x32",
+      "bucket": "gaussdb-df",
+      "symptom_category": "plan-suboptimal",
+      "user_input": "带 SYSDATE 的查询在分布式下走了 PGXC 计划没下推到 DN，是函数 volatile/proshippable 属性问题？",
+      "expected_case_ids": [
+        "gaussdb-plan-suboptimal-sysdate-x32"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-plan-suboptimal-sysdate-x32"
+    },
+    {
+      "id": "gaussdb-df-x33",
+      "bucket": "gaussdb-df",
+      "symptom_category": "plan-suboptimal",
+      "user_input": "执行计划瓶颈在两处 seqscan 上面套了一层 Stream 算子，没用上 SMP 并行，调 query_dop 有用吗？",
+      "expected_case_ids": [
+        "gaussdb-plan-suboptimal-seqscan-x33"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-plan-suboptimal-seqscan-x33"
+    },
+    {
+      "id": "gaussdb-df-x34",
+      "bucket": "gaussdb-df",
+      "symptom_category": "disk-io-saturation",
+      "user_input": "长稳压测固定并发跑了 2 个多小时后 TPS 周期性抖动，CPU/内存没满但 IO 偏高、有超 4ms 的 IO 等待。",
+      "expected_case_ids": [
+        "gaussdb-disk-io-saturation-tps-x34"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-disk-io-saturation-tps-x34"
+    },
+    {
+      "id": "gaussdb-df-x35",
+      "bucket": "gaussdb-df",
+      "symptom_category": "lock-contention",
+      "user_input": "分布式高 TPS 压测下业务超时报错、硬件没满，发现跨节点事务多、分布式事务锁 ProcArrayLock 争抢严重。",
+      "expected_case_ids": [
+        "gaussdb-lock-contention-procarraylock-x35"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-lock-contention-procarraylock-x35"
+    },
+    {
+      "id": "gaussdb-df-x36",
+      "bucket": "gaussdb-df",
+      "symptom_category": "cpu-high",
+      "user_input": "核心系统 CPU 打满到 100%，定位是某分区 vacuum 后 pg_class 页面数变小、代价估算变化导致全表扫描，且分区存在数据倾斜。",
+      "expected_case_ids": [
+        "gaussdb-cpu-high-cpu-x36"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-cpu-high-cpu-x36"
+    },
+    {
+      "id": "gaussdb-df-x37",
+      "bucket": "gaussdb-df",
+      "symptom_category": "query-slow",
+      "user_input": "业务跑着跑着查询越来越慢，pg_stat_all_tables 看 n_dead_tup 很高、last_vacuum 很久没动，ustore 表死元组堆积？",
+      "expected_case_ids": [
+        "gaussdb-query-slow-dataarts-x37"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-query-slow-dataarts-x37"
+    },
+    {
+      "id": "gaussdb-df-x38",
+      "bucket": "gaussdb-df",
+      "symptom_category": "other",
+      "user_input": "GaussDB tpcc 调优，线程池 CPU 亲和默认 nobind 经常跨 NUMA 访问内存，想调 thread_pool_attr 绑核。",
+      "expected_case_ids": [
+        "gaussdb-other-tpcc-x38"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-other-tpcc-x38"
+    },
+    {
+      "id": "gaussdb-df-x39",
+      "bucket": "gaussdb-df",
+      "symptom_category": "other",
+      "user_input": "异地容灾集群 RPO 越来越高到 8000 多秒，主集群压测产生 xlog 太多把异地网络带宽打满了？",
+      "expected_case_ids": [
+        "gaussdb-other-rpo-x39"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-other-rpo-x39"
+    },
+    {
+      "id": "gaussdb-df-x40",
+      "bucket": "gaussdb-df",
+      "symptom_category": "other",
+      "user_input": "GaussDB 压测过程中备机 RTO 持续增高到 1000s 以上、未开启日志流控，怀疑回放线程抢不到 CPU、xlog 产生过快。",
+      "expected_case_ids": [
+        "gaussdb-other-rto-x40"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-other-rto-x40"
+    },
+    {
+      "id": "gaussdb-df-x41",
+      "bucket": "gaussdb-df",
+      "symptom_category": "other",
+      "user_input": "账户信息查询负载 TPS 一直不达标，初始才 400 目标 1000+，怀疑 druid 连接池配小、CN 压力不均、还有版本无效 xlog。",
+      "expected_case_ids": [
+        "gaussdb-other-tps-x41"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-other-tps-x41"
+    },
+    {
+      "id": "gaussdb-df-x42",
+      "bucket": "gaussdb-df",
+      "symptom_category": "query-slow",
+      "user_input": "主键更新慢 SQL：平均 1000ms+，疑似统计信息缺失没走 index scan，叠加并发更新同一行等事务锁、元组锁。",
+      "expected_case_ids": [
+        "gaussdb-query-slow-sql-x42"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-query-slow-sql-x42"
+    },
+    {
+      "id": "gaussdb-df-x43",
+      "bucket": "gaussdb-df",
+      "symptom_category": "disk-io-saturation",
+      "user_input": "IO 满、WAL 产生量异常大（约 10GB/h），故障演练时主 DN 猛产 WAL，分析是无效的 Freeze Page 类型 WAL（nfrozen=0）。",
+      "expected_case_ids": [
+        "gaussdb-disk-io-saturation-wal-x43"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-disk-io-saturation-wal-x43"
+    },
+    {
+      "id": "gaussdb-df-x44",
+      "bucket": "gaussdb-df",
+      "symptom_category": "other",
+      "user_input": "AutoVacuum Worker 清一个 122G 的 Ustore 分区表，12 天没清完，是 ustore vacuum 索引并发分裂检测异常导致冗余清理？",
+      "expected_case_ids": [
+        "gaussdb-other-autovacuum-x44"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-other-autovacuum-x44"
+    },
+    {
+      "id": "gaussdb-df-x45",
+      "bucket": "gaussdb-df",
+      "symptom_category": "other",
+      "user_input": "Ustore 开了闪回，集中 delete limit 1000 因大事务被查杀，跟 undo_retention_time 和数据倾斜有关？",
+      "expected_case_ids": [
+        "gaussdb-other-ustore-x45"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-other-ustore-x45"
+    },
+    {
+      "id": "gaussdb-df-x46",
+      "bucket": "gaussdb-df",
+      "symptom_category": "query-slow",
+      "user_input": "小并发下一条 insert 偶尔耗时 40ms，CN 慢 SQL 主要等待是 wait node，但 DN 上 db_time 才 700us，CN/DN 耗时对不上。",
+      "expected_case_ids": [
+        "gaussdb-query-slow-insert-x46"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-query-slow-insert-x46"
+    },
+    {
+      "id": "gaussdb-df-x47",
+      "bucket": "gaussdb-df",
+      "symptom_category": "plan-suboptimal",
+      "user_input": "分布式核心业务压测压力稳定但 TPS 概率性大幅下降，查是带 GSI 的表 update 走 Tid Scan 扫所有分区、还有 vfd 每次 commit 关 fd 不复用。",
+      "expected_case_ids": [
+        "gaussdb-plan-suboptimal-x47"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-plan-suboptimal-x47"
+    },
+    {
+      "id": "gaussdb-df-x48",
+      "bucket": "gaussdb-df",
+      "symptom_category": "cpu-high",
+      "user_input": "应用发布/重启/跑批时大量客户端建连超时失败、客户端 CPU 冲高，是密码加解密每次建连重算盐值耗 CPU？想调 loginTimeout。",
+      "expected_case_ids": [
+        "gaussdb-cpu-high-jdbc-x48"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-cpu-high-jdbc-x48"
+    },
+    {
+      "id": "gaussdb-df-x49",
+      "bucket": "gaussdb-df",
+      "symptom_category": "other",
+      "user_input": "容器化 GaussDB 多套实例报 lo 网卡丢包告警，业务量很小却高频触发，是 net.core.netdev_max_backlog 太小、AVCworker 刷统计把队列打满？",
+      "expected_case_ids": [
+        "gaussdb-other-x49"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-other-x49"
+    },
+    {
+      "id": "gaussdb-df-x50",
+      "bucket": "gaussdb-df",
+      "symptom_category": "other",
+      "user_input": "8C 小规格读写分离，备机读和并行回放冲突导致数仓业务偶现超时，想验证极致 RTO 该怎么开。",
+      "expected_case_ids": [
+        "gaussdb-other-rto-x50"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-other-rto-x50"
+    },
+    {
+      "id": "gaussdb-df-x51",
+      "bucket": "gaussdb-df",
+      "symptom_category": "other",
+      "user_input": "Ustore 表才几十万行却占了 309G、死元组 3600w+，vacuum full 后又涨，膨胀主要在 toast 表，是单事务内多次更新 toast 字段？",
+      "expected_case_ids": [
+        "gaussdb-other-ustore-x51"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-other-ustore-x51"
+    },
+    {
+      "id": "gaussdb-df-x52",
+      "bucket": "gaussdb-df",
+      "symptom_category": "lock-contention",
+      "user_input": "commit 慢有波动，慢 SQL 看 wait xact commit command 等待耗时高，日志里有 palm_hang_detect 等锁，是锁内部逻辑？",
+      "expected_case_ids": [
+        "gaussdb-lock-contention-commit-x52"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-lock-contention-commit-x52"
+    },
+    {
+      "id": "gaussdb-df-x53",
+      "bucket": "gaussdb-df",
+      "symptom_category": "query-slow",
+      "user_input": "几千万笔毫秒级交易偶现几十笔 500ms 毛刺，慢 SQL execution_time 大、LWLOCK ProcArrayLock 等待，日志有 unlink_half_dead_page 索引分裂。",
+      "expected_case_ids": [
+        "gaussdb-query-slow-x53"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-query-slow-x53"
+    },
+    {
+      "id": "gaussdb-df-x54",
+      "bucket": "gaussdb-df",
+      "symptom_category": "lock-contention",
+      "user_input": "GaussDB 轻量级锁防饿死机制误判导致性能抖动：commit 偶发超 1~3 秒，关闭 enable_wait_exclusive_lock 防饿死开关后缓解。",
+      "expected_case_ids": [
+        "gaussdb-lock-contention-x54"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-lock-contention-x54"
+    },
+    {
+      "id": "gaussdb-df-x55",
+      "bucket": "gaussdb-df",
+      "symptom_category": "plan-suboptimal",
+      "user_input": "一条 JDBC batch insert 慢到 1.5s，查是 client_encoding 和 server_encoding 不一致导致批处理下推 LP 优化失效。",
+      "expected_case_ids": [
+        "gaussdb-plan-suboptimal-jdbc-x55"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-plan-suboptimal-jdbc-x55"
+    },
+    {
+      "id": "gaussdb-df-x56",
+      "bucket": "gaussdb-df",
+      "symptom_category": "plan-suboptimal",
+      "user_input": "一个视图查询慢，t 表有索引却走了 seqscan，是 union all 子查询里两分支 target 列类型不一致、隐式转换导致谓词无法下推。",
+      "expected_case_ids": [
+        "gaussdb-plan-suboptimal-union-x56"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-plan-suboptimal-union-x56"
+    },
+    {
+      "id": "gaussdb-df-x57",
+      "bucket": "gaussdb-df",
+      "symptom_category": "plan-suboptimal",
+      "user_input": "client_acnt_id 上有索引但过滤条件没走索引扫描，发现子查询里有个没实际用到的窗口函数挡住了。",
+      "expected_case_ids": [
+        "gaussdb-plan-suboptimal-x57"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-plan-suboptimal-x57"
+    },
+    {
+      "id": "gaussdb-df-x58",
+      "bucket": "gaussdb-df",
+      "symptom_category": "plan-suboptimal",
+      "user_input": "explain 发现一个理论上恒为 false 的 union all 分支没被提前过滤掉，是 union all 下 cte 不会自动内联导致的。",
+      "expected_case_ids": [
+        "gaussdb-plan-suboptimal-union-x58"
+      ],
+      "expected_count": 1,
+      "notes": "GaussDB 跨模批次 · 区分信号见 user_input · 应单命中 gaussdb-plan-suboptimal-union-x58"
     }
   ]
 }

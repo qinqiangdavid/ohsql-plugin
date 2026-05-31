@@ -1,4 +1,278 @@
-<!-- ============ Diagnostic-Flow (gaussdb/centralized, 4 cases) ============ -->
+<!-- ============ Diagnostic-Flow (gaussdb/centralized, 8 cases) ============ -->
+
+## case_id: gaussdb-lock-contention-x12
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb
+- **platform**: bare
+- **engine**: gaussdb
+- **symptom_category**: lock-contention
+- **case_pattern**: core-perf-diagnosis
+- **topology**: centralized-only
+- **title**: GaussDB中长事务及阻塞排查诊断
+- **diagnostic_steps_count**: 4
+- **likely_causes_count**: 3
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 出现长事务：大量会话等锁超时、执行时间长，引发主备复制时延升高、回滚耗时长、undo 记录无法回收。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: pg_stat_activity长事务执行时长
+  collection_layer: db-system-view
+  collection_method_quote: `select current_timestamp - query_start as runtime,datname,usename,sessionid,substr(query,0,100) from pg_stat_activity where state != 'idle' and datname in('$database') and usename in ('$user') and extract(epoch from current_timestamp-xact_start)/60 > 1 order by 1 desc;`
+  abnormal_pattern_quote: extract(epoch from current_timestamp-xact_start)/60 > 1
+  abnormal_pattern_threshold: > 1 (分钟)
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+[step 2]
+  metric_name: pg_thread_wait_status等待事件
+  collection_layer: db-system-view
+  collection_method_quote: `select * from pg_thread_wait_status where sessionid in (select sessionid from pg_stat_activity where state != 'idle' and datname in('$database') and usename in ('$user') and extract(epoch from current_timestamp-xact_start)/60 > 1);`
+  abnormal_pattern_quote: NULL
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+[step 3]
+  metric_name: pg_thread_wait_status阻塞源会话
+  collection_layer: db-system-view
+  collection_method_quote: `select * from pg_thread_wait_status where sessionid in (select block_sessionid from pg_thread_wait_status where sessionid in (select sessionid from pg_stat_activity where state != 'idle' and datname in('$database') and usename in ('$user') and extract(epoch from current_timestamp-xact_start)/60 > 1));`
+  abnormal_pattern_quote: NULL
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+[step 4]
+  metric_name: gs_asp历史长事务采样记录
+  collection_layer: db-system-view
+  collection_method_quote: `SELECT DISTINCT a.xact_start_time, (a.sample_time - a.xact_start_time) as xact_run_time, a.thread_id, a.sessionid, d.datname AS database_name, u.usename AS username, a.application_name,a.client_addr, a.client_hostname FROM gs_asp a JOIN pg_database d ON a.databaseid = d.oid JOIN pg_user u ON a.userid = u.usesysid WHERE a.xact_start_time is not null AND username not in ('rdsAdmin') AND sample_time between '<日期> 某时刻' and '<日期> 某时刻' AND extract(epoch from xact_run_time)/60 > 1 --自定义执行时长，表示执行时间超过1min的事务 ORDER BY xact_run_time DESC;`
+  abnormal_pattern_quote: extract(epoch from xact_run_time)/60 > 1 --自定义执行时长，表示执行时间超过1min的事务
+  abnormal_pattern_threshold: > 1 (分钟)
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: 应用逻辑存在问题，没有及时提交事务
+  linked_diagnostic_step_no: NULL
+  mitigation_quote: NULL
+
+[non_parameter_causes · cause 2] other
+  cause_type: other
+  description_quote: SQL执行时间过长，需要SQL优化
+  linked_diagnostic_step_no: NULL
+  mitigation_quote: NULL
+
+[non_parameter_causes · cause 3] other
+  cause_type: other
+  description_quote: 锁竞争严重
+  linked_diagnostic_step_no: NULL
+  mitigation_quote: NULL
+
+```
+
+## case_id: gaussdb-plan-suboptimal-x17
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb
+- **platform**: bare
+- **engine**: gaussdb
+- **symptom_category**: plan-suboptimal
+- **case_pattern**: core-perf-diagnosis
+- **topology**: centralized-only
+- **title**: GaussDB统计信息不准导致查询变慢
+- **diagnostic_steps_count**: 3
+- **likely_causes_count**: 2
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 某些查询执行明显变慢，且查看执行计划（EXPLAIN/EXPLAIN ANALYZE）时，发现估算行数与实际处理行数差距很大。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: last_analyze_time
+  collection_layer: db-system-view
+  collection_method_quote: `select * from PG_STAT_ALL_TABLES where relname='tablename';`
+  abnormal_pattern_quote: 确定系统/手动上一次 ANALYZE 是否过久。
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+[step 2]
+  metric_name: autovacuum_settings
+  collection_layer: db-system-view
+  collection_method_quote: `select * from pg_settings where name like '%vacuum%';`
+  abnormal_pattern_quote: 如果 autovacuum 被关闭或配置阈值过高，则表更新后可能长期没有触发自动分析。
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+[step 3]
+  metric_name: autoanalyze_threshold
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `select * from pg_stat_get_tuples_changed('table_name'::REGCLASS); select pg_autovac_status('table_name'::REGCLASS);`
+  abnormal_pattern_quote: 确认是否达到触发autoanalyze阈值
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+```
+
+### likely_causes
+
+```
+[parameter_causes · cause 1] autovacuum相关参数
+  param_name: autovacuum相关参数
+  abnormal_value_pattern: 被关闭或配置阈值过高
+  recommended_value: NULL
+  recommendation_quote: 如果 autovacuum 被关闭或配置阈值过高，则表更新后可能长期没有触发自动分析。
+  risk_if_violated_quote: NULL
+  reasoning_quote: NULL
+  linked_diagnostic_step_no: NULL
+
+[non_parameter_causes · cause 1] other
+  cause_type: other
+  description_quote: 发生过主备切换，pg_stats 视图重置 / 不会对 pg_statistic 系统表进行 analyze / 分布式表上存在gsi: 统计信息缺失导致insert慢 / gsstat线程未收到统计信息 / 是否有大表进行vacuum阻塞了analyze : CPU 冲高 / analyze/autoanalyze未生效
+  linked_diagnostic_step_no: NULL
+  mitigation_quote: NULL
+
+```
+
+## case_id: gaussdb-other-tps-x19
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb
+- **platform**: bare
+- **engine**: gaussdb
+- **symptom_category**: other
+- **case_pattern**: core-perf-diagnosis
+- **topology**: centralized-only
+- **title**: GaussDB主备切换后TPS性能劣化16%
+- **diagnostic_steps_count**: 3
+- **likely_causes_count**: 1
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 业务压测（600 并发）中主动触发主备切换，切主后 TPS 劣化约 16%。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: CPU、IO、内存使用率
+  collection_layer: os
+  collection_method_quote: `通过htop查看CPU、IO、内存使用情况`
+  abnormal_pattern_quote: CPU还没有压满，内存充足。未发现异常
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+[step 2]
+  metric_name: wait cmd计数
+  collection_layer: db-system-view
+  collection_method_quote: `select wait_status, wait_event, count(*) from pg_thread_wait_status group by 1,2 order by 3 desc;`
+  abnormal_pattern_quote: 发现wait cmd计数很多，属于异常现象。
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+[step 3]
+  metric_name: TPLworker数量 / CPU idle空闲
+  collection_layer: flamegraph
+  collection_method_quote: `NULL`
+  abnormal_pattern_quote: 正常节点的TPLworker数量达到690个，但是异常节点的TPLworker数量只有380个
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: 业务方业务代码连接的一个接口IP地址写死了，每次都是先连第一个，再连第二个，再连第三个这样轮询，业务压测流量没有集中到新的主节点上导致的。
+  linked_diagnostic_step_no: NULL
+  mitigation_quote: NULL
+
+```
+
+## case_id: gaussdb-memory-pressure-other-x28
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb
+- **platform**: bare
+- **engine**: gaussdb
+- **symptom_category**: memory-pressure
+- **case_pattern**: core-perf-diagnosis
+- **topology**: centralized-only
+- **title**: GaussDB other内存持续缓慢增长导致主备切换诊断
+- **diagnostic_steps_count**: 3
+- **likely_causes_count**: 1
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> other内存持续增长，达到150GB，操作系统内存使用率100%，可用内存为0。CMA连续三次无法ping通其他所有备机，触发主备切换。七天内的监控数据看动态内存和共享内存使用情况正常，只有other内存持续上涨，增长到了150G（正常情况下应该20G左右）。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: other内存增长趋势
+  collection_layer: db-system-view
+  collection_method_quote: `select * from pg_total_memory_detail;`
+  abnormal_pattern_quote: jemalloc调优对于业务场景没有生效，other内存依然稳定斜率上涨。
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+[step 2]
+  metric_name: 内存泄漏信息
+  collection_layer: manual-code
+  collection_method_quote: `[需确认代码] memcheck，1:1展开复现业务，打印如下泄露信息`
+  abnormal_pattern_quote: 确认到是使用CRYPTO_zalloc存在未释放现象。
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+[step 3]
+  metric_name: 代码调用栈/未释放函数
+  collection_layer: manual-code
+  collection_method_quote: `[需确认代码] 进一步排查代码发现在pymysql驱动建连时，RSA鉴权过程中存在内存未及时释放的情况`
+  abnormal_pattern_quote: 调用了 EVP_PKEY_CTX_new，但未调用对应的 EVP_PKEY_CTX_free
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: 由于业务方业务脚本频繁使用短连接，导致RSA鉴权阶段申请的内存无法归还给操作系统，堆积在gaussdb进程，这部分内存也会被统计在 other 内存中。
+  linked_diagnostic_step_no: NULL
+  mitigation_quote: NULL
+
+```
 
 ## case_id: gaussdb-query-slow-missing-statistics-explain-verbose-01
 

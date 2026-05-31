@@ -1,4 +1,4 @@
-<!-- ============ Diagnostic-Flow (gaussdb/distributed, 22 cases) ============ -->
+<!-- ============ Diagnostic-Flow (gaussdb/distributed, 28 cases) ============ -->
 
 ## case_id: gaussdb-cpu-high-statement-view-01
 
@@ -60,6 +60,435 @@
   description_quote: "如果CPU高是gaussdb进程导致的，通常是由于不优SQL导致，关注由于用户语句导致的CPU异常。"
   linked_diagnostic_step_no: 1
   mitigation_quote: "可查询如下两个视图，对cpu_time字段进行逆序排序即可识别。a. dbe_perf.statement：可查询分布式本CN发起的历史语句信息。b. dbe_perf.summary_statement：可查询分布式所有CN发起的历史语句信息。"
+
+```
+
+## case_id: gaussdb-plan-suboptimal-sysdate-x32
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb
+- **platform**: bare
+- **engine**: gaussdb
+- **symptom_category**: plan-suboptimal
+- **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
+- **title**: SYSDATE函数不稳定导致无法下推生成PGXC计划
+- **diagnostic_steps_count**: 1
+- **likely_causes_count**: 1
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 带 SYSDATE 的查询走 PGXC 计划（未下推到 DN）。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: 函数属性(provolatile/proshippable)
+  collection_layer: db-system-view
+  collection_method_quote: `select proname, provolatile, proshippable from pg_proc where proname='<函数名>';`
+  abnormal_pattern_quote: clock_timestamp函数的provolatile属性为‘v’不稳定的，而且proshippable为空
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: 当函数为不稳定且proshippable不为true时，只能生成PGXC计划。
+  linked_diagnostic_step_no: NULL
+  mitigation_quote: NULL
+
+```
+
+## case_id: gaussdb-lock-contention-procarraylock-x35
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb
+- **platform**: bare
+- **engine**: gaussdb
+- **symptom_category**: lock-contention
+- **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
+- **title**: GaussDB分布式跨节点事务ProcArrayLock锁争抢导致业务超时报错
+- **diagnostic_steps_count**: 2
+- **likely_causes_count**: 2
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 高 TPS（约 1.2 万）压测下业务出现超时报错；单事务含跨节点操作，分布式事务锁争抢严重成为瓶颈，硬件资源未达上限。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: 等待事件ProcArrayLock
+  collection_layer: db-system-view
+  collection_method_quote: `select wait_status, wait_event, count(*) from pg_thread_wait_status group by 1,2 order by 3 desc;`
+  abnormal_pattern_quote: 数据库TOP1 等待事件ProcArrayLock
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+[step 2]
+  metric_name: 分布式事务两阶段提交火焰图
+  collection_layer: flamegraph
+  collection_method_quote: `NULL`
+  abnormal_pattern_quote: ProcArrayLock大锁的现在表现最明显的是在prepare阶段
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: 由于压测业务中单个事务存在跨节点操作，导致数据库在分布式事务锁的争抢比较严重
+  linked_diagnostic_step_no: NULL
+  mitigation_quote: NULL
+
+[non_parameter_causes · cause 2] other
+  cause_type: other
+  description_quote: 2PC提交中ProcArrayLock大锁就会成为瓶颈。从图2的火焰图上看，ProcArrayLock大锁的现在表现最明显的是在prepare阶段，现有GaussDB分布式只是对commit提交阶段做了优化，但是prepare这块依然有优化的空间。
+  linked_diagnostic_step_no: NULL
+  mitigation_quote: NULL
+
+```
+
+## case_id: gaussdb-other-tps-x41
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb
+- **platform**: bare
+- **engine**: gaussdb
+- **symptom_category**: other
+- **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
+- **title**: 某核心系统账户信息查询压测TPS不达标调优
+- **diagnostic_steps_count**: 5
+- **likely_causes_count**: 5
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> TPS 远低于目标：实测约 400，目标 1000+。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: pgxc_stat_activity state
+  collection_layer: db-system-view
+  collection_method_quote: `select state, count(*) from pgxc_stat_activity group by state;`
+  abnormal_pattern_quote: 基本活跃会话很少，事务执行过程中状态较多，基本都在等待业务服务器向数据库发数据
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+[step 2]
+  metric_name: IO使用率
+  collection_layer: os
+  collection_method_quote: `iostat -x -m 5 3`
+  abnormal_pattern_quote: 数据库的IO使用率非常高
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+[step 3]
+  metric_name: CN节点压力分布
+  collection_layer: db-system-view
+  collection_method_quote: `select node_name, count(*) from pgxc_stat_activity group by node_name order by 2 desc;`
+  abnormal_pattern_quote: 微服务压力只发往AZ1内一个CN，另外一个CN无压力
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+[step 4]
+  metric_name: druid连接配置
+  collection_layer: manual-business
+  collection_method_quote: `[需确认业务] NULL`
+  abnormal_pattern_quote: druid最小连接配置较小，仅20，会导致压测过程开始时建连排队
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+[step 5]
+  metric_name: druid monitor排队情况
+  collection_layer: manual-external
+  collection_method_quote: `[需外部确认] NULL`
+  abnormal_pattern_quote: 在微服务连接池druid上，出现排队
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+```
+
+### likely_causes
+
+```
+[parameter_causes · cause 1] vacuum_cost_delay
+  param_name: vacuum_cost_delay
+  abnormal_value_pattern: 1ms
+  recommended_value: 30ms
+  recommendation_quote: vacuum_cost_delay参数从1ms调整至30ms
+  risk_if_violated_quote: NULL
+  reasoning_quote: NULL
+  linked_diagnostic_step_no: NULL
+
+[non_parameter_causes · cause 1] other
+  cause_type: other
+  description_quote: 定位是数据库505.2.0 24年9月份版本有个BUG（505.2.1 630版本已修复），会产生无效xlog
+  linked_diagnostic_step_no: NULL
+  mitigation_quote: NULL
+
+[non_parameter_causes · cause 2] application-design
+  cause_type: application-design
+  description_quote: 微服务压力只发往AZ1内一个CN，另外一个CN无压力
+  linked_diagnostic_step_no: NULL
+  mitigation_quote: NULL
+
+[non_parameter_causes · cause 3] application-design
+  cause_type: application-design
+  description_quote: druid最小连接配置较小，仅20，会导致压测过程开始时建连排队
+  linked_diagnostic_step_no: NULL
+  mitigation_quote: NULL
+
+[non_parameter_causes · cause 4] application-design
+  cause_type: application-design
+  description_quote: 业务统计SQL耗时，会将等待获取连接池连接的时间也算在内，而这块等待的耗时显然还不少
+  linked_diagnostic_step_no: NULL
+  mitigation_quote: NULL
+
+```
+
+## case_id: gaussdb-query-slow-insert-x46
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb
+- **platform**: bare
+- **engine**: gaussdb
+- **symptom_category**: query-slow
+- **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
+- **title**: GaussDB小并发场景下Insert语句耗时抖动分析
+- **diagnostic_steps_count**: 3
+- **likely_causes_count**: 4
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 一条 insert 语句耗时约 40ms；慢 SQL 视图显示 CN 主要等待事件为 wait node（约 41ms），而 DN 上该语句 db_time 仅约 700us，CN 与 DN 耗时统计对不上。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: wait node等待事件耗时
+  collection_layer: db-system-view
+  collection_method_quote: `select wait_status, wait_event, count(*) from pg_thread_wait_status group by 1,2 order by 3 desc;`
+  abnormal_pattern_quote: 等待事件的计时是从pgstat_report_waitstatus_comm函数上报“wait node”时开始的，但是在pgstat_reset_waitStatePhase中并没有结束计时，只是重置了等待状态，计时仍然在持续，直到下一次调用pgstat_report_waitstatus_comm上报等待事件时，才停止前一次上报“wait node”的计时。这个实现逻辑明显与产品文档中定义的“wait node”等待事件的含义不符。
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+[step 2]
+  metric_name: CN和DN间网络交互次数
+  collection_layer: manual-code
+  collection_method_quote: `[需确认代码] 从代码流程上看，单条INSERT语句在执行过程中，CN和DN间会有多次网络交互`
+  abnormal_pattern_quote: CN上wait node事件统计的是3次网络交互的总体开销，而DN上慢SQL视图里面记录的只是一次INSERT语句的耗时
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+[step 3]
+  metric_name: poll_interrupt接口耗时/线程唤醒耗时
+  collection_layer: log-grep / flamegraph
+  collection_method_quote: `从日志中我们发现，CN在调用poll_interrupt接口等待DN回复消息时存在偶现时延增大到4ms的情况。 / 我们抓取了火焰图`
+  abnormal_pattern_quote: CN在调用poll_interrupt接口等待DN回复消息时存在偶现时延增大到4ms的情况 / DN在收到消息后唤醒线程过程中花费了3ms左右时间 / DN接收线程没有被及时调度
+  abnormal_pattern_threshold: 4ms
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+```
+
+### likely_causes
+
+```
+[parameter_causes · cause 1] /sys/kernel/debug/sched_features
+  param_name: /sys/kernel/debug/sched_features
+  abnormal_value_pattern: SIS_PROP
+  recommended_value: NO_SIS_PROP
+  recommendation_quote: 如果参数是SIS_PROP，改成NO_SIS_PROP 命令： echo NO_SIS_PROP > /sys/kernel/debug/sched_features
+  risk_if_violated_quote: NULL
+  reasoning_quote: NULL
+  linked_diagnostic_step_no: NULL
+
+[non_parameter_causes · cause 1] other
+  cause_type: other
+  description_quote: 等待事件的计时是从pgstat_report_waitstatus_comm函数上报“wait node”时开始的，但是在pgstat_reset_waitStatePhase中并没有结束计时，只是重置了等待状态，计时仍然在持续，直到下一次调用pgstat_report_waitstatus_comm上报等待事件时，才停止前一次上报“wait node”的计时。
+  linked_diagnostic_step_no: NULL
+  mitigation_quote: NULL
+
+[non_parameter_causes · cause 2] other
+  cause_type: other
+  description_quote: CN上wait node事件统计的是3次网络交互的总体开销，而DN上慢SQL视图里面记录的只是一次INSERT语句的耗时
+  linked_diagnostic_step_no: NULL
+  mitigation_quote: NULL
+
+[non_parameter_causes · cause 3] other
+  cause_type: other
+  description_quote: 同一时间3号CPU上确实有很多线程在执行，因此DN接收线程没有被及时调度。但8~15号CPU相对空闲，那为什么不将线程调度到8~15号CPU上去处理呢？...一个进程在某个 CPU 上运行时，会在该 CPU 的缓存中维护许多状态。下次 该进程在相同 CPU 上运行时，由于缓存中的数据而执行得更快。相反，在不同的 CPU 上执行，会由于需要重新加载数据而很慢...因此多处理器调度应该考虑到这种缓存亲和性，并尽可能将进程保持在同一个 CPU 上。
+  linked_diagnostic_step_no: NULL
+  mitigation_quote: NULL
+
+```
+
+## case_id: gaussdb-plan-suboptimal-jdbc-x55
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb
+- **platform**: bare
+- **engine**: gaussdb
+- **symptom_category**: plan-suboptimal
+- **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
+- **title**: GaussDB JDBC Batch Insert因客户端与服务端编码不一致导致无法下推LP引发慢SQL
+- **diagnostic_steps_count**: 5
+- **likely_causes_count**: 2
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 一条 JDBC batch insert 语句慢，耗时约 1.5s。
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: 慢SQL details等待事件
+  collection_layer: db-system-view
+  collection_method_quote: `select unique_query_id, substr(query,1,80) q, db_time, cpu_time, execution_time from dbe_perf.statement_history order by db_time desc limit 20;`
+  abnormal_pattern_quote: 主要是两个等待事件比较突出，和1.5s也比较接近 wait node: 主要是CN在等DN gtm get snapshot: CN向GTM请求快照信息
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+[step 2]
+  metric_name: DN慢SQL信息
+  collection_layer: db-system-view
+  collection_method_quote: `select unique_query_id, substr(query,1,80) q, db_time, cpu_time, execution_time from dbe_perf.statement_history order by db_time desc limit 20;`
+  abnormal_pattern_quote: 发现DN上无慢SQL信息
+  abnormal_pattern_threshold: 500ms
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+[step 3]
+  metric_name: 网络时延与跨AZ请求
+  collection_layer: manual-external
+  collection_method_quote: `[需外部确认] NULL`
+  abnormal_pattern_quote: 确实有CN_5003/CN_5004访问另外一个机房的GTM和DN主的情况，同时发现：此语句的所有慢SQL都是CN_5003/CN_5004发起（即跨AZ请求）那看一下时延情况，发现时延有些高，大约0.8ms左右
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+[step 4]
+  metric_name: 慢SQL锁次数与软解析次数
+  collection_layer: db-system-view
+  collection_method_quote: `select unique_query_id, substr(query,1,80) q, db_time, cpu_time, execution_time from dbe_perf.statement_history order by db_time desc limit 20;`
+  abnormal_pattern_quote: 两者在单语句内都不应该出现这么多次数
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+[step 5]
+  metric_name: client encoding与server encoding配置
+  collection_layer: db-shell
+  collection_method_quote: `show client_encoding; show server_encoding;`
+  abnormal_pattern_quote: 业务库当前主要是encoding: GB18030-2022 （2）JDBC侧设置成非GB18030-2022和设置成GB18030-2022 （3）测试发现性能是160+s和1s的差异
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+```
+
+### likely_causes
+
+```
+[parameter_causes · cause 1] client_encoding / server_encoding
+  param_name: client_encoding / server_encoding
+  abnormal_value_pattern: client encoding和server encoding不同(JDBC侧非GB18030-2022，而DB侧为GB18030-2022)
+  recommended_value: 保持client encoding和server encoding一致(JDBC连接串设置GB18030-2022)
+  recommendation_quote: 对于client encoding和server encoding不同，需要有诊断建议，或者自诊断提示能力，不应该层层分析，最终定位
+  risk_if_violated_quote: NULL
+  reasoning_quote: NULL
+  linked_diagnostic_step_no: NULL
+
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: client encoding和server encoding不同...导致其实批处理下推优化无法生效
+  linked_diagnostic_step_no: NULL
+  mitigation_quote: NULL
+
+```
+
+## case_id: gaussdb-plan-suboptimal-union-x56
+
+- **entry_kind**: diagnostic-flow
+- **db**: gaussdb
+- **platform**: bare
+- **engine**: gaussdb
+- **symptom_category**: plan-suboptimal
+- **case_pattern**: core-perf-diagnosis
+- **topology**: distributed-only
+- **title**: union all子查询内下推列存在隐式转换导致谓词无法下推走seqscan
+- **diagnostic_steps_count**: 2
+- **likely_causes_count**: 1
+- **source_url_lang**: zh-cn
+
+### symptom_description
+
+> 发现耗时最大的是视图a耗时最大...而t表在main_stock_code上是存在索引的，但是从执行计划上来看t表走了seqscan
+
+### diagnostic_steps
+
+```
+[step 1]
+  metric_name: 执行计划
+  collection_layer: db-interactive-cmd
+  collection_method_quote: `explain (analyze, verbose, buffers) <目标SQL>;`
+  abnormal_pattern_quote: t表走了seqscan
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+[step 2]
+  metric_name: 代码分析
+  collection_layer: manual-code
+  collection_method_quote: `[需确认代码] 通过代码分析发现`
+  abnormal_pattern_quote: 若两个不同union all分支的target列类型不一致 会导致谓词无法下推到子查询中
+  abnormal_pattern_threshold: NULL
+  metric_unit: NULL
+  prerequisite_steps: NULL
+
+```
+
+### likely_causes
+
+```
+[non_parameter_causes · cause 1] application-design
+  cause_type: application-design
+  description_quote: 在union all的子查询中，若两个不同union all分支的target列类型不一致 会导致谓词无法下推到子查询中...gauss当前默认会将decode转为text类型，比较容易与character varying出现隐式转换
+  linked_diagnostic_step_no: NULL
+  mitigation_quote: NULL
 
 ```
 

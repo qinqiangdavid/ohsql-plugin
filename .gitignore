@@ -15,7 +15,9 @@ graphify-out/
 plugins/**/.claude/
 plugins/**/.gitnexus/
 plugins/**/graphify-out/
-plugins/**/data/quality-reports/
+# 只忽略生成的体检报告 · pending-source-url-allowlist.json 是源配置 · 必须跟踪
+plugins/**/data/quality-reports/field-integrity-report.json
+__pycache__/
 
 # macOS resource fork
 ._*

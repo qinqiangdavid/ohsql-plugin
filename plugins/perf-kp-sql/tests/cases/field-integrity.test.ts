@@ -23,6 +23,22 @@ const DATA_DIR = resolve(PLUGIN_ROOT, "data");
 const REPORT_DIR = resolve(DATA_DIR, "quality-reports");
 const REPORT_PATH = resolve(REPORT_DIR, "field-integrity-report.json");
 
+// ---- pending-source-url 债清单 ----
+//
+// 跨模型弱模型蒸馏批次(无 source_url / source_heading)经用户授权先入库 · 显式追踪。
+// 仅对清单内 case_id 的 exempt_fields(source_url / source_heading)降级为 pending 债,
+// 不 fail;清单外 case、清单内的其它字段一律照硬契约 fail。
+// 补回 source_url 后从 JSON 里删对应 id → 测试自动重新强制。
+const ALLOWLIST_PATH = resolve(REPORT_DIR, "pending-source-url-allowlist.json");
+const PENDING = (() => {
+  try {
+    const j = JSON.parse(readFileSync(ALLOWLIST_PATH, "utf8"));
+    return { ids: new Set<string>(j.case_ids || []), fields: new Set<string>(j.exempt_fields || []) };
+  } catch {
+    return { ids: new Set<string>(), fields: new Set<string>() };
+  }
+})();
+
 interface ParsedCase {
   case_id: string;
   line_no: number;
@@ -169,6 +185,7 @@ interface CheckedCase {
   source_file: string;
   hard_missing: string[];
   warn_missing: string[];
+  pending_missing: string[]; // 债清单内 case 的 source_url/source_heading 缺失 · 追踪不 fail
 }
 
 function checkCase(c: ParsedCase, sourceFile: string): CheckedCase | null {
@@ -181,15 +198,20 @@ function checkCase(c: ParsedCase, sourceFile: string): CheckedCase | null {
       source_file: sourceFile,
       hard_missing: [`entry_kind=${kind || "(missing)"} · 不在已知 schema (diagnostic-flow / flame-signature / best-practice)`],
       warn_missing: [],
+      pending_missing: [],
     };
   }
   const hard_missing: string[] = [];
   const warn_missing: string[] = [];
+  const pending_missing: string[] = [];
+  // 债清单内 case 的 exempt_fields(source_url/source_heading)缺失 → 转 pending(不 fail)
+  const isPendingField = (f: string) => PENDING.ids.has(c.case_id) && PENDING.fields.has(f);
 
   for (const f of schema.hard_fields) {
     const v = c.fields[f];
-    if (v === undefined) hard_missing.push(`field:${f}`);
-    else if (v.trim().length === 0) hard_missing.push(`field:${f}(empty)`);
+    const bucket = isPendingField(f) ? pending_missing : hard_missing;
+    if (v === undefined) bucket.push(`field:${f}`);
+    else if (v.trim().length === 0) bucket.push(`field:${f}(empty)`);
   }
   for (const s of schema.hard_sections) {
     if (!c.sections.has(s)) hard_missing.push(`section:${s}`);
@@ -205,13 +227,14 @@ function checkCase(c: ParsedCase, sourceFile: string): CheckedCase | null {
     else if ((c.section_bodies[s] || "").length === 0) warn_missing.push(`section:${s}(empty)`);
   }
 
-  if (hard_missing.length === 0 && warn_missing.length === 0) return null;
+  if (hard_missing.length === 0 && warn_missing.length === 0 && pending_missing.length === 0) return null;
   return {
     case_id: c.case_id,
     entry_kind: kind,
     source_file: sourceFile,
     hard_missing,
     warn_missing,
+    pending_missing,
   };
 }
 
@@ -229,6 +252,7 @@ for (const { c, src } of casesAll) {
 
 const hardFailed = all_checked.filter((c) => c.hard_missing.length > 0);
 const warnOnly = all_checked.filter((c) => c.hard_missing.length === 0 && c.warn_missing.length > 0);
+const pendingDebt = all_checked.filter((c) => c.pending_missing.length > 0);
 
 const total = casesAll.length;
 const hardFailCount = hardFailed.length;
@@ -246,6 +270,7 @@ const report = {
     warn_only: warnCount,
     hard_missing_fields_count: hardMissingFieldsCount,
     warn_missing_fields_count: warnMissingFieldsCount,
+    pending_source_url_debt: pendingDebt.length,
     by_entry_kind: (() => {
       const m: Record<string, { total: number; hard_failed: number; warn_only: number }> = {};
       for (const { c } of casesAll) {
@@ -267,6 +292,7 @@ const report = {
   required_schema: REQUIRED,
   hard_failed_cases: hardFailed,
   warn_only_cases: warnOnly,
+  pending_source_url_cases: pendingDebt,
 };
 
 before(() => {
@@ -300,6 +326,22 @@ describe("案例字段完整度 lint", () => {
     assert.fail(
       `${hardFailed.length}/${total} case 缺失 hard required 字段 ·\n${summary}${more}`
     );
+  });
+
+  it(`pending-source-url 债清单一致性(不 fail · 显式追踪)`, () => {
+    // 1) 债清单内每个 case 必须真实存在(防清单漂移残留已删 case)
+    const presentIds = new Set(casesAll.map(({ c }) => c.case_id));
+    const stale = [...PENDING.ids].filter((id) => !presentIds.has(id));
+    assert.equal(stale.length, 0, `债清单含已不存在的 case_id(请清理): ${stale.join(", ")}`);
+    // 2) 债清单内 case 不许有 source_url/source_heading 以外的硬缺失(否则掩盖真问题)
+    const sneaky = pendingDebt.filter((c) => c.hard_missing.length > 0).map((c) => c.case_id);
+    assert.equal(sneaky.length, 0, `债清单内 case 还缺其它硬字段(不许掩盖): ${sneaky.join(", ")}`);
+    if (pendingDebt.length > 0) {
+      console.log(
+        `\n  ⚠️ pending-source-url 债: ${pendingDebt.length} 条 case 暂缺 ${[...PENDING.fields].join("/")} · ` +
+          `补回后从 ${ALLOWLIST_PATH.replace(/.*\/plugins\//, "plugins/")} 删 id 即重新强制`
+      );
+    }
   });
 
   it(`warn-only 字段缺失统计(不 fail · 报告标记 · ${REPORT_PATH})`, () => {
