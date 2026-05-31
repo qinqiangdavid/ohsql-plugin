@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """GaussDB 离线采集 · 预编译版 · 自包含 · python 纯 stdlib.
 
-所有 142 个 auto 命令已 inline 在 CHECKS list 里 (不解析 ndjson).
+所有 119 个 auto 命令已 inline 在 CHECKS list 里 (不解析 ndjson).
 
-生成时间: 2026-05-31T03:36:10.893Z
-数据: auto=142 · manual=199 · skip=1 · total=342
+生成时间: 2026-05-31T04:48:26.027Z
+数据: auto=119 · manual=222 · skip=1 · total=342
 
 用法:
   source ~/gauss_env_file
@@ -58,11 +58,10 @@ if DEPLOY_FORM.startswith('unknown'):
     print(f'⚠️ topology-filter-disabled: deploy_form={DEPLOY_FORM} · 全采(不按 topology 跳过)', file=sys.stderr, flush=True)
 (OUTDIR / 'deploy.txt').write_text(DEPLOY_FORM + '\n')
 
-# (check_id, name, layer, method, topology) · 142 条 auto · 直接跑
+# (check_id, name, layer, method, topology) · 119 条 auto · 直接跑
 CHECKS = [
     ("chk-dbe-perf-statement-cpu-time", "dbe_perf.statement.cpu_time", "db-system-view", "select unique_sql_id,substr(query,1,50) as query ,n_calls,round(total_elapse_time/n_calls/1000,2) avg_time,round(total_elapse_time/1000,2) as total_time,round(cpu_time/1000,2) as cup_time from dbe_perf.statement t where  n_calls>10 and avg_time>3  and user_name='root'  order by cpu_time desc limit 5;", "common"),
     ("chk-sql", "慢SQL及调用频次", "db-system-view", "select unique_query_id, substr(query,1,80) q, db_time, cpu_time, execution_time from dbe_perf.statement_history order by db_time desc limit 20;", "common"),
-    ("chk-recovery-max-workers-recovery-parse-workers-recovery-redo-wo", "recovery_max_workers/recovery_parse_workers/recovery_redo_workers", "db-shell", "show recovery_max_workers; show recovery_parse_workers; show recovery_redo_workers; show shared_buffers;", "common"),
     ("chk--2", "回放日志类型统计", "db-interactive-cmd", "select * from local_xlog_redo_statics()", "common"),
     ("chk-buffer-hit-rate-read-buffer-io", "buffer_hit_rate / read_buffer_io", "db-interactive-cmd", "select * from gs_redo_stat_info()", "common"),
     ("chk-wait-read-data", "WAIT_READ_DATA", "db-system-view", "select * from dbe_perf.GLOBAL_WAIT_EVENTS where wait!=0 order by total_wait_time desc;", "common"),
@@ -79,27 +78,21 @@ CHECKS = [
     ("chk--18", "复制槽推动速度", "db-system-view", "select * from dbe_perf.global_replication_stat;", "common"),
     ("chk-io-io", "磁盘IO性能和IO调度算法", "os", "grep -H . /sys/block/*/queue/scheduler 2>/dev/null", "common"),
     ("chk-pgxc-stat-activity-state", "pgxc_stat_activity state", "db-system-view", "select state, count(*) from pgxc_stat_activity group by state;", "distributed-only"),
-    ("chk-cn", "CN节点压力分布", "db-system-view", "select node_name, count(*) from pgxc_stat_activity group by node_name order by 2 desc;", "distributed-only"),
+    ("chk-cn", "CN节点压力分布", "db-system-view", "select coorname, count(*) from pgxc_stat_activity group by coorname order by 2 desc;", "distributed-only"),
     ("chk-undo-retention-time", "undo_retention_time", "db-system-view", "show undo_retention_time;", "common"),
     ("chk-dropped-packets-count", "dropped packets count", "db-shell", "cat /proc/net/dev", "common"),
     ("chk-net-core-netdev-max-backlog", "net.core.netdev_max_backlog", "os", "sysctl net.core.netdev_max_backlog", "common"),
-    ("chk-client-encoding-server-encoding", "client encoding与server encoding配置", "db-shell", "show client_encoding; show server_encoding;", "distributed-only"),
     ("chk-pg-stat-get-last-data-changed-time", "近期数据变更表列表（pg_stat_get_last_data_changed_time）", "db-system-view", "SELECT table_distribution(schemaname,relname) FROM get_last_changed_table();", "distributed-only"),
     ("chk-pgxc-get-table-skewness", "PGXC_GET_TABLE_SKEWNESS", "db-system-view", "SELECT * FROM pgxc_get_table_skewness ORDER BY totalsize DESC;", "distributed-only"),
     ("chk-table-distribution-dn-1w", "table_distribution() 各DN空间（大表个数超1W场景）", "db-system-view", "SELECT schemaname,tablename,max(dnsize) AS maxsize, min(dnsize) AS minsize FROM pg_catalog.pg_class c INNER JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace INNER JOIN pg_catalog.table_distribution() s ON s.schemaname = n.nspname AND s.tablename = c.relname INNER JOIN pg_catalog.pgxc_class x ON c.oid = x.pcrelid AND x.pclocatortype = 'H' GROUP BY schemaname,tablename;", "distributed-only"),
-    ("chk-table-skewness-dn", "table_skewness() 各 DN 数据分布比例", "db-system-view", "select table_skewness('inventory');", "distributed-only"),
     ("chk-pg-stat-get-last-data-changed-time-2", "pg_stat_get_last_data_changed_time 最近变更的表", "db-system-view", "SELECT table_distribution(schemaname,relname) FROM get_last_changed_table();", "distributed-only"),
     ("chk-top-sar-gaussdb-cpu", "top / sar 中 gaussdb 进程 CPU 占用", "os", "top -b -n 1", "common"),
     ("chk-pgxc-thread-wait-status-wait-status", "pgxc_thread_wait_status.wait_status", "db-system-view", "Select wait_status, count(*) cnt from pgxc_thread_wait_status where wait_status not like '%cmd%' and wait_status not like '%none%' and wait_status not like '%quit%' group by 1 order by 2 desc;", "distributed-only"),
-    ("chk-table-skewness-table-distribution", "table_skewness / table_distribution", "db-system-view", "select table_skewness('store_sales');", "distributed-only"),
     ("chk--38", "线程等待状态", "db-system-view", "select * from pg_thread_wait_status where query_id='149181737656737395';", "distributed-only"),
     ("chk-sql-create-index", "活跃SQL及CREATE INDEX语句", "db-system-view", "select * from pg_stat_activity where state !='idle' and usename !='omm';", "distributed-only"),
-    ("chk--39", "表数据倾斜", "db-system-view", "select table_skewness('ioc_dm.m_ss_index_event');", "distributed-only"),
     ("chk-pgxc-get-stat-all-tables-dirty-page-rate", "PGXC_GET_STAT_ALL_TABLES.dirty_page_rate", "db-system-view", "SELECT schemaname AS schema, relname AS table_name, n_live_tup AS analyze_count, pg_size_pretty(pg_table_size(relid)) as table_size, dirty_page_rate FROM PGXC_GET_STAT_ALL_TABLES WHERE schemaName NOT IN ('pg_toast', 'pg_catalog', 'information_schema', 'cstore', 'pmk') AND dirty_page_rate > 30 ORDER BY table_size DESC, dirty_page_rate DESC;", "distributed-only"),
-    ("chk-dn-2", "各DN数据量分布", "db-shell", "SELECT pg_get_tabledef('customer_t1');", "distributed-only"),
     ("chk-enable-codegen", "enable_codegen 参数状态", "db-shell", "SHOW turbo_engine_version;", "distributed-only"),
     ("chk-pgxc-wlm-session-info-streaming-stream-count", "pgxc_wlm_session_info · Streaming 算子数（stream_count）", "db-system-view", "SELECT *,(length(query_plan) - length(replace(query_plan, 'Streaming', ''))) / length('Streaming') AS stream_count FROM pgxc_wlm_session_info ORDER BY stream_count DESC limit 100;", "distributed-only"),
-    ("chk-pgxc-wlm-session-info-max-cpu-time-cpu", "pgxc_wlm_session_info · max_cpu_time（高CPU语句）", "db-system-view", "SELECT * FROM pgxc_wlm_session_info WHERE start_time > 'xxxx-xx-xx' AND start_time < 'xxxx-xx-xx' ORDER BY max_cpu_time desc;", "distributed-only"),
     ("chk-pgxc-stat-activity-runtime-current-timestamp-query-start", "PGXC_STAT_ACTIVITY · runtime (current_timestamp - query_start)", "db-system-view", "SELECT current_timestamp - query_start as runtime, datname, usename, query FROM PGXC_STAT_ACTIVITY WHERE state != 'idle' order by 1 desc;", "distributed-only"),
     ("chk-pgxc-stat-activity-waiting-true", "PGXC_STAT_ACTIVITY · waiting=true 阻塞查询", "db-system-view", "SELECT coorname, pid, datname, usename, state, query FROM PGXC_STAT_ACTIVITY WHERE state <> 'idle' and waiting=true;", "distributed-only"),
     ("chk-pgxc-lock-conflicts", "pgxc_lock_conflicts 锁冲突视图", "db-system-view", "SELECT * FROM pgxc_lock_conflicts;", "distributed-only"),
@@ -107,101 +100,85 @@ CHECKS = [
     ("chk-pgxc-total-memory-detail-dynamic-used-memory-vs-max-dynamic-", "pgxc_total_memory_detail · dynamic_used_memory vs max_dynamic_memory", "db-system-view", "SELECT * FROM pgxc_total_memory_detail;", "distributed-only"),
     ("chk-pgxc-wlm-session-statistics-max-peak-memory-memory-skew-perc", "pgxc_wlm_session_statistics · max_peak_memory / memory_skew_percent", "db-system-view", "SELECT nodename,pid,dbname,username,application_name,min_peak_memory,max_peak_memory,average_peak_memory,memory_skew_percent,substr(query,0,50) as query FROM pgxc_wlm_session_statistics;", "distributed-only"),
     ("chk-pgxc-thread-wait-status-dn", "pgxc_thread_wait_status · 作业等待 DN 分布", "db-system-view", "SELECT wait_status, count(*) as cnt FROM pgxc_thread_wait_status WHERE wait_status not like '%cmd%' AND wait_status not like '%none%' and wait_status not like '%quit%' group by 1 order by 2 desc;", "distributed-only"),
-    ("chk-table-skewness", "table_skewness · 数据倾斜率", "db-system-view", "SELECT table_skewness('store_sales');", "distributed-only"),
     ("chk-pgxc-get-table-skewness-2", "pgxc_get_table_skewness · 全库倾斜视图", "db-system-view", "SELECT * FROM pgxc_get_table_skewness ORDER BY totalsize DESC;", "distributed-only"),
     ("chk-pg-thread-wait-status-3", "pg_thread_wait_status · 线程等待状态", "db-system-view", "SELECT * FROM pg_thread_wait_status WHERE query_id='149181737656737395';", "distributed-only"),
     ("chk-pg-stat-activity-sql", "pg_stat_activity 活跃SQL", "db-system-view", "SELECT * from pg_stat_activity where state !='idle' and usename !='Ruby';", "distributed-only"),
-    ("chk--46", "表倾斜情况", "db-shell", "SELECT table_skewness('table name');", "distributed-only"),
     ("chk-pg-session-wlmstat-status-statement-mem", "pg_session_wlmstat · status / statement_mem", "db-system-view", "SELECT usename,substr(query,0,20),threadid,status,statement_mem FROM pg_session_wlmstat where usename not in ('omm','Ruby') order by statement_mem,status desc;", "distributed-only"),
     ("chk-pgxc-thread-wait-status-wait-status-wait-event", "pgxc_thread_wait_status · wait_status / wait_event", "db-system-view", "SELECT wait_status,wait_event,count(*) AS cnt FROM pgxc_thread_wait_status WHERE wait_status <> 'wait cmd' AND wait_status <> 'synchronize quit' AND wait_status <> 'none'  GROUP BY 1,2 ORDER BY 3 DESC limit 50;", "distributed-only"),
     ("chk-pg-partition", "pg_partition 各表分区数", "db-system-view", "SELECT relname,reloptions,partcount FROM pg_class c INNER JOIN ( SELECT parentid,count(*) AS partcount FROM pg_partition GROUP BY parentid ) s ON c.oid = s.parentid ORDER BY partcount DESC;", "distributed-only"),
     ("chk-pgxc-stat-activity-vacuum-full-8-0-x", "pgxc_stat_activity 中 VACUUM FULL 等待状态（8.0.x及之前）", "db-system-view", "SELECT * FROM pgxc_stat_activity WHERE query LIKE '%vacuum%'AND waiting = 't';", "distributed-only"),
-    ("chk-pgxc-thread-wait-status", "pgxc_thread_wait_status 锁等待状态", "db-system-view", "SELECT * FROM pgxc_thread_wait_status WHERE query_id = {query_id};", "distributed-only"),
-    ("chk-pck", "表定义是否存在PCK", "db-shell", "SELECT * FROM pg_get_tabledef('table name');", "distributed-only"),
     ("chk-psort-work-mem", "psort_work_mem 参数值", "db-shell", "show psort_work_mem;", "distributed-only"),
     ("chk-dn-4", "磁盘利用率各 DN 差异", "db-shell", "SELECT wait_status, count(*) as cnt FROM pgxc_thread_wait_status WHERE wait_status not like '%cmd%' AND wait_status not like '%none%' and wait_status not like '%quit%' group by 1 order by 2 desc", "distributed-only"),
-    ("chk-table-skewness-table-distribution-2", "table_skewness / table_distribution · 表数据倾斜率", "db-shell", "SELECT table_skewness('store_sales')", "distributed-only"),
     ("chk-pgxc-stat-activity-state-2", "pgxc_stat_activity state 字段", "db-system-view", "SELECT state, query, query_id FROM pgxc_stat_activity;", "distributed-only"),
     ("chk-cn-savepoint-release", "各 CN 上 SAVEPOINT/RELEASE 语句分布", "db-system-view", "SELECT coorname,pid,query_id,state,query,usename FROM pgxc_stat_activity WHERE usename='jack';", "distributed-only"),
-    ("chk-leading-hint", "加 leading hint 后执行时间", "db-interactive-cmd", "select /*+ leading((s d)) */ a.ca_state state, count(*) cnt ...", "distributed-only"),
-    ("chk-leading-no-nestloop-hint", "加 leading + no nestloop hint 后执行时间", "db-interactive-cmd", "select /*+ leading((s d)) no nestloop(s d) */ a.ca_state state, count(*) cnt ...", "distributed-only"),
-    ("chk-rows-hint", "rows hint 后执行时间", "db-interactive-cmd", "select /*+ rows(s #2880404) */ a.ca_state state, count(*) cnt ...", "distributed-only"),
-    ("chk-skew-hint-agg", "skew hint 后双层 Agg 计划", "db-interactive-cmd", "select /*+ skew(store_returns(sr_store_sk sr_customer_sk)) */sr_customer_sk as ctr_customer_sk ...", "distributed-only"),
-    ("chk-explain-performance-rows-hint", "EXPLAIN PERFORMANCE · rows hint 修正后各算子行数及整体耗时", "db-interactive-cmd", "select avg(netpaid) from (select /*+rows(store_sales store_returns * 11270)*/ c_last_name ...", "distributed-only"),
     ("chk-gs-wlm-session-history-warning-sql", "GS_WLM_SESSION_HISTORY.warning · SQL 自诊断信息", "db-system-view", "SELECT query,warning FROM GS_WLM_SESSION_HISTORY ORDER BY start_time DESC", "distributed-only"),
     ("chk-gs-wlm-session-history-warning", "GS_WLM_SESSION_HISTORY.warning · 统计信息未收集告警", "db-system-view", "SELECT query,warning FROM GS_WLM_SESSION_STATISTICS ORDER BY start_time DESC", "distributed-only"),
     ("chk-xid", "当前事务 XID", "db-system-view", "SELECT txid_current();", "distributed-only"),
     ("chk--49", "活跃事务列表", "db-system-view", "SELECT txid_current_snapshot();", "distributed-only"),
     ("chk-gtm-snapshot-oldestxmin-xid", "GTM snapshot · oldestxmin 与 xid 差值", "db-system-view", "SELECT * FROM pgxc_gtm_snapshot_status();", "distributed-only"),
-    ("chk-pgxc-running-xacts", "老事务列表 (pgxc_running_xacts)", "db-system-view", "SELECT * FROM pgxc_running_xacts where xmin::text::bigint < $base+$min and xmin::text::bigint > 0;", "distributed-only"),
-    ("chk-pg-stat-activity-idle", "pg_stat_activity · idle 连接数", "db-system-view", "SELECT PG_TERMINATE_BACKEND(pid) from pg_stat_activity WHERE state='idle';", "distributed-only"),
-    ("chk-net-core-netdev-max-backlog-2", "net.core.netdev_max_backlog", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW net.core.netdev_max_backlog;\"", "common"),
-    ("chk-shared-buffers", "shared_buffers", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW shared_buffers;\"", "common"),
-    ("chk-work-mem", "work_mem", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW work_mem;\"", "common"),
-    ("chk-recovery-max-workers-recovery-parse-workers-recovery-redo-wo-2", "recovery_max_workers/recovery_parse_workers/recovery_redo_workers", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW recovery_max_workers/recovery_parse_workers/recovery_redo_workers;\"", "common"),
-    ("chk-wal-file-init-num", "wal file init num", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW wal file init num;\"", "common"),
-    ("chk-advance-xlog-file-num", "advance_xlog_file_num", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW advance_xlog_file_num;\"", "common"),
-    ("chk-query-dop", "query_dop", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW query_dop;\"", "common"),
-    ("chk-log-min-duration-statement", "log_min_duration_statement", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW log_min_duration_statement;\"", "common"),
-    ("chk-walwriter-cpu-bind", "walwriter_cpu_bind", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW walwriter_cpu_bind;\"", "common"),
-    ("chk-thread-pool-attr-2", "thread_pool_attr", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW thread_pool_attr;\"", "common"),
-    ("chk-vacuum-cost-delay", "vacuum_cost_delay", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW vacuum_cost_delay;\"", "distributed-only"),
-    ("chk-undo-retention-time-2", "undo_retention_time", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW undo_retention_time;\"", "common"),
-    ("chk-sys-kernel-debug-sched-features", "/sys/kernel/debug/sched_features", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW /sys/kernel/debug/sched_features;\"", "distributed-only"),
-    ("chk-logintimeout", "loginTimeout", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW loginTimeout;\"", "common"),
-    ("chk-recovery-parse-workers-recovery-redo-workers", "recovery_parse_workers / recovery_redo_workers", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW recovery_parse_workers / recovery_redo_workers;\"", "common"),
-    ("chk-client-encoding-server-encoding-2", "client_encoding / server_encoding", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW client_encoding / server_encoding;\"", "distributed-only"),
-    ("chk-rewrite-rule", "rewrite_rule", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW rewrite_rule;\"", "common"),
-    ("chk-enable-hashjoin-2", "enable_hashjoin", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW enable_hashjoin;\"", "common"),
-    ("chk-enable-nestloop", "enable_nestloop", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW enable_nestloop;\"", "common"),
-    ("chk-enable-mergejoin", "enable_mergejoin", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW enable_mergejoin;\"", "common"),
-    ("chk-enable-sort", "enable_sort", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW enable_sort;\"", "common"),
-    ("chk-best-agg-plan", "best_agg_plan", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW best_agg_plan;\"", "distributed-only"),
-    ("chk-a-format-load-with-constraints-violation", "a_format_load_with_constraints_violation", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW a_format_load_with_constraints_violation;\"", "centralized-only"),
-    ("chk-cost-param", "cost_param", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW cost_param;\"", "common"),
-    ("chk-skew-option", "skew_option", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW skew_option;\"", "distributed-only"),
-    ("chk-default-statistics-target", "default_statistics_target", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW default_statistics_target;\"", "distributed-only"),
-    ("chk-behavior-compat-options", "behavior_compat_options", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW behavior_compat_options;\"", "common"),
-    ("chk-enable-fast-query-shipping", "enable_fast_query_shipping", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW enable_fast_query_shipping;\"", "distributed-only"),
-    ("chk-recovery-parse-workers", "recovery_parse_workers", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW recovery_parse_workers;\"", "common"),
-    ("chk-recovery-redo-workers", "recovery_redo_workers", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW recovery_redo_workers;\"", "common"),
-    ("chk-enable-index-nestloop", "enable_index_nestloop", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW enable_index_nestloop;\"", "distributed-only"),
-    ("chk-enable-indexscan", "enable_indexscan", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW enable_indexscan;\"", "distributed-only"),
-    ("chk-max-process-memory", "max_process_memory", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW max_process_memory;\"", "distributed-only"),
-    ("chk-qrw-inlist2join-optmode", "qrw_inlist2join_optmode", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW qrw_inlist2join_optmode;\"", "distributed-only"),
-    ("chk-fetchsize", "fetchSize", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW fetchSize;\"", "distributed-only"),
-    ("chk-period", "period", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW period;\"", "distributed-only"),
-    ("chk-ttl", "ttl", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW ttl;\"", "distributed-only"),
-    ("chk-disk-cache-max-size", "disk_cache_max_size", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW disk_cache_max_size;\"", "distributed-only"),
-    ("chk-disk-cache-dual-write-option", "disk_cache_dual_write_option", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW disk_cache_dual_write_option;\"", "distributed-only"),
-    ("chk-min-batch-rows", "min_batch_rows", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW min_batch_rows;\"", "distributed-only"),
-    ("chk-autovacuum-2", "autovacuum", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW autovacuum;\"", "distributed-only"),
-    ("chk-autovacuum-vacuum-cost-delay", "autovacuum_vacuum_cost_delay", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW autovacuum_vacuum_cost_delay;\"", "distributed-only"),
-    ("chk-autovacuum-max-workers", "autovacuum_max_workers", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW autovacuum_max_workers;\"", "distributed-only"),
-    ("chk-autovacuum-naptime", "autovacuum_naptime", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW autovacuum_naptime;\"", "distributed-only"),
-    ("chk-max-active-statements", "max_active_statements", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW max_active_statements;\"", "distributed-only"),
-    ("chk-autovacuum-max-workers-hstore", "autovacuum_max_workers_hstore", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW autovacuum_max_workers_hstore;\"", "distributed-only"),
-    ("chk-enable-codegen-2", "enable_codegen", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW enable_codegen;\"", "distributed-only"),
-    ("chk-enable-numa-bind", "enable_numa_bind", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW enable_numa_bind;\"", "distributed-only"),
-    ("chk-abnormal-check-general-task", "abnormal_check_general_task", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW abnormal_check_general_task;\"", "distributed-only"),
-    ("chk-resource-track-level", "resource_track_level", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW resource_track_level;\"", "distributed-only"),
-    ("chk-track-activities", "track_activities", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW track_activities;\"", "distributed-only"),
-    ("chk-connectiontimeout", "connectionTimeOut", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW connectionTimeOut;\"", "distributed-only"),
-    ("chk-lockwait-timeout", "lockwait_timeout", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW lockwait_timeout;\"", "distributed-only"),
-    ("chk-psort-work-mem-2", "psort_work_mem", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW psort_work_mem;\"", "distributed-only"),
-    ("chk-enable-delta", "ENABLE_DELTA", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW ENABLE_DELTA;\"", "distributed-only"),
-    ("chk-resource-pool-cpu-dedicated-quota", "resource_pool.cpu_dedicated_quota", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW resource_pool.cpu_dedicated_quota;\"", "distributed-only"),
-    ("chk-temp-file-limit", "temp_file_limit", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW temp_file_limit;\"", "distributed-only"),
-    ("chk-sequence-cache", "sequence.cache", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW sequence.cache;\"", "distributed-only"),
-    ("chk-cstore-buffers", "cstore_buffers", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW cstore_buffers;\"", "distributed-only"),
-    ("chk-comm-max-stream", "comm_max_stream", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW comm_max_stream;\"", "distributed-only"),
-    ("chk-vacuum-defer-cleanup-age-2", "vacuum_defer_cleanup_age", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW vacuum_defer_cleanup_age;\"", "distributed-only"),
-    ("chk-enable-stream-operator", "enable_stream_operator", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW enable_stream_operator;\"", "distributed-only"),
-    ("chk-table-skewness-warning-threshold", "table_skewness_warning_threshold", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW table_skewness_warning_threshold;\"", "distributed-only"),
-    ("chk-table-skewness-warning-rows", "table_skewness_warning_rows", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW table_skewness_warning_rows;\"", "distributed-only"),
-    ("chk-session-timeout", "session_timeout", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW session_timeout;\"", "distributed-only"),
-    ("chk-max-connections", "max_connections", "gaussdb-guc-param", "gsql -d postgres -c \"SHOW max_connections;\"", "distributed-only"),
-    ("chk-slow-sql-statement-history", "statement_history 慢 SQL 明细 (全列 + 等待事件解码)", "db-system-view", "SELECT db_name, schema_name, origin_node, user_name, application_name, client_addr, client_port, unique_query_id, debug_query_id, substr(query,1,200) AS query, start_time, finish_time, slow_sql_threshold, transaction_id, thread_id, session_id, n_soft_parse, n_hard_parse, n_returned_rows, n_tuples_fetched, n_tuples_returned, n_tuples_inserted, n_tuples_updated, n_tuples_deleted, n_blocks_fetched, n_blocks_hit, (n_blocks_fetched-n_blocks_hit) AS phys_read, db_time, cpu_time, execution_time, parse_time, plan_time, rewrite_time, pl_execution_time, pl_compilation_time, data_io_time, net_send_info, net_recv_info, net_stream_send_info, net_stream_recv_info, lock_count, lock_time, lock_wait_count, lock_wait_time, lock_max_count, lwlock_count, lwlock_wait_count, lwlock_time, lwlock_wait_time, statement_detail_decode(details, 'plaintext', true) AS wait_events, is_slow_sql, trace_id, advise, parent_unique_sql_id, finish_status, used_memory, lock_max_local_count, lock_max_fastpath_count, lock_max_global_count, sql_hash, plan_hash, plan_hash_prev, driver_start_time, driver_wait_response, driver_finish_time, driver_info, kernel_info, adaptive_join_states, aplan_count, aplan_parse_time, aplan_execution_time, relids, query_plan FROM statement_history WHERE is_slow_sql ORDER BY start_time DESC LIMIT 20;", "common"),
+    ("chk-net-core-netdev-max-backlog-2", "net.core.netdev_max_backlog", "gaussdb-guc-param", "sysctl net.core.netdev_max_backlog", "common"),
+    ("chk-shared-buffers", "shared_buffers", "gaussdb-guc-param", "SHOW shared_buffers;", "common"),
+    ("chk-work-mem", "work_mem", "gaussdb-guc-param", "SHOW work_mem;", "common"),
+    ("chk-recovery-max-workers-recovery-parse-workers-recovery-redo-wo-2", "recovery_max_workers/recovery_parse_workers/recovery_redo_workers", "gaussdb-guc-param", "SHOW recovery_max_workers;\nSHOW recovery_parse_workers;\nSHOW recovery_redo_workers;", "common"),
+    ("chk-wal-file-init-num", "wal file init num", "gaussdb-guc-param", "SHOW wal_file_init_num;", "common"),
+    ("chk-advance-xlog-file-num", "advance_xlog_file_num", "gaussdb-guc-param", "SHOW advance_xlog_file_num;", "common"),
+    ("chk-query-dop", "query_dop", "gaussdb-guc-param", "SHOW query_dop;", "common"),
+    ("chk-log-min-duration-statement", "log_min_duration_statement", "gaussdb-guc-param", "SHOW log_min_duration_statement;", "common"),
+    ("chk-walwriter-cpu-bind", "walwriter_cpu_bind", "gaussdb-guc-param", "SHOW walwriter_cpu_bind;", "common"),
+    ("chk-thread-pool-attr-2", "thread_pool_attr", "gaussdb-guc-param", "SHOW thread_pool_attr;", "common"),
+    ("chk-vacuum-cost-delay", "vacuum_cost_delay", "gaussdb-guc-param", "SHOW vacuum_cost_delay;", "distributed-only"),
+    ("chk-undo-retention-time-2", "undo_retention_time", "gaussdb-guc-param", "SHOW undo_retention_time;", "common"),
+    ("chk-recovery-parse-workers-recovery-redo-workers", "recovery_parse_workers / recovery_redo_workers", "gaussdb-guc-param", "SHOW recovery_parse_workers;\nSHOW recovery_redo_workers;", "common"),
+    ("chk-client-encoding-server-encoding-2", "client_encoding / server_encoding", "gaussdb-guc-param", "SHOW client_encoding;\nSHOW server_encoding;", "distributed-only"),
+    ("chk-rewrite-rule", "rewrite_rule", "gaussdb-guc-param", "SHOW rewrite_rule;", "common"),
+    ("chk-enable-hashjoin-2", "enable_hashjoin", "gaussdb-guc-param", "SHOW enable_hashjoin;", "common"),
+    ("chk-enable-nestloop", "enable_nestloop", "gaussdb-guc-param", "SHOW enable_nestloop;", "common"),
+    ("chk-enable-mergejoin", "enable_mergejoin", "gaussdb-guc-param", "SHOW enable_mergejoin;", "common"),
+    ("chk-enable-sort", "enable_sort", "gaussdb-guc-param", "SHOW enable_sort;", "common"),
+    ("chk-best-agg-plan", "best_agg_plan", "gaussdb-guc-param", "SHOW best_agg_plan;", "distributed-only"),
+    ("chk-a-format-load-with-constraints-violation", "a_format_load_with_constraints_violation", "gaussdb-guc-param", "SHOW a_format_load_with_constraints_violation;", "centralized-only"),
+    ("chk-cost-param", "cost_param", "gaussdb-guc-param", "SHOW cost_param;", "common"),
+    ("chk-skew-option", "skew_option", "gaussdb-guc-param", "SHOW skew_option;", "distributed-only"),
+    ("chk-default-statistics-target", "default_statistics_target", "gaussdb-guc-param", "SHOW default_statistics_target;", "distributed-only"),
+    ("chk-behavior-compat-options", "behavior_compat_options", "gaussdb-guc-param", "SHOW behavior_compat_options;", "common"),
+    ("chk-enable-fast-query-shipping", "enable_fast_query_shipping", "gaussdb-guc-param", "SHOW enable_fast_query_shipping;", "distributed-only"),
+    ("chk-recovery-parse-workers", "recovery_parse_workers", "gaussdb-guc-param", "SHOW recovery_parse_workers;", "common"),
+    ("chk-recovery-redo-workers", "recovery_redo_workers", "gaussdb-guc-param", "SHOW recovery_redo_workers;", "common"),
+    ("chk-enable-index-nestloop", "enable_index_nestloop", "gaussdb-guc-param", "SHOW enable_index_nestloop;", "distributed-only"),
+    ("chk-enable-indexscan", "enable_indexscan", "gaussdb-guc-param", "SHOW enable_indexscan;", "distributed-only"),
+    ("chk-max-process-memory", "max_process_memory", "gaussdb-guc-param", "SHOW max_process_memory;", "distributed-only"),
+    ("chk-qrw-inlist2join-optmode", "qrw_inlist2join_optmode", "gaussdb-guc-param", "SHOW qrw_inlist2join_optmode;", "distributed-only"),
+    ("chk-period", "period", "gaussdb-guc-param", "SHOW period;", "distributed-only"),
+    ("chk-ttl", "ttl", "gaussdb-guc-param", "SHOW ttl;", "distributed-only"),
+    ("chk-disk-cache-max-size", "disk_cache_max_size", "gaussdb-guc-param", "SHOW disk_cache_max_size;", "distributed-only"),
+    ("chk-disk-cache-dual-write-option", "disk_cache_dual_write_option", "gaussdb-guc-param", "SHOW disk_cache_dual_write_option;", "distributed-only"),
+    ("chk-min-batch-rows", "min_batch_rows", "gaussdb-guc-param", "SHOW min_batch_rows;", "distributed-only"),
+    ("chk-autovacuum-2", "autovacuum", "gaussdb-guc-param", "SHOW autovacuum;", "distributed-only"),
+    ("chk-autovacuum-vacuum-cost-delay", "autovacuum_vacuum_cost_delay", "gaussdb-guc-param", "SHOW autovacuum_vacuum_cost_delay;", "distributed-only"),
+    ("chk-autovacuum-max-workers", "autovacuum_max_workers", "gaussdb-guc-param", "SHOW autovacuum_max_workers;", "distributed-only"),
+    ("chk-autovacuum-naptime", "autovacuum_naptime", "gaussdb-guc-param", "SHOW autovacuum_naptime;", "distributed-only"),
+    ("chk-max-active-statements", "max_active_statements", "gaussdb-guc-param", "SHOW max_active_statements;", "distributed-only"),
+    ("chk-autovacuum-max-workers-hstore", "autovacuum_max_workers_hstore", "gaussdb-guc-param", "SHOW autovacuum_max_workers_hstore;", "distributed-only"),
+    ("chk-enable-codegen-2", "enable_codegen", "gaussdb-guc-param", "SHOW enable_codegen;", "distributed-only"),
+    ("chk-enable-numa-bind", "enable_numa_bind", "gaussdb-guc-param", "SHOW enable_numa_bind;", "distributed-only"),
+    ("chk-abnormal-check-general-task", "abnormal_check_general_task", "gaussdb-guc-param", "SHOW abnormal_check_general_task;", "distributed-only"),
+    ("chk-resource-track-level", "resource_track_level", "gaussdb-guc-param", "SHOW resource_track_level;", "distributed-only"),
+    ("chk-track-activities", "track_activities", "gaussdb-guc-param", "SHOW track_activities;", "distributed-only"),
+    ("chk-lockwait-timeout", "lockwait_timeout", "gaussdb-guc-param", "SHOW lockwait_timeout;", "distributed-only"),
+    ("chk-psort-work-mem-2", "psort_work_mem", "gaussdb-guc-param", "SHOW psort_work_mem;", "distributed-only"),
+    ("chk-enable-delta", "ENABLE_DELTA", "gaussdb-guc-param", "SHOW ENABLE_DELTA;", "distributed-only"),
+    ("chk-resource-pool-cpu-dedicated-quota", "resource_pool.cpu_dedicated_quota", "gaussdb-guc-param", "SHOW resource_pool.cpu_dedicated_quota;", "distributed-only"),
+    ("chk-temp-file-limit", "temp_file_limit", "gaussdb-guc-param", "SHOW temp_file_limit;", "distributed-only"),
+    ("chk-sequence-cache", "sequence.cache", "gaussdb-guc-param", "SHOW sequence.cache;", "distributed-only"),
+    ("chk-cstore-buffers", "cstore_buffers", "gaussdb-guc-param", "SHOW cstore_buffers;", "distributed-only"),
+    ("chk-comm-max-stream", "comm_max_stream", "gaussdb-guc-param", "SHOW comm_max_stream;", "distributed-only"),
+    ("chk-vacuum-defer-cleanup-age-2", "vacuum_defer_cleanup_age", "gaussdb-guc-param", "SHOW vacuum_defer_cleanup_age;", "distributed-only"),
+    ("chk-enable-stream-operator", "enable_stream_operator", "gaussdb-guc-param", "SHOW enable_stream_operator;", "distributed-only"),
+    ("chk-table-skewness-warning-threshold", "table_skewness_warning_threshold", "gaussdb-guc-param", "SHOW table_skewness_warning_threshold;", "distributed-only"),
+    ("chk-table-skewness-warning-rows", "table_skewness_warning_rows", "gaussdb-guc-param", "SHOW table_skewness_warning_rows;", "distributed-only"),
+    ("chk-session-timeout", "session_timeout", "gaussdb-guc-param", "SHOW session_timeout;", "distributed-only"),
+    ("chk-max-connections", "max_connections", "gaussdb-guc-param", "SHOW max_connections;", "distributed-only"),
+    ("chk-slow-sql-statement-history", "statement_history 慢 SQL 明细 (全列 + 等待事件解码)", "db-system-view", "SELECT db_name, user_name, unique_query_id, substr(query,1,200) AS query, start_time, finish_time, db_time, cpu_time, execution_time, n_returned_rows, n_tuples_fetched, n_blocks_fetched, n_blocks_hit, (n_blocks_fetched-n_blocks_hit) AS phys_read, lock_wait_time, lwlock_wait_time, statement_detail_decode(details, 'plaintext', true) AS wait_events, is_slow_sql FROM statement_history WHERE is_slow_sql ORDER BY start_time DESC LIMIT 20;", "common"),
 ]
 
 # ── 主循环 ────────────────────────────────────────────────────────────────
@@ -213,7 +190,7 @@ with open(report, 'w', encoding='utf-8') as rf:
     rf.write(f'# detected_at\t{datetime.now().astimezone().isoformat(timespec="seconds")}\n')
     rf.write(f'# host\t{_sk.gethostname()}\n')
     rf.write(f'# user\t{os.environ.get("USER", "unknown")}\n')
-    rf.write('# 注: 只记异常(skip-topology/error/timeout/ghost/unsupported) · ok 的数据在 <check_id>.txt\n')
+    rf.write('# 注: 只记异常(skip-topology/skip-write-guard/error/timeout/ghost/unsupported) · ok 的数据在 <check_id>.txt\n')
     rf.write('check_id\texit_code\tstatus\n')
     # 自动 dispatch: SQL 起始词走 gsql -f, 其他走 bash -c
     SQL_FIRST = {'SELECT','EXPLAIN','SHOW','WITH','SET','VACUUM','ANALYZE','CREATE',
@@ -232,6 +209,18 @@ with open(report, 'w', encoding='utf-8') as rf:
             if tok and not tok.startswith('--'):
                 first = _re.sub(r'[^A-Z0-9_]', '', tok.upper())
                 break
+        # 只读护栏 (防御纵深): 拒跑任何写/改/杀命令 · 即使源数据漂移/手改也绝不执行
+        # build 时分类器(classify.mjs r18)已保证 auto 严格只读 · 这是最后一道闸.
+        WRITE_FIRST = {'INSERT','UPDATE','DELETE','DROP','TRUNCATE','ALTER','CREATE',
+                       'VACUUM','ANALYZE','REINDEX','CHECKPOINT','COPY','GRANT','REVOKE','CALL'}
+        if first in WRITE_FIRST or _re.search(
+                r'\b(pg_terminate_backend|pg_cancel_backend|gs_clean|pg_log_backtrace|gs_signal_thread)\b',
+                method, _re.I):
+            rf.write(f'{cid}\t-\tskip-write-guard\n')
+            with open(OUTDIR / 'errors.log', 'ab') as _ef:
+                _ef.write(f'===== {cid} (skip-write-guard) =====\n[只读护栏] 命中写/破坏性模式 · 未执行\n'.encode()
+                          + method.encode() + b'\n')
+            continue
         is_sql = first in SQL_FIRST
         try:
             if is_sql:
@@ -255,7 +244,7 @@ with open(report, 'w', encoding='utf-8') as rf:
                 if _re2.search(rb'(?m)^(gsql:.+:\s*)?(ERROR|FATAL|PANIC):', r.stderr):
                     # 二级判定: 部署形态特异 (集中式跑分布式专用视图/函数) · 拉分布式会 ok
                     # pgxc_* 在集中式报 'Relation "pgxc_xxx" does not exist' · 也算 (只认 pgxc_ 前缀)
-                    if _re2.search(rb'Unsupported view in single node mode|Unsupported function|Function [a-z_]+\([^)]*\) does not exist|does not support|not supported in (single|centralized)|[Rr]elation "(pgxc_|pg_catalog\.pgxc_)[a-z0-9_]+" does not exist', r.stderr, _re2.I):
+                    if _re2.search(rb'Unsupported view in single node mode|unrecognized configuration parameter|Unsupported function|Function [a-z_]+\([^)]*\) does not exist|does not support|not supported in (single|centralized)|[Rr]elation "(pgxc_|pg_catalog\.pgxc_|gs_|dbe_perf\.)[a-z0-9_]+" does not exist', r.stderr, _re2.I):
                         status = 'unsupported-deploy-form'
                     else:
                         status = 'ghost-ok-sql-error'

@@ -1,6 +1,6 @@
 # Flame-Signature Index
 
-> 生成时间: 2026-05-31T02:56:50.460Z
+> 生成时间: 2026-05-31T04:10:00.016Z
 > 数据源: distill-v2/cases/<db>/flame-signature/*.md
 > 总计: 13 signatures
 > 配套: by-flame-signature/CASES.md

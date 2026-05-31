@@ -1109,7 +1109,7 @@
 - **type**: metric
 - **metric_name**: CN节点压力分布
 - **collection_layer**: db-system-view
-- **collection_method**: `select node_name, count(*) from pgxc_stat_activity group by node_name order by 2 desc;`
+- **collection_method**: `select coorname, count(*) from pgxc_stat_activity group by coorname order by 2 desc;`
 - **abnormal_patterns**: ["微服务压力只发往AZ1内一个CN，另外一个CN无压力"]
 - **linked_case_ids**: ["gaussdb-other-tps-x41"]
 

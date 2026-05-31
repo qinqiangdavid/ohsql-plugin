@@ -206,7 +206,7 @@
 [step 3]
   metric_name: CN节点压力分布
   collection_layer: db-system-view
-  collection_method_quote: `select node_name, count(*) from pgxc_stat_activity group by node_name order by 2 desc;`
+  collection_method_quote: `select coorname, count(*) from pgxc_stat_activity group by coorname order by 2 desc;`
   abnormal_pattern_quote: 微服务压力只发往AZ1内一个CN，另外一个CN无压力
   abnormal_pattern_threshold: NULL
   metric_unit: NULL

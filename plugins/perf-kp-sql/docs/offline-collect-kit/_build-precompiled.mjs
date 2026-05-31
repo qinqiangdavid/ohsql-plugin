@@ -11,6 +11,8 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+// 命令归一化 + auto/manual 分类 (纯函数 · 可单测 · 见 classify.test.mjs)
+import { normalize, matchedRule } from './classify.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const NDJSON = join(HERE, 'checklist.ndjson');
@@ -18,11 +20,6 @@ const OUT_SH = join(HERE, 'collect-precompiled.sh');
 const OUT_PY = join(HERE, 'collect-precompiled.py');
 const OUT_AUDIT = join(HERE, 'manual-audit.md');
 
-const DESC_KEYWORDS = [
-  '查看', '判断是否', '如果发现', '通常', '示例为', '排查', '建议', '观察', '尝试',
-  '可参考', '例如', '可借助', '需要联系', '以下', '应该', '可在', '可以查',
-  '可执行', '建议保留', '建议设置', '日志中', '日志中会', '建议保持', '请联系',
-];
 // 规则代号 + 一句说明 · 写到 manual-audit.md 给人审看
 const RULE_DESC = {
   'r0-null':            'method 为 NULL / 空 · 蒸馏没抽到抓法',
@@ -37,49 +34,17 @@ const RULE_DESC = {
   'r9-pid-literal':     '含真 PID/OID 数字占位 · 需替换实际 PID 才能跑',
   'r10-cluster-tool':   'GaussDB 集群工具 (gs_ssh / gs_om / cm_ctl ...) · 需集群拓扑',
   'r14-hadr-deploy-only':    '异地容灾(HADR)专用视图 gs_hadr_* · 没配容灾的部署上不存在 · 不盲采',
+  'r15-needs-table-arg':     '必带具体表参的函数 table_skewness/pg_get_tabledef · 离线无具体表',
+  'r16-plan-hint-example':   '含 plan hint /*+...*/ 的示例调优查询(引用示例表)· 不能盲跑',
+  'r17-placeholder-value':   '占位值 {query_id}/xxxx-xx-xx/$a±$b · 需填实际值',
   'r13-placeholder-objname': '占位对象名字面量(tablename/table_name 等)· 需填具体表名才能跑',
   'r11-explain-needs-target': 'explain 类 · 需诊断时目标 SQL · 不能盲跑',
   'r12-not-blind-runnable':  '起始非无参只读命令(explain/set-only/copy/perf/日志片段等) · 不能盲跑',
+  'r18-write-destructive':   '写/改/杀命令(pg_terminate_backend / INSERT / DROP / VACUUM ...) · auto 严格只读 · 一律人审',
+  'r19-malformed-show':      '畸形 SHOW(参数非干净标识符 · slash/空格残留) · repair 没接住 · 需人审改写',
+  'r21-jdbc-client-param':   'JDBC 客户端驱动参数(fetchSize / loginTimeout ...) · 非服务端 GUC · 应在应用侧/连接串确认',
+  'r22-needs-root':          'debugfs(/sys/kernel/debug/*)只 root 可读 · 采集器以 DB 用户跑必然权限拒绝 · 需 root 单独采',
 };
-function matchedRule(m) {
-  if (!m || m.toLowerCase() === 'null') return 'r0-null';
-  const hans = (m.match(/[一-鿿]/g) || []).length;
-  const ascii = (m.match(/[a-zA-Z0-9]/g) || []).length;
-
-  if (hans >= 4) return 'r1-cjk-ge-4';
-  const hitKw = DESC_KEYWORDS.find(kw => m.includes(kw));
-  if (hitKw) return `r2-desc-kw:${hitKw}`;
-  if (/^\s*-\s+\*\*[a-z_]+\*\*\s*:/i.test(m)) return 'r3-distill-leak';
-  if (hans >= 1 && ascii < 5) return 'r4-cjk-only';
-  if (/^[a-z_][a-z0-9_.]+$/i.test(m) && m.length > 6 && !/^(top|sar|free|vmstat|iostat|netstat|pidstat|gstack|gsql|perf|jstack|jmap|strace|tcpdump|dmesg)$/i.test(m)) return 'r5-single-ident';
-  if (/进程号|实例号|查询.{0,2}号|<[^>\s]{1,24}>|\bxxx\b|\bXXX\b/.test(m)) return 'r6-cjk-placeholder';
-  if (/^(WARNING|ERROR|FATAL|PANIC|NOTICE|HINT)[:\s]/.test(m)) return 'r7-log-kw-start';
-  if (/^(查询|查看|检测|分析|定位|确认|计算|获取|读取|检查|执行)/.test(m)) return 'r8-cjk-verb-start';
-  if (/^(gstack|strace|jstack|jmap|pstack|pmap)\s+\d{4,}/.test(m)) return 'r9-pid-literal';
-  if (/^(gs_ssh|gs_om|cm_ctl|gs_check|gs_collector|gs_dump)\b/.test(m)) return 'r10-cluster-tool';
-  // r14: 异地容灾(streaming DR / HADR)专用视图 · 跟拓扑正交 · 没配容灾的部署上不存在 → 不盲采(进 manual)
-  if (/\bgs_hadr_/i.test(m)) return 'r14-hadr-deploy-only';
-  // r13: 占位对象名字面量(需运行时填具体表/列名才能跑)· 如 'tablename' / 'table_name'::regclass
-  if (/'(table_?name|schema_?name|index_?name|your_table|表名|列名|目标表)'/i.test(m)) return 'r13-placeholder-objname';
-
-  // 只留"无参可盲跑"的命令进 auto · 其余转 manual (剥离前置 set ...; 再判)
-  const _body = m.replace(/^\s*(?:set\s+[^;]+;\s*)+/i, '').trim();
-  // r11: explain 类 · 离线没有诊断目标 SQL · 不能盲跑
-  if (/^explain\b/i.test(_body)) return 'r11-explain-needs-target';
-  // r12: 起始不是已知"无参只读"命令(SQL 读取 verb / 完整 gsql / OS 只读工具) → 不能盲跑
-  const _first = (_body.match(/^[a-zA-Z_][a-zA-Z0-9_]*/) || [''])[0].toLowerCase();
-  const _BLIND = new Set([
-    'select','show','with','values','table',          // SQL 只读
-    'gsql',                                            // 完整 gsql 命令
-    'cat','iostat','sysctl','top','df','free','vmstat','netstat','ps','grep','egrep',
-    'find','ss','sar','uptime','lscpu','numactl','mpstat','pidstat','head','tail','du','awk','wc',  // OS 只读
-    'gs_guc',                                          // gs_guc check 读参数
-  ]);
-  if (!_BLIND.has(_first)) return 'r12-not-blind-runnable';
-
-  return null;
-}
-function isManual(m) { return matchedRule(m) !== null; }
 
 // 已知 GaussDB GUC 参数白名单 (做 SHOW 用)
 const KNOWN_GUCS = [
@@ -350,29 +315,6 @@ function deriveCommands(method, type, name) {
 
   return out;
 }
-function normalize(m) {
-  let s = (m || '').trim();
-  // 1. strip backtick / quote / code-fence 包裹
-  s = s.replace(/^[`"']+/, '').replace(/[`"']+$/, '').trim();
-  s = s.replace(/^```\w*\s*/, '').replace(/\s*```$/, '').trim();
-  // 2. unicode dash → ASCII dash (en-dash – / em-dash — / minus − 都换 -)
-  //    distill 蒸 HTML 时被 typographic 替换 · bash / 工具命令不识别非 ASCII dash
-  s = s.replace(/[–—−]/g, '-');
-  // 3. strip gsql session prompt 残留 (gaussdb=# / yshen=# / 任意 [a-z_]+=# / =>)
-  //    distill 阶段从网页文本扒出来的 method 里很常见 · 不去会让 bash 当变量赋值跑
-  s = s.replace(/(^|\s)[a-zA-Z_][a-zA-Z0-9_]*=[#>]\s*/g, '$1').trim();
-  // 4. 砍 ' -- ' 行内 SQL 注释 (含中文 / 含 "或" 之后的) · 跨多行不动 · 单行就丢
-  //    distill 把多语句串在一行 method 里 · -- 后的"或 SELECT ..."注释会污染
-  s = s.replace(/\s+--\s+[^\n]*$/g, '').trim();
-  // 5. strip leading prompt-like "$ " / "# " / "gaussdb> "
-  s = s.replace(/^[#$]\s+/, '').trim();
-  // 6. top 单跑要 -b -n 1 (非交互 tty 跑) · 否则 'top: failed tty get'
-  if (/^top\s*$/.test(s)) return 'top -b -n 1';
-  // 7. sar 同理需要 -n / -u / count interval · 单 'sar' 报错 · 给个轻量兜底
-  if (/^sar\s*$/.test(s)) return 'sar -u 1 1';
-  return s;
-}
-
 // 起始词在这些 SQL 关键字里 · collector 跑时自动走 gsql -f 而非 bash
 const SQL_FIRST_WORDS = ['SELECT','EXPLAIN','SHOW','WITH','SET','VACUUM','ANALYZE',
   'CREATE','ALTER','DROP','TRUNCATE','UPDATE','INSERT','DELETE','COPY','REINDEX',
@@ -533,7 +475,7 @@ esac
   printf '# detected_at\\t%s\\n' "\$(date -Iseconds 2>/dev/null || date -u +%Y-%m-%dT%H:%M:%SZ)"
   printf '# host\\t%s\\n' "\$(hostname 2>/dev/null || echo unknown)"
   printf '# user\\t%s\\n' "\$(whoami)"
-  printf '# 注: 只记异常(skip-topology/error/timeout/ghost/unsupported) · ok 的数据在 <check_id>.txt\\n'
+  printf '# 注: 只记异常(skip-topology/skip-write-guard/error/timeout/ghost/unsupported) · ok 的数据在 <check_id>.txt\\n'
   printf 'check_id\\texit_code\\tstatus\\n'
 } > "\$OUTDIR/report.tsv"
 printf '%s\\n' "\$DEPLOY_FORM" > "\$OUTDIR/deploy.txt"
@@ -568,6 +510,14 @@ run_check() {
     SELECT|EXPLAIN|SHOW|WITH|SET|VACUUM|ANALYZE|CREATE|ALTER|DROP|TRUNCATE|UPDATE|INSERT|DELETE|COPY|REINDEX|CHECKPOINT|GRANT|REVOKE|RESET|BEGIN|COMMIT|ROLLBACK|CALL|VALUES)
       cmd_kind="sql" ;;
   esac
+  # ── 只读护栏 (防御纵深) · 拒跑任何写/改/杀命令 · 即使源数据漂移/手改混进破坏性命令也绝不执行 ──
+  # build 时分类器(classify.mjs r18)已保证 auto 严格只读 · 这是最后一道闸.
+  if printf '%s' "\$first" | grep -qiE '^(INSERT|UPDATE|DELETE|DROP|TRUNCATE|ALTER|CREATE|VACUUM|ANALYZE|REINDEX|CHECKPOINT|COPY|GRANT|REVOKE|CALL)\$' \\
+     || LC_ALL=C grep -qiE '\\b(pg_terminate_backend|pg_cancel_backend|gs_clean|pg_log_backtrace|gs_signal_thread)\\b' "\$tmpf"; then
+    printf '%s\\t%s\\t%s\\n' "\$cid" "-" "skip-write-guard" >> "\$OUTDIR/report.tsv"
+    { echo "===== \$cid (skip-write-guard) ====="; echo "[只读护栏] 命中写/破坏性模式 · 未执行"; cat "\$tmpf"; echo; } >> "\$OUTDIR/errors.log"
+    rm -f "\$tmpf" "\$serr"; return
+  fi
   # 默认不杀进程(TIMEOUT 空)· 仅当显式设了 COLLECT_TIMEOUT 才套 timeout 兜底
   local RUN=""
   [ -n "\$TIMEOUT" ] && [ -n "\$T_BIN" ] && RUN="\$T_BIN \$TIMEOUT"
@@ -591,7 +541,7 @@ run_check() {
       # 这类 SQL 拉到分布式实例跑会 ok · 跟 distill 数据质量问题 (syntax error) 区分开
       # pgxc_* 分布式 catalog 在集中式报 'Relation "pgxc_xxx" does not exist' · 也算部署形态特异
       # (只认 pgxc_/pg_catalog.pgxc_ 前缀 · 不误伤 'Relation "t1" does not exist' 文档示例表)
-      if LC_ALL=C grep -qiE 'Unsupported view in single node mode|Unsupported function|Function [a-z_]+\\([^)]*\\) does not exist|does not support|not supported in (single|centralized)|[Rr]elation "(pgxc_|pg_catalog\\.pgxc_)[a-z0-9_]+" does not exist' "\$serr" 2>/dev/null; then
+      if LC_ALL=C grep -qiE 'Unsupported view in single node mode|unrecognized configuration parameter|Unsupported function|Function [a-z_]+\\([^)]*\\) does not exist|does not support|not supported in (single|centralized)|[Rr]elation "(pgxc_|pg_catalog\\.pgxc_|gs_|dbe_perf\\.)[a-z0-9_]+" does not exist' "\$serr" 2>/dev/null; then
         s=unsupported-deploy-form
       else
         s=ghost-ok-sql-error
@@ -727,7 +677,7 @@ with open(report, 'w', encoding='utf-8') as rf:
     rf.write(f'# detected_at\\t{datetime.now().astimezone().isoformat(timespec="seconds")}\\n')
     rf.write(f'# host\\t{_sk.gethostname()}\\n')
     rf.write(f'# user\\t{os.environ.get("USER", "unknown")}\\n')
-    rf.write('# 注: 只记异常(skip-topology/error/timeout/ghost/unsupported) · ok 的数据在 <check_id>.txt\\n')
+    rf.write('# 注: 只记异常(skip-topology/skip-write-guard/error/timeout/ghost/unsupported) · ok 的数据在 <check_id>.txt\\n')
     rf.write('check_id\\texit_code\\tstatus\\n')
     # 自动 dispatch: SQL 起始词走 gsql -f, 其他走 bash -c
     SQL_FIRST = {'SELECT','EXPLAIN','SHOW','WITH','SET','VACUUM','ANALYZE','CREATE',
@@ -746,6 +696,18 @@ with open(report, 'w', encoding='utf-8') as rf:
             if tok and not tok.startswith('--'):
                 first = _re.sub(r'[^A-Z0-9_]', '', tok.upper())
                 break
+        # 只读护栏 (防御纵深): 拒跑任何写/改/杀命令 · 即使源数据漂移/手改也绝不执行
+        # build 时分类器(classify.mjs r18)已保证 auto 严格只读 · 这是最后一道闸.
+        WRITE_FIRST = {'INSERT','UPDATE','DELETE','DROP','TRUNCATE','ALTER','CREATE',
+                       'VACUUM','ANALYZE','REINDEX','CHECKPOINT','COPY','GRANT','REVOKE','CALL'}
+        if first in WRITE_FIRST or _re.search(
+                r'\\b(pg_terminate_backend|pg_cancel_backend|gs_clean|pg_log_backtrace|gs_signal_thread)\\b',
+                method, _re.I):
+            rf.write(f'{cid}\\t-\\tskip-write-guard\\n')
+            with open(OUTDIR / 'errors.log', 'ab') as _ef:
+                _ef.write(f'===== {cid} (skip-write-guard) =====\\n[只读护栏] 命中写/破坏性模式 · 未执行\\n'.encode()
+                          + method.encode() + b'\\n')
+            continue
         is_sql = first in SQL_FIRST
         try:
             if is_sql:
@@ -769,7 +731,7 @@ with open(report, 'w', encoding='utf-8') as rf:
                 if _re2.search(rb'(?m)^(gsql:.+:\\s*)?(ERROR|FATAL|PANIC):', r.stderr):
                     # 二级判定: 部署形态特异 (集中式跑分布式专用视图/函数) · 拉分布式会 ok
                     # pgxc_* 在集中式报 'Relation "pgxc_xxx" does not exist' · 也算 (只认 pgxc_ 前缀)
-                    if _re2.search(rb'Unsupported view in single node mode|Unsupported function|Function [a-z_]+\\([^)]*\\) does not exist|does not support|not supported in (single|centralized)|[Rr]elation "(pgxc_|pg_catalog\\.pgxc_)[a-z0-9_]+" does not exist', r.stderr, _re2.I):
+                    if _re2.search(rb'Unsupported view in single node mode|unrecognized configuration parameter|Unsupported function|Function [a-z_]+\\([^)]*\\) does not exist|does not support|not supported in (single|centralized)|[Rr]elation "(pgxc_|pg_catalog\\.pgxc_|gs_|dbe_perf\\.)[a-z0-9_]+" does not exist', r.stderr, _re2.I):
                         status = 'unsupported-deploy-form'
                     else:
                         status = 'ghost-ok-sql-error'

@@ -9,36 +9,43 @@
 
 ## 总览
 
-- 总 manual 数: **199**
-- 有派生命令的: **176** / 199 (88.4%)
-- 完全靠人脑解读的: **23**
+- 总 manual 数: **222**
+- 有派生命令的: **191** / 222 (86.0%)
+- 完全靠人脑解读的: **31**
 
 ### 切人审规则分布
 
 | 规则 | 数量 | 含义 |
 |---|---:|---|
-| `r1-cjk-ge-4` | 152 | 含 ≥4 个汉字 · 描述性中文 · 不是命令 |
-| `r6-cjk-placeholder` | 13 | 含占位符 (进程号 / 实例号 / xxx / <var>) · 需人填值 |
+| `r1-cjk-ge-4` | 140 | 含 ≥4 个汉字 · 描述性中文 · 不是命令 |
+| `r18-write-destructive` | 16 | 写/改/杀命令(pg_terminate_backend / INSERT / DROP / VACUUM ...) · auto 严格只读 · 一律人审 |
+| `r6-cjk-placeholder` | 12 | 含占位符 (进程号 / 实例号 / xxx / <var>) · 需人填值 |
 | `r12-not-blind-runnable` | 9 | 起始非无参只读命令(explain/set-only/copy/perf/日志片段等) · 不能盲跑 |
-| `r11-explain-needs-target` | 7 | explain 类 · 需诊断时目标 SQL · 不能盲跑 |
+| `r15-needs-table-arg` | 8 | 必带具体表参的函数 table_skewness/pg_get_tabledef · 离线无具体表 |
+| `r11-explain-needs-target` | 5 | explain 类 · 需诊断时目标 SQL · 不能盲跑 |
+| `r16-plan-hint-example` | 5 | 含 plan hint /*+...*/ 的示例调优查询(引用示例表)· 不能盲跑 |
 | `r3-distill-leak` | 4 | distill 字段残留 (- **field**: ...) · 不是命令 |
 | `r5-single-ident` | 4 | 单 token 视图 / 表名 · 没 SELECT FROM · 不能直跑 |
+| `r17-placeholder-value` | 3 | 占位值 {query_id}/xxxx-xx-xx/$a±$b · 需填实际值 |
+| `r21-jdbc-client-param` | 3 | JDBC 客户端驱动参数(fetchSize / loginTimeout ...) · 非服务端 GUC · 应在应用侧/连接串确认 |
+| `r19-malformed-show` | 2 | 畸形 SHOW(参数非干净标识符 · slash/空格残留) · repair 没接住 · 需人审改写 |
 | `r10-cluster-tool` | 2 | GaussDB 集群工具 (gs_ssh / gs_om / cm_ctl ...) · 需集群拓扑 |
 | `r13-placeholder-objname` | 2 | 占位对象名字面量(tablename/table_name 等)· 需填具体表名才能跑 |
 | `r8-cjk-verb-start` | 2 | 起始中文动词 (查询 / 查看 / 检测 ...) · 非 ready-to-run |
 | `r4-cjk-only` | 2 | 纯中文 metric 名 · ASCII alphanumeric 太少 |
 | `r14-hadr-deploy-only` | 1 | 异地容灾(HADR)专用视图 gs_hadr_* · 没配容灾的部署上不存在 · 不盲采 |
 | `r9-pid-literal` | 1 | 含真 PID/OID 数字占位 · 需替换实际 PID 才能跑 |
+| `r22-needs-root` | 1 | debugfs(/sys/kernel/debug/*)只 root 可读 · 采集器以 DB 用户跑必然权限拒绝 · 需 root 单独采 |
 
 ### 派生命令类型分布
 
 | 类型 | 命中条数 |
 |---|---:|
-| `sql` | 96 |
-| `sql-stub` | 55 |
-| `view` | 53 |
+| `sql` | 109 |
+| `view` | 58 |
+| `sql-stub` | 57 |
 | `os` | 44 |
-| `guc` | 12 |
+| `guc` | 13 |
 
 派生命令 kind 含义:
 
@@ -213,7 +220,7 @@
 
 ## chk-costs · 执行计划costs
 - layer: `db-interactive-cmd` · type: `metric`
-- matched_rule: `r6-cjk-placeholder` · 含占位符 (进程号 / 实例号 / xxx / <var>) · 需人填值
+- matched_rule: `r18-write-destructive` · 写/改/杀命令(pg_terminate_backend / INSERT / DROP / VACUUM ...) · auto 严格只读 · 一律人审
 - 蒸馏原文:
   ```
   explain (analyze, verbose, buffers) <目标SQL>;
@@ -230,6 +237,16 @@
   ```
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql-stub]` `EXPLAIN <你的 SQL>;`  — 把 <你的 SQL> 换成实际 SQL
+
+## chk-recovery-max-workers-recovery-parse-workers-recovery-redo-wo · recovery_max_workers/recovery_parse_workers/recovery_redo_workers
+- layer: `db-shell` · type: `metric`
+- matched_rule: `r19-malformed-show` · 畸形 SHOW(参数非干净标识符 · slash/空格残留) · repair 没接住 · 需人审改写
+- 蒸馏原文:
+  ```
+  show recovery_max_workers; show recovery_parse_workers; show recovery_redo_workers; show shared_buffers;
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[guc]` `SHOW shared_buffers;`
 
 ## chk-print-redo-wal-count-info-print-redo-wal-time-info · print_redo_wal_count_info/print_redo_wal_time_info
 - layer: `log-grep` · type: `metric`
@@ -416,7 +433,7 @@
 
 ## chk-vacuum · vacuum执行记录
 - layer: `log-grep` · type: `metric`
-- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- matched_rule: `r18-write-destructive` · 写/改/杀命令(pg_terminate_backend / INSERT / DROP / VACUUM ...) · auto 严格只读 · 一律人审
 - 蒸馏原文:
   ```
   通过pg_log,发现在某时刻开始，针对<库名> 中的分区sys_p22进行了vacuum。
@@ -634,6 +651,15 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql]` `SELECT * FROM pg_locks WHERE NOT granted;`  — 按"锁等待"派生
 
+## chk-client-encoding-server-encoding · client encoding与server encoding配置
+- layer: `db-shell` · type: `metric`
+- matched_rule: `r19-malformed-show` · 畸形 SHOW(参数非干净标识符 · slash/空格残留) · repair 没接住 · 需人审改写
+- 蒸馏原文:
+  ```
+  show client_encoding; show server_encoding;
+  ```
+- 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
+
 ## chk-data-node-scan · 执行计划下推标识（Data Node Scan）
 - layer: `db-interactive-cmd` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
@@ -686,7 +712,7 @@
 
 ## chk-explain-verbose-warning · explain verbose WARNING · 统计信息缺失提示
 - layer: `db-interactive-cmd` · type: `metric`
-- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- matched_rule: `r18-write-destructive` · 写/改/杀命令(pg_terminate_backend / INSERT / DROP / VACUUM ...) · auto 严格只读 · 一律人审
 - 蒸馏原文:
   ```
   通过explain verbose执行query分析执行计划时会提示WARNING信息，如下所示：WARNING:Statistics in some tables or columns(public.lineitem.l_receiptdate, ...) are not collected. HINT:Do analyze for them in order to generate optimized plan.
@@ -718,7 +744,7 @@
 
 ## chk-explain-verbose-warning-2 · EXPLAIN VERBOSE WARNING · 未收集统计信息的表/列列表
 - layer: `db-interactive-cmd` · type: `metric`
-- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- matched_rule: `r18-write-destructive` · 写/改/杀命令(pg_terminate_backend / INSERT / DROP / VACUUM ...) · auto 严格只读 · 一律人审
 - 蒸馏原文:
   ```
   通过explain verbose执行query分析执行计划时会提示WARNING信息，如下所示：WARNING:Statistics in some tables or columns(public.lineitem.l_receiptdate, public.lineitem.l_commitdate, public.lineitem.l_orderkey, public.lineitem.l_suppkey, public.orders.o_orderstatus, public.orders.o_orderkey) are not collected. HINT:Do analyze for them in order to generate optimized plan.
@@ -996,6 +1022,16 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql]` `SHOW log_min_duration_statement; SELECT * FROM statement_history WHERE duration > 1000 ORDER BY duration DESC LIMIT 20;`  — 按"慢查询"派生
 
+## chk-table-skewness-dn · table_skewness() 各 DN 数据分布比例
+- layer: `db-system-view` · type: `metric`
+- matched_rule: `r15-needs-table-arg` · 必带具体表参的函数 table_skewness/pg_get_tabledef · 离线无具体表
+- 蒸馏原文:
+  ```
+  select table_skewness('inventory');
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql]` `SELECT * FROM gs_table_skewness LIMIT 50;`  — 按"数据倾斜"派生
+
 ## chk-explain-groupagg-sort · EXPLAIN · 算子(GroupAgg+Sort)
 - layer: `db-interactive-cmd` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
@@ -1008,7 +1044,7 @@
 
 ## chk-explain-analyze-hashjoin-dn · EXPLAIN ANALYZE HashJoin 各 DN 执行时间范围
 - layer: `db-interactive-cmd` · type: `metric`
-- matched_rule: `r11-explain-needs-target` · explain 类 · 需诊断时目标 SQL · 不能盲跑
+- matched_rule: `r18-write-destructive` · 写/改/杀命令(pg_terminate_backend / INSERT / DROP / VACUUM ...) · auto 严格只读 · 一律人审
 - 蒸馏原文:
   ```
   EXPLAIN ANALYZE
@@ -1018,7 +1054,7 @@
 
 ## chk-memory-information-dn · Memory Information 各 DN 内存消耗分布
 - layer: `db-interactive-cmd` · type: `metric`
-- matched_rule: `r11-explain-needs-target` · explain 类 · 需诊断时目标 SQL · 不能盲跑
+- matched_rule: `r18-write-destructive` · 写/改/杀命令(pg_terminate_backend / INSERT / DROP / VACUUM ...) · auto 严格只读 · 一律人审
 - 蒸馏原文:
   ```
   EXPLAIN ANALYZE` (Memory Information 段)
@@ -1204,7 +1240,7 @@
 
 ## chk-explain-verbose · EXPLAIN VERBOSE 统计信息警告
 - layer: `db-interactive-cmd` · type: `metric`
-- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- matched_rule: `r18-write-destructive` · 写/改/杀命令(pg_terminate_backend / INSERT / DROP / VACUUM ...) · auto 严格只读 · 一律人审
 - 蒸馏原文:
   ```
   通过explain verbose执行query分析执行计划时会提示WARNING信息，如下所示：WARNING:Statistics in some tables or columns(public.lineitem.l_receiptdate, public.lineitem.l_commitdate, public.lineitem.l_orderkey, public.lineitem.l_suppkey, public.orders.o_orderstatus, public.orders.o_orderkey) are not collected. HINT:Do analyze for them in order to generate optimized plan.
@@ -1340,6 +1376,18 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[os]` `df -h $PGDATA $GAUSSDATA 2>/dev/null`  — 按"集群命令本机化 (df -h 走本地)"派生
 
+## chk-table-skewness-table-distribution · table_skewness / table_distribution
+- layer: `db-system-view` · type: `metric`
+- matched_rule: `r15-needs-table-arg` · 必带具体表参的函数 table_skewness/pg_get_tabledef · 离线无具体表
+- 蒸馏原文:
+  ```
+  select table_skewness('store_sales');
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql]` `SELECT * FROM table_distribution('<schema>', '<table>');  -- 替换 schema/table`  — 按"表分布"派生
+  - `[sql]` `SELECT * FROM gs_table_skewness LIMIT 50;`  — 按"数据倾斜"派生
+  - `[view]` `SELECT * FROM table_distribution LIMIT 50;`  — 从 name 提取视图 table_distribution
+
 ## chk-warning · 执行计划统计信息Warning
 - layer: `db-interactive-cmd` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
@@ -1393,6 +1441,16 @@
   - `[os]` `gstack 14104`
   - `[sql-stub]` `EXPLAIN ANALYZE <你的 SQL>;  -- 看是否含 Nested Loop 算子`  — 按"嵌套循环排查"派生
 
+## chk--39 · 表数据倾斜
+- layer: `db-system-view` · type: `metric`
+- matched_rule: `r15-needs-table-arg` · 必带具体表参的函数 table_skewness/pg_get_tabledef · 离线无具体表
+- 蒸馏原文:
+  ```
+  select table_skewness('ioc_dm.m_ss_index_event');
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql]` `SELECT * FROM gs_table_skewness LIMIT 50;`  — 按"数据倾斜"派生
+
 ## chk-max-process-memory-shared-buffers · 内存参数：max_process_memory, shared_buffers
 - layer: `db-shell` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
@@ -1426,7 +1484,7 @@
 
 ## chk--40 · 系统表/用户表膨胀情况
 - layer: `db-system-view` · type: `metric`
-- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- matched_rule: `r18-write-destructive` · 写/改/杀命令(pg_terminate_backend / INSERT / DROP / VACUUM ...) · auto 严格只读 · 一律人审
 - 蒸馏原文:
   ```
   用户可在管控面执行全库Vacuum/Vacuum Full，以定期进行空间回收
@@ -1490,7 +1548,7 @@
 
 ## chk-analyze-2 · ANALYZE 后的查询性能
 - layer: `db-interactive-cmd` · type: `metric`
-- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- matched_rule: `r18-write-destructive` · 写/改/杀命令(pg_terminate_backend / INSERT / DROP / VACUUM ...) · auto 严格只读 · 一律人审
 - 蒸馏原文:
   ```
   使用ANALYZE命令分析数据库。
@@ -1558,7 +1616,7 @@
 
 ## chk-explain-indexscan · EXPLAIN 执行计划 · 是否选择IndexScan
 - layer: `db-interactive-cmd` · type: `metric`
-- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- matched_rule: `r18-write-destructive` · 写/改/杀命令(pg_terminate_backend / INSERT / DROP / VACUUM ...) · auto 严格只读 · 一律人审
 - 蒸馏原文:
   ```
   对表执行ANALYZE更新统计信息。
@@ -1587,6 +1645,16 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql-stub]` `EXPLAIN <你的 SQL>;`  — 从 name 提取 · 需填实际 SQL
 
+## chk-dn-2 · 各DN数据量分布
+- layer: `db-shell` · type: `metric`
+- matched_rule: `r15-needs-table-arg` · 必带具体表参的函数 table_skewness/pg_get_tabledef · 离线无具体表
+- 蒸馏原文:
+  ```
+  SELECT pg_get_tabledef('customer_t1');
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql]` `SELECT * FROM table_distribution('<schema>', '<table>');  -- 替换 schema/table`  — 按"表分布"派生
+
 ## chk-cn-2 · CN日志中不下推原因
 - layer: `log-grep` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
@@ -1608,6 +1676,16 @@
   - `[sql-stub]` `EXPLAIN VERBOSE <你的 SQL>;`  — 把 <你的 SQL> 换成实际慢 SQL
   - `[sql]` `ANALYZE <schema.table>;  -- 把 <schema.table> 换成实际表`  — 按"收集统计信息"派生
   - `[sql]` `SELECT relname, n_live_tup, last_analyze, last_autoanalyze FROM pg_stat_user_tables WHERE last_analyze IS NULL ORDER BY n_live_tup DESC LIMIT 20;`  — 按"统计信息缺失检测"派生
+
+## chk-pgxc-wlm-session-info-max-cpu-time-cpu · pgxc_wlm_session_info · max_cpu_time（高CPU语句）
+- layer: `db-system-view` · type: `metric`
+- matched_rule: `r17-placeholder-value` · 占位值 {query_id}/xxxx-xx-xx/$a±$b · 需填实际值
+- 蒸馏原文:
+  ```
+  SELECT * FROM pgxc_wlm_session_info WHERE start_time > 'xxxx-xx-xx' AND start_time < 'xxxx-xx-xx' ORDER BY max_cpu_time desc;
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[view]` `SELECT * FROM pgxc_wlm_session_info LIMIT 50;`
 
 ## chk-pgxc-wlm-session-info-duration-block-time-query-plan-sql-has · pgxc_wlm_session_info · duration / block_time / query_plan（按 sql_hash 比对历史）
 - layer: `db-system-view` · type: `metric`
@@ -1673,7 +1751,7 @@
 
 ## chk--44 · 写入方式
 - layer: `db-shell` · type: `metric`
-- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- matched_rule: `r18-write-destructive` · 写/改/杀命令(pg_terminate_backend / INSERT / DROP / VACUUM ...) · auto 严格只读 · 一律人审
 - 蒸馏原文:
   ```
   如果通过单条INSERT INTO语句的方式单并发写数据入库，客户端很可能会出现瓶颈
@@ -1690,6 +1768,16 @@
   ```
 - 派生命令 (启发式 · 仅作参考起点):
   - `[os]` `df -h $PGDATA $GAUSSDATA 2>/dev/null`  — 按"磁盘"派生
+
+## chk-table-skewness · table_skewness · 数据倾斜率
+- layer: `db-system-view` · type: `metric`
+- matched_rule: `r15-needs-table-arg` · 必带具体表参的函数 table_skewness/pg_get_tabledef · 离线无具体表
+- 蒸馏原文:
+  ```
+  SELECT table_skewness('store_sales');
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql]` `SELECT * FROM gs_table_skewness LIMIT 50;`  — 按"数据倾斜"派生
 
 ## chk-explain-verbose-remote · EXPLAIN VERBOSE · __REMOTE 关键字
 - layer: `db-interactive-cmd` · type: `metric`
@@ -1753,6 +1841,16 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql-stub]` `EXPLAIN ANALYZE <你的 SQL>;  -- 看是否含 Nested Loop 算子`  — 按"嵌套循环排查"派生
 
+## chk--46 · 表倾斜情况
+- layer: `db-shell` · type: `metric`
+- matched_rule: `r15-needs-table-arg` · 必带具体表参的函数 table_skewness/pg_get_tabledef · 离线无具体表
+- 蒸馏原文:
+  ```
+  SELECT table_skewness('table name');
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql]` `SELECT * FROM gs_table_skewness LIMIT 50;`  — 按"数据倾斜"派生
+
 ## chk-cstore-scan · 执行计划算子：CStore Scan耗时占比
 - layer: `db-interactive-cmd` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
@@ -1806,7 +1904,7 @@
 
 ## chk--47 · 表脏页率
 - layer: `db-system-view` · type: `metric`
-- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- matched_rule: `r18-write-destructive` · 写/改/杀命令(pg_terminate_backend / INSERT / DROP / VACUUM ...) · auto 严格只读 · 一律人审
 - 蒸馏原文:
   ```
   查看表脏页率为99%，VACUUM FULL后性能优化到100ms左右。
@@ -1866,6 +1964,26 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[guc]` `SHOW max_process_memory;`  — 从 name 提取 GUC max_process_memory
 
+## chk-pgxc-thread-wait-status · pgxc_thread_wait_status 锁等待状态
+- layer: `db-system-view` · type: `metric`
+- matched_rule: `r17-placeholder-value` · 占位值 {query_id}/xxxx-xx-xx/$a±$b · 需填实际值
+- 蒸馏原文:
+  ```
+  SELECT * FROM pgxc_thread_wait_status WHERE query_id = {query_id};
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[view]` `SELECT * FROM pgxc_thread_wait_status LIMIT 50;`
+  - `[sql]` `SELECT * FROM pg_locks WHERE NOT granted;`  — 按"锁等待"派生
+
+## chk-pck · 表定义是否存在PCK
+- layer: `db-shell` · type: `metric`
+- matched_rule: `r15-needs-table-arg` · 必带具体表参的函数 table_skewness/pg_get_tabledef · 离线无具体表
+- 蒸馏原文:
+  ```
+  SELECT * FROM pg_get_tabledef('table name');
+  ```
+- 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
+
 ## chk--48 · 列存表文件大小监控
 - layer: `db-system-view` · type: `metric`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
@@ -1906,6 +2024,18 @@
   ```
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql-stub]` `EXPLAIN VERBOSE <你的 SQL>;`  — 把 <你的 SQL> 换成实际慢 SQL
+
+## chk-table-skewness-table-distribution-2 · table_skewness / table_distribution · 表数据倾斜率
+- layer: `db-shell` · type: `metric`
+- matched_rule: `r15-needs-table-arg` · 必带具体表参的函数 table_skewness/pg_get_tabledef · 离线无具体表
+- 蒸馏原文:
+  ```
+  SELECT table_skewness('store_sales')
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql]` `SELECT * FROM table_distribution('<schema>', '<table>');  -- 替换 schema/table`  — 按"表分布"派生
+  - `[sql]` `SELECT * FROM gs_table_skewness LIMIT 50;`  — 按"数据倾斜"派生
+  - `[view]` `SELECT * FROM table_distribution LIMIT 50;`  — 从 name 提取视图 table_distribution
 
 ## chk-cpu-1-3-12-24 · 节点 CPU 使用率 (1/3/12/24 小时)
 - layer: `os` · type: `metric`
@@ -1980,7 +2110,7 @@
 
 ## chk-explain-analyze-join-2 · EXPLAIN ANALYZE · JOIN 算子类型及执行时间
 - layer: `db-interactive-cmd` · type: `metric`
-- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- matched_rule: `r18-write-destructive` · 写/改/杀命令(pg_terminate_backend / INSERT / DROP / VACUUM ...) · auto 严格只读 · 一律人审
 - 蒸馏原文:
   ```
   EXPLAIN ANALYZE` 查看两表 JOIN 的算子类型
@@ -1990,13 +2120,51 @@
 
 ## chk-explain-analyze-agg-2 · EXPLAIN ANALYZE · Agg 算子类型及执行时间
 - layer: `db-interactive-cmd` · type: `metric`
-- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- matched_rule: `r18-write-destructive` · 写/改/杀命令(pg_terminate_backend / INSERT / DROP / VACUUM ...) · auto 严格只读 · 一律人审
 - 蒸馏原文:
   ```
   EXPLAIN ANALYZE` 查看聚合操作算子选择
   ```
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql-stub]` `EXPLAIN ANALYZE <你的 SQL>;`  — 把 <你的 SQL> 换成实际慢 SQL
+
+## chk-leading-hint · 加 leading hint 后执行时间
+- layer: `db-interactive-cmd` · type: `metric`
+- matched_rule: `r16-plan-hint-example` · 含 plan hint /*+...*/ 的示例调优查询(引用示例表)· 不能盲跑
+- 蒸馏原文:
+  ```
+  select /*+ leading((s d)) */ a.ca_state state, count(*) cnt ...
+  ```
+- 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
+
+## chk-leading-no-nestloop-hint · 加 leading + no nestloop hint 后执行时间
+- layer: `db-interactive-cmd` · type: `metric`
+- matched_rule: `r16-plan-hint-example` · 含 plan hint /*+...*/ 的示例调优查询(引用示例表)· 不能盲跑
+- 蒸馏原文:
+  ```
+  select /*+ leading((s d)) no nestloop(s d) */ a.ca_state state, count(*) cnt ...
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql-stub]` `EXPLAIN ANALYZE <你的 SQL>;  -- 看是否含 Nested Loop 算子`  — 按"嵌套循环排查"派生
+
+## chk-rows-hint · rows hint 后执行时间
+- layer: `db-interactive-cmd` · type: `metric`
+- matched_rule: `r16-plan-hint-example` · 含 plan hint /*+...*/ 的示例调优查询(引用示例表)· 不能盲跑
+- 蒸馏原文:
+  ```
+  select /*+ rows(s #2880404) */ a.ca_state state, count(*) cnt ...
+  ```
+- 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
+
+## chk-skew-hint-agg · skew hint 后双层 Agg 计划
+- layer: `db-interactive-cmd` · type: `metric`
+- matched_rule: `r16-plan-hint-example` · 含 plan hint /*+...*/ 的示例调优查询(引用示例表)· 不能盲跑
+- 蒸馏原文:
+  ```
+  select /*+ skew(store_returns(sr_store_sk sr_customer_sk)) */sr_customer_sk as ctr_customer_sk ...
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql]` `SELECT * FROM gs_table_skewness LIMIT 50;`  — 按"数据倾斜"派生
 
 ## chk-explain-performance-vs-a-rows-vs-e-rows · EXPLAIN PERFORMANCE · 各算子行数估算 vs 实际行数（A-rows vs E-rows）
 - layer: `db-interactive-cmd` · type: `metric`
@@ -2007,6 +2175,16 @@
   ```
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql-stub]` `EXPLAIN <你的 SQL>;`  — 把 <你的 SQL> 换成实际 SQL
+
+## chk-explain-performance-rows-hint · EXPLAIN PERFORMANCE · rows hint 修正后各算子行数及整体耗时
+- layer: `db-interactive-cmd` · type: `metric`
+- matched_rule: `r16-plan-hint-example` · 含 plan hint /*+...*/ 的示例调优查询(引用示例表)· 不能盲跑
+- 蒸馏原文:
+  ```
+  select avg(netpaid) from (select /*+rows(store_sales store_returns * 11270)*/ c_last_name ...
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql-stub]` `EXPLAIN <你的 SQL>;`  — 从 name 提取 · 需填实际 SQL
 
 ## chk-explain-data-node-scan · EXPLAIN · 是否含 Data Node Scan 节点
 - layer: `db-interactive-cmd` · type: `metric`
@@ -2030,7 +2208,7 @@
 
 ## chk-copy-2 · COPY 语句等待视图 · 轻量级锁等待
 - layer: `db-system-view` · type: `metric`
-- matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
+- matched_rule: `r18-write-destructive` · 写/改/杀命令(pg_terminate_backend / INSERT / DROP / VACUUM ...) · auto 严格只读 · 一律人审
 - 蒸馏原文:
   ```
   根据这5个COPY语句对应的query_id查看等待视图情况
@@ -2059,6 +2237,15 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql]` `VACUUM (VERBOSE, ANALYZE) <schema.table>;  -- 把 <schema.table> 换成实际表名`  — 按"VACUUM (谨慎: 影响业务)"派生
 
+## chk-pgxc-running-xacts · 老事务列表 (pgxc_running_xacts)
+- layer: `db-system-view` · type: `metric`
+- matched_rule: `r17-placeholder-value` · 占位值 {query_id}/xxxx-xx-xx/$a±$b · 需填实际值
+- 蒸馏原文:
+  ```
+  SELECT * FROM pgxc_running_xacts where xmin::text::bigint < $base+$min and xmin::text::bigint > 0;
+  ```
+- 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
+
 ## chk-dn-warning · DN 间导入行数倾斜率(WARNING)
 - layer: `log-grep` · type: `metric`
 - matched_rule: `r6-cjk-placeholder` · 含占位符 (进程号 / 实例号 / xxx / <var>) · 需人填值
@@ -2069,12 +2256,23 @@
 - 派生命令 (启发式 · 仅作参考起点):
   - `[sql]` `SELECT * FROM gs_table_skewness LIMIT 50;`  — 按"数据倾斜"派生
 
+## chk-pg-stat-activity-idle · pg_stat_activity · idle 连接数
+- layer: `db-system-view` · type: `metric`
+- matched_rule: `r18-write-destructive` · 写/改/杀命令(pg_terminate_backend / INSERT / DROP / VACUUM ...) · auto 严格只读 · 一律人审
+- 蒸馏原文:
+  ```
+  SELECT PG_TERMINATE_BACKEND(pid) from pg_stat_activity WHERE state='idle';
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[view]` `SELECT * FROM pg_stat_activity LIMIT 50;`
+  - `[sql]` `SELECT count(*) FROM pg_stat_activity; SHOW max_connections;`  — 按"连接数"派生
+
 ## chk-ubtree · ubtree页面分裂策略
 - layer: `gaussdb-guc-param` · type: `parameter-current-value`
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
   ```
-  gsql -d postgres -c "SHOW ubtree页面分裂策略;"
+  SHOW ubtree页面分裂策略;
   ```
 - 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
 
@@ -2083,7 +2281,7 @@
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
   ```
-  gsql -d postgres -c "SHOW autovacuum相关参数;"
+  SHOW autovacuum相关参数;
   ```
 - 派生命令 (启发式 · 仅作参考起点):
   - `[guc]` `SHOW autovacuum;`
@@ -2094,9 +2292,46 @@
 - matched_rule: `r1-cjk-ge-4` · 含 ≥4 个汉字 · 描述性中文 · 不是命令
 - 蒸馏原文:
   ```
-  gsql -d postgres -c "SHOW autovacuum (ustore表的自动清理);"
+  SHOW autovacuum (ustore表的自动清理);
   ```
 - 派生命令 (启发式 · 仅作参考起点):
   - `[guc]` `SHOW autovacuum;`
   - `[sql]` `VACUUM (VERBOSE, ANALYZE) <schema.table>;  -- 把 <schema.table> 换成实际表名`  — 按"VACUUM (谨慎: 影响业务)"派生
+
+## chk-sys-kernel-debug-sched-features · /sys/kernel/debug/sched_features
+- layer: `gaussdb-guc-param` · type: `parameter-current-value`
+- matched_rule: `r22-needs-root` · debugfs(/sys/kernel/debug/*)只 root 可读 · 采集器以 DB 用户跑必然权限拒绝 · 需 root 单独采
+- 蒸馏原文:
+  ```
+  cat /sys/kernel/debug/sched_features
+  ```
+- 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
+
+## chk-logintimeout · loginTimeout
+- layer: `gaussdb-guc-param` · type: `parameter-current-value`
+- matched_rule: `r21-jdbc-client-param` · JDBC 客户端驱动参数(fetchSize / loginTimeout ...) · 非服务端 GUC · 应在应用侧/连接串确认
+- 蒸馏原文:
+  ```
+  SHOW loginTimeout;
+  ```
+- 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
+
+## chk-fetchsize · fetchSize
+- layer: `gaussdb-guc-param` · type: `parameter-current-value`
+- matched_rule: `r21-jdbc-client-param` · JDBC 客户端驱动参数(fetchSize / loginTimeout ...) · 非服务端 GUC · 应在应用侧/连接串确认
+- 蒸馏原文:
+  ```
+  SHOW fetchSize;
+  ```
+- 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
+
+## chk-connectiontimeout · connectionTimeOut
+- layer: `gaussdb-guc-param` · type: `parameter-current-value`
+- matched_rule: `r21-jdbc-client-param` · JDBC 客户端驱动参数(fetchSize / loginTimeout ...) · 非服务端 GUC · 应在应用侧/连接串确认
+- 蒸馏原文:
+  ```
+  SHOW connectionTimeOut;
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[sql]` `SHOW connect_timeout; SELECT setting FROM pg_settings WHERE name LIKE '%timeout%';`  — 按"连接超时"派生
 

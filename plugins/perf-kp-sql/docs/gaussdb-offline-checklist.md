@@ -1,6 +1,6 @@
 # GaussDB 离线采集清单(指标 + 抓取方法)
 
-- 生成: 2026-05-31T02:56:50.525Z
+- 生成: 2026-05-31T04:10:28.887Z
 - 关联 case 范围: `cases/gaussdb/` (77 case) + `cases/gaussdb-dws/` (120 case) · 共 252 case_id
 - 数据源: `plugins/perf-kp-sql/data/cases/indices/by-check-item/CASES.md` (655 check 总,本清单是 gaussdb 关联子集)
 
@@ -58,7 +58,7 @@ GaussDB 在内网/无 SSH 直连场景 perf-kp-sql skill 不能远程采集,把�
 | `chk-blocked-query` | blocked_query | select pid,sessionid,substr(query,0,100) from pg_stat_activity where sessionid in(select sessionid from pg_thread_wait_status where wait_event='wait_event'); | "NULL" | 1 |
 | `chk-blocking-query` | blocking_query | select pid,sessionid,substr(query,0,100) from pg_stat_activity where sessionid in(select block_sessionid from pg_thread_wait_status where wait_event='wait_event | "NULL" | 1 |
 | `chk-buffer-wdr` | buffer命中率 (WDR报告或管控平台) | "可以借助GaussDB的管控平台或者WDR报告。通常情况下，TP数据库的buffer命中率应该在99%以上。" | "< 99%" | 1 |
-| `chk-cn` | CN节点压力分布 | select node_name, count(*) from pgxc_stat_activity group by node_name order by 2 desc; | "微服务压力只发往AZ1内一个CN，另外一个CN无压力" | 1 |
+| `chk-cn` | CN节点压力分布 | select coorname, count(*) from pgxc_stat_activity group by coorname order by 2 desc; | "微服务压力只发往AZ1内一个CN，另外一个CN无压力" | 1 |
 | `chk-cn-savepoint-release` | 各 CN 上 SAVEPOINT/RELEASE 语句分布 | SELECT coorname,pid,query_id,state,query,usename FROM pgxc_stat_activity WHERE usename='jack'; | "结果显示SAVEPOINT/RELEASE语句处于idle in transaction。" | 1 |
 | `chk-copy-2` | COPY 语句等待视图 · 轻量级锁等待 | "根据这5个COPY语句对应的query_id查看等待视图情况" | "同时只有 1 个 COPY 向 GTM 申请序列值，其余在等待轻量级锁" | 1 |
 | `chk-cpu-6` | 资源池 CPU 限额 / 配额配置 | 设置资源池CPU限额与配额。 | "防止极端场景下某个语句占用CPU资源过多" | 1 |
@@ -133,7 +133,7 @@ GaussDB 在内网/无 SSH 直连场景 perf-kp-sql skill 不能远程采集,把�
 | `chk-pv-total-memory-detail-process-used-memory-vs-max-process-me` | pv_total_memory_detail · process_used_memory vs max_process_memory | pv_total_memory_detail | "\"可比较process_used_memory和max_process_memory的关系，如前者明显小于后者，则说明占用内存大的语句已经跑完或者被杀掉，当前系" | 1 |
 | `chk-resource-track-level-operator-realtime` | resource_track_level · operator_realtime 级别实时算子监控 | SET resource_track_level = 'operator_realtime'; | "`能够看出哪个算子执行时间长，通过算子执行时间和已处理行数等信息，确定是否需要终止SQL。`" | 1 |
 | `chk-rpo` | 容灾RPO | select* from gs_hadr_remote_rto_and_rpo_stat(); | "确实发现容灾RPO高" | 1 |
-| `chk-slow-sql-statement-history` | statement_history 慢 SQL 明细 (全列 + 等待事件解码) | SELECT db_name, schema_name, origin_node, user_name, application_name, client_addr, client_port, unique_query_id, debug_query_id, substr(query,1,200) AS query,  | 内核标记 is_slow_sql 的慢 SQL(阈值由 log_min_duration_statement / slow_sql_threshold 定)· 看 execution_time / 等待事件 / 锁等待定位 | 2 |
+| `chk-slow-sql-statement-history` | statement_history 慢 SQL 明细 (全列 + 等待事件解码) | SELECT db_name, user_name, unique_query_id, substr(query,1,200) AS query, start_time, finish_time, db_time, cpu_time, execution_time, n_returned_rows, n_tuples_ | 内核标记 is_slow_sql 的慢 SQL(阈值由 log_min_duration_statement / slow_sql_threshold 定)· 看 execution_time / 等待事件 / 锁等待定位 | 2 |
 | `chk-sql` | 慢SQL及调用频次 | select unique_query_id, substr(query,1,80) q, db_time, cpu_time, execution_time from dbe_perf.statement_history order by db_time desc limit 20; | "30w次/s" | 7 |
 | `chk-sql-4` | 慢SQL与计划跳变排查 | select unique_query_id, count(*) from dbe_perf.statement_history where start_time > 'XXX' and start_time < 'XXX' group by 1 order by 2 desc; <br> select unique_ | "若预期该语句应该index_scan但plan中出现seq_scan，则初步判断出现了计划跳变。" | 1 |
 | `chk-sql-cpu` | SQL CPU消耗 | select * from gs_asp where sample_time > now() - interval '10 minute' order by sample_time; | "消耗CP高的SQL" | 2 |
