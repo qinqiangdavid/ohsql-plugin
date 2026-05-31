@@ -179,22 +179,44 @@ export function isPureShowGuc(m) {
   return stmts.length > 0 && stmts.every(s => /^show\s+[a-z_][a-z0-9_.]*\s*;?$/i.test(s));
 }
 
-// 整合: 把所有"纯 SHOW <guc>"的 auto check 收敛成一条 pg_settings 全量抓取.
-// 全量(不用 WHERE name IN) — 一把抓全部参数; 缺失/版本特异参数不返回那行也不报错(消 unsupported 噪音).
-export function consolidateGucChecks(auto) {
-  const guc = auto.filter(c => isPureShowGuc(c.method));
-  if (!guc.length) return auto.slice();
-  const rest = auto.filter(c => !isPureShowGuc(c.method));
-  rest.push({
-    check_id: 'chk-guc-pg-settings-all',
-    name: `GUC 全量 (pg_settings · 整合自 ${guc.length} 条单独 SHOW)`,
-    collection_layer: 'db-system-view',
-    topology: 'common',
-    method: 'SELECT name, setting, unit, context FROM pg_settings ORDER BY name;',
-    matched_rule: null,
-    derived_commands: [],
-  });
-  return rest;
+// 命令的"唯一对象目标": 纯 SHOW<guc> → pg_settings; 否则 FROM/JOIN 目标恰好一个且在快照表里 → 该视图; 否则 null.
+// (只折"单视图简单切片" · 带 JOIN 别的表的复杂查询不折)
+export function soleViewTarget(m, snapshotViews) {
+  if (isPureShowGuc(m)) return snapshotViews.has('pg_settings') ? 'pg_settings' : null;
+  const tgts = new Set([...(m || '').matchAll(/\b(?:from|join)\s+([a-z_][a-z0-9_.]*)/gi)].map(x => x[1].toLowerCase()));
+  if (tgts.size === 1) {
+    const v = [...tgts][0];
+    if (snapshotViews.has(v)) return v;
+  }
+  return null;
+}
+
+// 整合: 同一对象被多条 check 各采一片 → 收敛成一条"SELECT <指定列> FROM <视图>"全快照(无 WHERE · 离线过滤).
+// snapshotMap: { 视图名: '该视图的快照 SQL' }. pg_settings 同时吸收纯 SHOW<guc> 和 SELECT...FROM pg_settings.
+// topology 取被折 check 的共同值(不一致则 common). 顺带消化掉单视图里的占位/死 check(WHERE 被整表快照取代).
+export function consolidateViewChecks(auto, snapshotMap) {
+  const views = new Set(Object.keys(snapshotMap));
+  const foldedBy = {};
+  const kept = [];
+  for (const c of auto) {
+    const v = soleViewTarget(c.method, views);
+    if (v) { (foldedBy[v] = foldedBy[v] || []).push(c); continue; }
+    kept.push(c);
+  }
+  for (const [v, list] of Object.entries(foldedBy)) {
+    // topology 由视图本身决定: pgxc_* 是分布式专用 catalog(集中式没有 → skip-topology); 其余 pg_*/pg_settings 通用.
+    // 不继承原 case 标签 — 否则 pg_stat_activity 被误标 distributed-only 会漏采集中式.
+    kept.push({
+      check_id: `chk-${v.replace(/_/g, '-')}-snapshot`,
+      name: `${v} 快照 (整合自 ${list.length} 条 · 离线过滤)`,
+      collection_layer: 'db-system-view',
+      topology: /^pgxc_/.test(v) ? 'distributed-only' : 'common',
+      method: snapshotMap[v],
+      matched_rule: null,
+      derived_commands: [],
+    });
+  }
+  return kept;
 }
 
 // 精确去重(忽略大小写 + 折叠空白): 同一条命令多个 check_id 只留第一个.

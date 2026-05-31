@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { normalize, matchedRule, unwrapGsqlC, repairCommand, isDestructive,
-         isPureShowGuc, consolidateGucChecks, dedupByMethod } from './classify.mjs';
+         isPureShowGuc, soleViewTarget, consolidateViewChecks, dedupByMethod } from './classify.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const isManual = (m) => matchedRule(m) !== null;
@@ -121,26 +121,42 @@ test('F · thread_wait_status 死 check → manual (硬编码id / 列名自字�
   assert.ok(!isManual('select wait_status,wait_event,count(*) from pg_thread_wait_status group by wait_status,wait_event order by 3 desc;'), '正常聚合应保持auto');
 });
 
-test('G · GUC 整合(全量 pg_settings) + 精确去重', () => {
+test('G · 视图整合(SELECT 指定列 FROM 视图) + 精确去重', () => {
   assert.ok(isPureShowGuc('SHOW work_mem;'));
   assert.ok(isPureShowGuc('SHOW recovery_max_workers;\nSHOW recovery_parse_workers;'));  // 多行拆分后
   assert.ok(!isPureShowGuc('SELECT * FROM pg_settings;'));
   assert.ok(!isPureShowGuc('sysctl net.core.netdev_max_backlog'));
-  // 整合: N 条纯 SHOW → 1 条全量 pg_settings(无 WHERE name IN)
+
+  const views = new Set(['pg_settings', 'pgxc_stat_activity']);
+  // 纯 SHOW → pg_settings; 单视图 SELECT → 该视图; 带 JOIN 别表的复杂查询不折
+  assert.equal(soleViewTarget('SHOW work_mem;', views), 'pg_settings');
+  assert.equal(soleViewTarget('select * from pg_settings where name like \'%vacuum%\';', views), 'pg_settings');
+  assert.equal(soleViewTarget('select state,count(*) from pgxc_stat_activity group by state;', views), 'pgxc_stat_activity');
+  assert.equal(soleViewTarget('SELECT * FROM pg_class c JOIN pg_namespace n ON c.relnamespace=n.oid;', views), null);
+  assert.equal(soleViewTarget('select * from pg_stat_activity;', views), null);  // 不在快照表 → 不折
+
+  const MAP = {
+    'pg_settings': 'SELECT name, setting, unit, context FROM pg_settings ORDER BY name;',
+    'pgxc_stat_activity': 'SELECT coorname, pid, state, query FROM pgxc_stat_activity;',
+  };
   const auto = [
-    { check_id: 'a', method: 'SHOW work_mem;' },
-    { check_id: 'b', method: 'SHOW shared_buffers;' },
-    { check_id: 'c', method: 'SELECT * FROM pg_stat_activity LIMIT 50;' },
-    { check_id: 'd', method: 'sysctl net.core.netdev_max_backlog' },
+    { check_id: 'a', method: 'SHOW work_mem;', topology: 'common' },
+    { check_id: 'b', method: "select * from pg_settings where name like '%vacuum%';", topology: 'common' },
+    { check_id: 'c', method: 'select state,count(*) from pgxc_stat_activity group by state;', topology: 'distributed-only' },
+    { check_id: 'd', method: "select coorname from pgxc_stat_activity where usename='jack';", topology: 'distributed-only' },
+    { check_id: 'e', method: 'SELECT * FROM pg_class c JOIN pg_namespace n ON c.relnamespace=n.oid;', topology: 'common' },
   ];
-  const out = consolidateGucChecks(auto);
-  const shows = out.filter(c => isPureShowGuc(c.method));
-  assert.equal(shows.length, 0, '整合后不应再有纯 SHOW');
-  const bulk = out.find(c => c.check_id === 'chk-guc-pg-settings-all');
-  assert.ok(bulk, '应有 pg_settings 整合 check');
-  assert.match(bulk.method, /SELECT name, setting, unit, context FROM pg_settings ORDER BY name;/);
-  assert.doesNotMatch(bulk.method, /WHERE\s+name\s+IN/i, '全量·不应有 WHERE name IN');
-  assert.ok(out.some(c => c.check_id === 'c') && out.some(c => c.check_id === 'd'), '非 GUC check 保留');
+  const out = consolidateViewChecks(auto, MAP);
+  // pg_settings: SHOW(a) + SELECT pg_settings(b) 折成一条; pgxc_stat_activity: c+d(含 jack 占位) 折成一条
+  assert.equal(out.filter(c => isPureShowGuc(c.method)).length, 0);
+  const ps = out.find(c => c.check_id === 'chk-pg-settings-snapshot');
+  const sa = out.find(c => c.check_id === 'chk-pgxc-stat-activity-snapshot');
+  assert.ok(ps && /FROM pg_settings/.test(ps.method) && !/WHERE/i.test(ps.method), 'pg_settings 快照·无 WHERE');
+  assert.ok(sa && sa.topology === 'distributed-only', 'pgxc_* 快照 → distributed-only(视图本身决定)');
+  assert.equal(ps.topology, 'common', 'pg_settings 快照 → common(通用视图·不继承 case 标签)');
+  assert.doesNotMatch(sa.method, /WHERE|jack/i, 'jack 占位被整表快照吸收·无 WHERE');
+  assert.ok(out.some(c => c.check_id === 'e'), '带 JOIN 的复杂查询保留不折');
+
   // 去重: 同命令(忽略大小写/空白)只留一条
   const dup = dedupByMethod([
     { check_id: 'x', method: 'SELECT 1 FROM t;' },

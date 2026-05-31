@@ -12,7 +12,22 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 // 命令归一化 + auto/manual 分类 (纯函数 · 可单测 · 见 classify.test.mjs)
-import { normalize, matchedRule, consolidateGucChecks, dedupByMethod } from './classify.mjs';
+import { normalize, matchedRule, consolidateViewChecks, dedupByMethod } from './classify.mjs';
+
+// 重复采集的对象 → 一条"SELECT <指定列> FROM <视图>"全快照(无 WHERE · 离线过滤).
+// 列均为活集群(pg_attribute)验证过的真实列 · 取各 lens 实际用到的 + 必要标识列.
+const SNAPSHOT_MAP = {
+  // 静态配置 · 同时吸收 65 条 SHOW<guc> + SELECT...FROM pg_settings(全量·缺失参数不返回也不报错)
+  'pg_settings': 'SELECT name, setting, unit, context FROM pg_settings ORDER BY name;',
+  // 活动视图(分布式) · 8 条 lens 收敛
+  'pgxc_stat_activity': 'SELECT coorname, pid, sessionid, datname, usename, state, waiting, query_start, query_id, query FROM pgxc_stat_activity;',
+  // 活动视图(单机/CN 本地)
+  'pg_stat_activity': 'SELECT pid, sessionid, datname, usename, state, waiting, query_start, query_id, query FROM pg_stat_activity;',
+  // 等待视图(分布式)
+  'pgxc_thread_wait_status': 'SELECT node_name, db_name, thread_name, tid, sessionid, wait_status, wait_event, block_sessionid, query_id FROM pgxc_thread_wait_status;',
+  // 等待视图(本地)
+  'pg_thread_wait_status': 'SELECT node_name, db_name, thread_name, tid, sessionid, wait_status, wait_event, block_sessionid, query_id FROM pg_thread_wait_status;',
+};
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const NDJSON = join(HERE, 'checklist.ndjson');
@@ -335,9 +350,9 @@ for (const c of checks) {
   else if (rule) manual.push(e);
   else auto.push(e);
 }
-// auto 收敛: 65 条纯 SHOW <guc> → 1 条 pg_settings 全量抓取; 再精确去重(同命令多 check_id 只留一条).
+// auto 收敛: 重复采同一对象的多条 check → 一条 SELECT<指定列>FROM<视图> 全快照(离线过滤); 再精确去重.
 const _autoBefore = auto.length;
-const _consolidated = dedupByMethod(consolidateGucChecks(auto));
+const _consolidated = dedupByMethod(consolidateViewChecks(auto, SNAPSHOT_MAP));
 auto.length = 0;
 auto.push(..._consolidated);
 console.log(`auto=${auto.length}(整合前 ${_autoBefore}) · manual=${manual.length} · skip=${skip.length} · total=${checks.length}`);

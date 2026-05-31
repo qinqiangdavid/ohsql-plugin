@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # GaussDB 离线采集 · 预编译版 · 完全自包含
-# 所有 48 个 auto 命令已 inline 为 heredoc (不解析 ndjson · 不需 jq).
+# 所有 35 个 auto 命令已 inline 为 heredoc (不解析 ndjson · 不需 jq).
 #
-# 生成时间: 2026-05-31T12:53:54.429Z
-# 数据: auto=48 · manual=226 · skip=1 · total=342
+# 生成时间: 2026-05-31T13:04:40.154Z
+# 数据: auto=35 · manual=226 · skip=1 · total=342
 #
 # 用法:
 #   source ~/gauss_env_file                      # 先 source gsql env (如需要)
@@ -146,7 +146,7 @@ run_check() {
 }
 
 i=0
-TOTAL=48
+TOTAL=35
 echo "开始: $TOTAL 个 auto 命令 · timeout ${TIMEOUT}s · outdir $OUTDIR"
 echo ""
 
@@ -194,13 +194,6 @@ EOF_CHK_IO
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-wait-event-count · wait_event_count · layer=db-system-view
-run_check "chk-wait-event-count" "common" <<'EOF_CHK_WAIT_EVENT_COUNT'
-select wait_status,wait_event,count(*) from pg_thread_wait_status group by wait_status,wait_event order by 3 desc;
-EOF_CHK_WAIT_EVENT_COUNT
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-pg-total-memory-detail · pg_total_memory_detail · layer=db-system-view
 run_check "chk-pg-total-memory-detail" "common" <<'EOF_CHK_PG_TOTAL_MEMORY_DETAIL'
 select * from pg_total_memory_detail;
@@ -212,20 +205,6 @@ i=$((i+1))
 run_check "chk-thread-session-memory-context" "common" <<'EOF_CHK_THREAD_SESSION_MEMORY_CONTEXT'
 select contextname, sum(totalsize)/1024/1024 totalsize, sum(freesize)/1024/1024 freesize, count(*) sum from gs_thread_memory_context group by contextname order by sum desc limit 10;
 EOF_CHK_THREAD_SESSION_MEMORY_CONTEXT
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-autovacuum-settings · autovacuum_settings · layer=db-system-view
-run_check "chk-autovacuum-settings" "centralized-only" <<'EOF_CHK_AUTOVACUUM_SETTINGS'
-select * from pg_settings where name like '%vacuum%';
-EOF_CHK_AUTOVACUUM_SETTINGS
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-wait-cmd · wait cmd计数 · layer=db-system-view
-run_check "chk-wait-cmd" "common" <<'EOF_CHK_WAIT_CMD'
-select wait_status, wait_event, count(*) from pg_thread_wait_status group by 1,2 order by 3 desc;
-EOF_CHK_WAIT_CMD
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -247,20 +226,6 @@ i=$((i+1))
 run_check "chk-io-io" "common" <<'EOF_CHK_IO_IO'
 grep -H . /sys/block/*/queue/scheduler 2>/dev/null
 EOF_CHK_IO_IO
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-pgxc-stat-activity-state · pgxc_stat_activity state · layer=db-system-view
-run_check "chk-pgxc-stat-activity-state" "distributed-only" <<'EOF_CHK_PGXC_STAT_ACTIVITY_STATE'
-select state, count(*) from pgxc_stat_activity group by state;
-EOF_CHK_PGXC_STAT_ACTIVITY_STATE
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-cn · CN节点压力分布 · layer=db-system-view
-run_check "chk-cn" "distributed-only" <<'EOF_CHK_CN'
-select coorname, count(*) from pgxc_stat_activity group by coorname order by 2 desc;
-EOF_CHK_CN
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -306,20 +271,6 @@ EOF_CHK_TOP_SAR_GAUSSDB_CPU
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-pgxc-thread-wait-status-wait-status · pgxc_thread_wait_status.wait_status · layer=db-system-view
-run_check "chk-pgxc-thread-wait-status-wait-status" "distributed-only" <<'EOF_CHK_PGXC_THREAD_WAIT_STATUS_WAIT_STATUS'
-Select wait_status, count(*) cnt from pgxc_thread_wait_status where wait_status not like '%cmd%' and wait_status not like '%none%' and wait_status not like '%quit%' group by 1 order by 2 desc;
-EOF_CHK_PGXC_THREAD_WAIT_STATUS_WAIT_STATUS
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-sql-create-index · 活跃SQL及CREATE INDEX语句 · layer=db-system-view
-run_check "chk-sql-create-index" "distributed-only" <<'EOF_CHK_SQL_CREATE_INDEX'
-select * from pg_stat_activity where state !='idle' and usename !='omm';
-EOF_CHK_SQL_CREATE_INDEX
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-pgxc-get-stat-all-tables-dirty-page-rate · PGXC_GET_STAT_ALL_TABLES.dirty_page_rate · layer=db-system-view
 run_check "chk-pgxc-get-stat-all-tables-dirty-page-rate" "distributed-only" <<'EOF_CHK_PGXC_GET_STAT_ALL_TABLES_DIRTY_PAGE_RATE'
 SELECT schemaname AS schema, relname AS table_name, n_live_tup AS analyze_count, pg_size_pretty(pg_table_size(relid)) as table_size, dirty_page_rate FROM PGXC_GET_STAT_ALL_TABLES WHERE schemaName NOT IN ('pg_toast', 'pg_catalog', 'information_schema', 'cstore', 'pmk') AND dirty_page_rate > 30 ORDER BY table_size DESC, dirty_page_rate DESC;
@@ -334,31 +285,10 @@ EOF_CHK_PGXC_WLM_SESSION_INFO_STREAMING_STREAM_COUNT
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-pgxc-stat-activity-runtime-current-timestamp-query-start · PGXC_STAT_ACTIVITY · runtime (current_timestamp - query_start) · layer=db-system-view
-run_check "chk-pgxc-stat-activity-runtime-current-timestamp-query-start" "distributed-only" <<'EOF_CHK_PGXC_STAT_ACTIVITY_RUNTIME_CURRENT_TIMESTAMP_QUERY_START'
-SELECT current_timestamp - query_start as runtime, datname, usename, query FROM PGXC_STAT_ACTIVITY WHERE state != 'idle' order by 1 desc;
-EOF_CHK_PGXC_STAT_ACTIVITY_RUNTIME_CURRENT_TIMESTAMP_QUERY_START
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-pgxc-stat-activity-waiting-true · PGXC_STAT_ACTIVITY · waiting=true 阻塞查询 · layer=db-system-view
-run_check "chk-pgxc-stat-activity-waiting-true" "distributed-only" <<'EOF_CHK_PGXC_STAT_ACTIVITY_WAITING_TRUE'
-SELECT coorname, pid, datname, usename, state, query FROM PGXC_STAT_ACTIVITY WHERE state <> 'idle' and waiting=true;
-EOF_CHK_PGXC_STAT_ACTIVITY_WAITING_TRUE
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-pgxc-lock-conflicts · pgxc_lock_conflicts 锁冲突视图 · layer=db-system-view
 run_check "chk-pgxc-lock-conflicts" "distributed-only" <<'EOF_CHK_PGXC_LOCK_CONFLICTS'
 SELECT * FROM pgxc_lock_conflicts;
 EOF_CHK_PGXC_LOCK_CONFLICTS
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-pgxc-stat-activity-state-waiting-query · pgxc_stat_activity · state / waiting / query · layer=db-system-view
-run_check "chk-pgxc-stat-activity-state-waiting-query" "distributed-only" <<'EOF_CHK_PGXC_STAT_ACTIVITY_STATE_WAITING_QUERY'
-SELECT coorname, pid,datname,usename,state,waiting,query FROM pgxc_stat_activity WHERE state <> 'idle';
-EOF_CHK_PGXC_STAT_ACTIVITY_STATE_WAITING_QUERY
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -376,20 +306,6 @@ EOF_CHK_PGXC_WLM_SESSION_STATISTICS_MAX_PEAK_MEMORY_MEMORY_SKEW_PERC
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-pgxc-thread-wait-status-dn · pgxc_thread_wait_status · 作业等待 DN 分布 · layer=db-system-view
-run_check "chk-pgxc-thread-wait-status-dn" "distributed-only" <<'EOF_CHK_PGXC_THREAD_WAIT_STATUS_DN'
-SELECT wait_status, count(*) as cnt FROM pgxc_thread_wait_status WHERE wait_status not like '%cmd%' AND wait_status not like '%none%' and wait_status not like '%quit%' group by 1 order by 2 desc;
-EOF_CHK_PGXC_THREAD_WAIT_STATUS_DN
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-pg-stat-activity-sql · pg_stat_activity 活跃SQL · layer=db-system-view
-run_check "chk-pg-stat-activity-sql" "distributed-only" <<'EOF_CHK_PG_STAT_ACTIVITY_SQL'
-SELECT * from pg_stat_activity where state !='idle' and usename !='Ruby';
-EOF_CHK_PG_STAT_ACTIVITY_SQL
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-pg-session-wlmstat-status-statement-mem · pg_session_wlmstat · status / statement_mem · layer=db-system-view
 run_check "chk-pg-session-wlmstat-status-statement-mem" "distributed-only" <<'EOF_CHK_PG_SESSION_WLMSTAT_STATUS_STATEMENT_MEM'
 SELECT usename,substr(query,0,20),threadid,status,statement_mem FROM pg_session_wlmstat where usename not in ('omm','Ruby') order by statement_mem,status desc;
@@ -397,45 +313,10 @@ EOF_CHK_PG_SESSION_WLMSTAT_STATUS_STATEMENT_MEM
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-pgxc-thread-wait-status-wait-status-wait-event · pgxc_thread_wait_status · wait_status / wait_event · layer=db-system-view
-run_check "chk-pgxc-thread-wait-status-wait-status-wait-event" "distributed-only" <<'EOF_CHK_PGXC_THREAD_WAIT_STATUS_WAIT_STATUS_WAIT_EVENT'
-SELECT wait_status,wait_event,count(*) AS cnt FROM pgxc_thread_wait_status WHERE wait_status <> 'wait cmd' AND wait_status <> 'synchronize quit' AND wait_status <> 'none'  GROUP BY 1,2 ORDER BY 3 DESC limit 50;
-EOF_CHK_PGXC_THREAD_WAIT_STATUS_WAIT_STATUS_WAIT_EVENT
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-pg-partition · pg_partition 各表分区数 · layer=db-system-view
 run_check "chk-pg-partition" "distributed-only" <<'EOF_CHK_PG_PARTITION'
 SELECT relname,reloptions,partcount FROM pg_class c INNER JOIN ( SELECT parentid,count(*) AS partcount FROM pg_partition GROUP BY parentid ) s ON c.oid = s.parentid ORDER BY partcount DESC;
 EOF_CHK_PG_PARTITION
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-pgxc-stat-activity-vacuum-full-8-0-x · pgxc_stat_activity 中 VACUUM FULL 等待状态（8.0.x及之前） · layer=db-system-view
-run_check "chk-pgxc-stat-activity-vacuum-full-8-0-x" "distributed-only" <<'EOF_CHK_PGXC_STAT_ACTIVITY_VACUUM_FULL_8_0_X'
-SELECT * FROM pgxc_stat_activity WHERE query LIKE '%vacuum%'AND waiting = 't';
-EOF_CHK_PGXC_STAT_ACTIVITY_VACUUM_FULL_8_0_X
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-dn-4 · 磁盘利用率各 DN 差异 · layer=db-shell
-run_check "chk-dn-4" "distributed-only" <<'EOF_CHK_DN_4'
-SELECT wait_status, count(*) as cnt FROM pgxc_thread_wait_status WHERE wait_status not like '%cmd%' AND wait_status not like '%none%' and wait_status not like '%quit%' group by 1 order by 2 desc
-EOF_CHK_DN_4
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-pgxc-stat-activity-state-2 · pgxc_stat_activity state 字段 · layer=db-system-view
-run_check "chk-pgxc-stat-activity-state-2" "distributed-only" <<'EOF_CHK_PGXC_STAT_ACTIVITY_STATE_2'
-SELECT state, query, query_id FROM pgxc_stat_activity;
-EOF_CHK_PGXC_STAT_ACTIVITY_STATE_2
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-cn-savepoint-release · 各 CN 上 SAVEPOINT/RELEASE 语句分布 · layer=db-system-view
-run_check "chk-cn-savepoint-release" "distributed-only" <<'EOF_CHK_CN_SAVEPOINT_RELEASE'
-SELECT coorname,pid,query_id,state,query,usename FROM pgxc_stat_activity WHERE usename='jack';
-EOF_CHK_CN_SAVEPOINT_RELEASE
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -481,15 +362,43 @@ EOF_CHK_SLOW_SQL_STATEMENT_HISTORY
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-guc-pg-settings-all · GUC 全量 (pg_settings · 整合自 65 条单独 SHOW) · layer=db-system-view
-run_check "chk-guc-pg-settings-all" "common" <<'EOF_CHK_GUC_PG_SETTINGS_ALL'
+# chk-pg-thread-wait-status-snapshot · pg_thread_wait_status 快照 (整合自 2 条 · 离线过滤) · layer=db-system-view
+run_check "chk-pg-thread-wait-status-snapshot" "common" <<'EOF_CHK_PG_THREAD_WAIT_STATUS_SNAPSHOT'
+SELECT node_name, db_name, thread_name, tid, sessionid, wait_status, wait_event, block_sessionid, query_id FROM pg_thread_wait_status;
+EOF_CHK_PG_THREAD_WAIT_STATUS_SNAPSHOT
+
+i=$((i+1))
+[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
+# chk-pg-settings-snapshot · pg_settings 快照 (整合自 66 条 · 离线过滤) · layer=db-system-view
+run_check "chk-pg-settings-snapshot" "common" <<'EOF_CHK_PG_SETTINGS_SNAPSHOT'
 SELECT name, setting, unit, context FROM pg_settings ORDER BY name;
-EOF_CHK_GUC_PG_SETTINGS_ALL
+EOF_CHK_PG_SETTINGS_SNAPSHOT
+
+i=$((i+1))
+[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
+# chk-pgxc-stat-activity-snapshot · pgxc_stat_activity 快照 (整合自 8 条 · 离线过滤) · layer=db-system-view
+run_check "chk-pgxc-stat-activity-snapshot" "distributed-only" <<'EOF_CHK_PGXC_STAT_ACTIVITY_SNAPSHOT'
+SELECT coorname, pid, sessionid, datname, usename, state, waiting, query_start, query_id, query FROM pgxc_stat_activity;
+EOF_CHK_PGXC_STAT_ACTIVITY_SNAPSHOT
+
+i=$((i+1))
+[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
+# chk-pgxc-thread-wait-status-snapshot · pgxc_thread_wait_status 快照 (整合自 4 条 · 离线过滤) · layer=db-system-view
+run_check "chk-pgxc-thread-wait-status-snapshot" "distributed-only" <<'EOF_CHK_PGXC_THREAD_WAIT_STATUS_SNAPSHOT'
+SELECT node_name, db_name, thread_name, tid, sessionid, wait_status, wait_event, block_sessionid, query_id FROM pgxc_thread_wait_status;
+EOF_CHK_PGXC_THREAD_WAIT_STATUS_SNAPSHOT
+
+i=$((i+1))
+[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
+# chk-pg-stat-activity-snapshot · pg_stat_activity 快照 (整合自 2 条 · 离线过滤) · layer=db-system-view
+run_check "chk-pg-stat-activity-snapshot" "common" <<'EOF_CHK_PG_STAT_ACTIVITY_SNAPSHOT'
+SELECT pid, sessionid, datname, usename, state, waiting, query_start, query_id, query FROM pg_stat_activity;
+EOF_CHK_PG_STAT_ACTIVITY_SNAPSHOT
 
 
 echo ""
 echo "─────────────────────────────────────────────"
-echo "完成 · auto=48(本脚本只跑这些)· manual=226 · skip=1"
+echo "完成 · auto=35(本脚本只跑这些)· manual=226 · skip=1"
 echo "  异常清单:    $OUTDIR/report.tsv (只记非 ok · 全 ok 则只有表头)"
 echo "  数据文件:   $OUTDIR/<check_id>.txt (每条 check 一个)"
 echo "  报错汇总:   $OUTDIR/errors.log"
