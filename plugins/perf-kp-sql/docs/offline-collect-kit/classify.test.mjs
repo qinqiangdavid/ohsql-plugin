@@ -6,7 +6,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { normalize, matchedRule, unwrapGsqlC, repairCommand, isDestructive } from './classify.mjs';
+import { normalize, matchedRule, unwrapGsqlC, repairCommand, isDestructive,
+         isPureShowGuc, consolidateGucChecks, dedupByMethod } from './classify.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const isManual = (m) => matchedRule(m) !== null;
@@ -107,6 +108,46 @@ test('D · JDBC 客户端驱动参数 → manual (非服务端 GUC · 修不成 
   ]) {
     assert.ok(isAuto(normalize(cmd)), `版本特异 GUC 应保持 auto: ${cmd}`);
   }
+});
+
+test('F · thread_wait_status 死 check → manual (硬编码id / 列名自字面量)', () => {
+  // 硬编码具体 query_id(18位) · 客户库不存在 → 返回空
+  assert.ok(isManual("select * from pg_thread_wait_status where query_id='149181737656737395';"), '硬编码query_id应manual');
+  assert.equal(matchedRule("SELECT * FROM pg_thread_wait_status WHERE query_id='149181737656737395';"), 'r23-hardcoded-id-literal');
+  // 列名被当字面量过滤: wait_event='wait_event' · 永远匹配不到
+  assert.ok(isManual("select pid from pg_stat_activity where sessionid in(select sessionid from pg_thread_wait_status where wait_event='wait_event');"), "wait_event='wait_event'应manual");
+  assert.equal(matchedRule("select x from t where wait_event='wait_event';"), 'r24-self-name-literal');
+  // 正常 thread_wait 聚合查询不被误伤
+  assert.ok(!isManual('select wait_status,wait_event,count(*) from pg_thread_wait_status group by wait_status,wait_event order by 3 desc;'), '正常聚合应保持auto');
+});
+
+test('G · GUC 整合(全量 pg_settings) + 精确去重', () => {
+  assert.ok(isPureShowGuc('SHOW work_mem;'));
+  assert.ok(isPureShowGuc('SHOW recovery_max_workers;\nSHOW recovery_parse_workers;'));  // 多行拆分后
+  assert.ok(!isPureShowGuc('SELECT * FROM pg_settings;'));
+  assert.ok(!isPureShowGuc('sysctl net.core.netdev_max_backlog'));
+  // 整合: N 条纯 SHOW → 1 条全量 pg_settings(无 WHERE name IN)
+  const auto = [
+    { check_id: 'a', method: 'SHOW work_mem;' },
+    { check_id: 'b', method: 'SHOW shared_buffers;' },
+    { check_id: 'c', method: 'SELECT * FROM pg_stat_activity LIMIT 50;' },
+    { check_id: 'd', method: 'sysctl net.core.netdev_max_backlog' },
+  ];
+  const out = consolidateGucChecks(auto);
+  const shows = out.filter(c => isPureShowGuc(c.method));
+  assert.equal(shows.length, 0, '整合后不应再有纯 SHOW');
+  const bulk = out.find(c => c.check_id === 'chk-guc-pg-settings-all');
+  assert.ok(bulk, '应有 pg_settings 整合 check');
+  assert.match(bulk.method, /SELECT name, setting, unit, context FROM pg_settings ORDER BY name;/);
+  assert.doesNotMatch(bulk.method, /WHERE\s+name\s+IN/i, '全量·不应有 WHERE name IN');
+  assert.ok(out.some(c => c.check_id === 'c') && out.some(c => c.check_id === 'd'), '非 GUC check 保留');
+  // 去重: 同命令(忽略大小写/空白)只留一条
+  const dup = dedupByMethod([
+    { check_id: 'x', method: 'SELECT 1 FROM t;' },
+    { check_id: 'y', method: 'select  1  from t;' },
+    { check_id: 'z', method: 'SELECT 2 FROM t;' },
+  ]);
+  assert.deepEqual(dup.map(c => c.check_id), ['x', 'z']);
 });
 
 test('E · 集成: 真 checklist.ndjson 分类后 auto 集 0 破坏性 / 0 gsql 外壳 / 0 畸形 SHOW', () => {

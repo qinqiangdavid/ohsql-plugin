@@ -12,7 +12,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 // 命令归一化 + auto/manual 分类 (纯函数 · 可单测 · 见 classify.test.mjs)
-import { normalize, matchedRule } from './classify.mjs';
+import { normalize, matchedRule, consolidateGucChecks, dedupByMethod } from './classify.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const NDJSON = join(HERE, 'checklist.ndjson');
@@ -44,6 +44,8 @@ const RULE_DESC = {
   'r19-malformed-show':      '畸形 SHOW(参数非干净标识符 · slash/空格残留) · repair 没接住 · 需人审改写',
   'r21-jdbc-client-param':   'JDBC 客户端驱动参数(fetchSize / loginTimeout ...) · 非服务端 GUC · 应在应用侧/连接串确认',
   'r22-needs-root':          'debugfs(/sys/kernel/debug/*)只 root 可读 · 采集器以 DB 用户跑必然权限拒绝 · 需 root 单独采',
+  'r23-hardcoded-id-literal':'SQL 含硬编码具体长数字 id(query_id/sessionid · ≥12位)· 客户库不存在 → 返回空 · 需填实际值',
+  'r24-self-name-literal':   '形如 col = \'col\'(列名被当字面量过滤 · distill 漏掉实际值)· 永远匹配不到 · 需填实际值',
 };
 
 // 已知 GaussDB GUC 参数白名单 (做 SHOW 用)
@@ -333,7 +335,12 @@ for (const c of checks) {
   else if (rule) manual.push(e);
   else auto.push(e);
 }
-console.log(`auto=${auto.length} · manual=${manual.length} · skip=${skip.length} · total=${checks.length}`);
+// auto 收敛: 65 条纯 SHOW <guc> → 1 条 pg_settings 全量抓取; 再精确去重(同命令多 check_id 只留一条).
+const _autoBefore = auto.length;
+const _consolidated = dedupByMethod(consolidateGucChecks(auto));
+auto.length = 0;
+auto.push(..._consolidated);
+console.log(`auto=${auto.length}(整合前 ${_autoBefore}) · manual=${manual.length} · skip=${skip.length} · total=${checks.length}`);
 
 // ── manual-audit.md (本地工程文件 · 每条 manual 带 matched_rule + derived_commands) ─
 {

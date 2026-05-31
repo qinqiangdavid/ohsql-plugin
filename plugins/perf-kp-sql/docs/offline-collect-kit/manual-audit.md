@@ -9,8 +9,8 @@
 
 ## 总览
 
-- 总 manual 数: **222**
-- 有派生命令的: **191** / 222 (86.0%)
+- 总 manual 数: **226**
+- 有派生命令的: **195** / 226 (86.3%)
 - 完全靠人脑解读的: **31**
 
 ### 切人审规则分布
@@ -30,9 +30,11 @@
 | `r21-jdbc-client-param` | 3 | JDBC 客户端驱动参数(fetchSize / loginTimeout ...) · 非服务端 GUC · 应在应用侧/连接串确认 |
 | `r19-malformed-show` | 2 | 畸形 SHOW(参数非干净标识符 · slash/空格残留) · repair 没接住 · 需人审改写 |
 | `r10-cluster-tool` | 2 | GaussDB 集群工具 (gs_ssh / gs_om / cm_ctl ...) · 需集群拓扑 |
+| `r24-self-name-literal` | 2 | 形如 col = 'col'(列名被当字面量过滤 · distill 漏掉实际值)· 永远匹配不到 · 需填实际值 |
 | `r13-placeholder-objname` | 2 | 占位对象名字面量(tablename/table_name 等)· 需填具体表名才能跑 |
 | `r8-cjk-verb-start` | 2 | 起始中文动词 (查询 / 查看 / 检测 ...) · 非 ready-to-run |
 | `r4-cjk-only` | 2 | 纯中文 metric 名 · ASCII alphanumeric 太少 |
+| `r23-hardcoded-id-literal` | 2 | SQL 含硬编码具体长数字 id(query_id/sessionid · ≥12位)· 客户库不存在 → 返回空 · 需填实际值 |
 | `r14-hadr-deploy-only` | 1 | 异地容灾(HADR)专用视图 gs_hadr_* · 没配容灾的部署上不存在 · 不盲采 |
 | `r9-pid-literal` | 1 | 含真 PID/OID 数字占位 · 需替换实际 PID 才能跑 |
 | `r22-needs-root` | 1 | debugfs(/sys/kernel/debug/*)只 root 可读 · 采集器以 DB 用户跑必然权限拒绝 · 需 root 单独采 |
@@ -42,7 +44,7 @@
 | 类型 | 命中条数 |
 |---|---:|
 | `sql` | 109 |
-| `view` | 58 |
+| `view` | 64 |
 | `sql-stub` | 57 |
 | `os` | 44 |
 | `guc` | 13 |
@@ -301,6 +303,28 @@
   使用gs_parse_page_bypath函数解析索引表页面，分析表页面使用情况。
   ```
 - 派生命令: **(无 · 描述里没识别出已知视图/GUC/OS 命令 · 需人审从零写)**
+
+## chk-blocked-query · blocked_query
+- layer: `db-system-view` · type: `metric`
+- matched_rule: `r24-self-name-literal` · 形如 col = 'col'(列名被当字面量过滤 · distill 漏掉实际值)· 永远匹配不到 · 需填实际值
+- 蒸馏原文:
+  ```
+  select pid,sessionid,substr(query,0,100) from pg_stat_activity where sessionid in(select sessionid from pg_thread_wait_status where wait_event='wait_event');
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[view]` `SELECT * FROM pg_stat_activity LIMIT 50;`
+  - `[view]` `SELECT * FROM pg_thread_wait_status LIMIT 50;`
+
+## chk-blocking-query · blocking_query
+- layer: `db-system-view` · type: `metric`
+- matched_rule: `r24-self-name-literal` · 形如 col = 'col'(列名被当字面量过滤 · distill 漏掉实际值)· 永远匹配不到 · 需填实际值
+- 蒸馏原文:
+  ```
+  select pid,sessionid,substr(query,0,100) from pg_stat_activity where sessionid in(select block_sessionid from pg_thread_wait_status where wait_event='wait_event');
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[view]` `SELECT * FROM pg_stat_activity LIMIT 50;`
+  - `[view]` `SELECT * FROM pg_thread_wait_status LIMIT 50;`
 
 ## chk-last-analyze-time · last_analyze_time
 - layer: `db-system-view` · type: `metric`
@@ -1430,6 +1454,16 @@
   - `[sql]` `SHOW log_min_duration_statement; SELECT * FROM statement_history WHERE duration > 1000 ORDER BY duration DESC LIMIT 20;`  — 按"慢查询"派生
   - `[sql]` `SELECT relname, relkind FROM pg_class WHERE relkind='r' AND oid IN (SELECT relid FROM pg_stat_user_tables);  -- 列存表清单需结合 reloptions`  — 按"列存扫描算子"派生
 
+## chk--38 · 线程等待状态
+- layer: `db-system-view` · type: `metric`
+- matched_rule: `r23-hardcoded-id-literal` · SQL 含硬编码具体长数字 id(query_id/sessionid · ≥12位)· 客户库不存在 → 返回空 · 需填实际值
+- 蒸馏原文:
+  ```
+  select * from pg_thread_wait_status where query_id='149181737656737395';
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[view]` `SELECT * FROM pg_thread_wait_status LIMIT 50;`
+
 ## chk-vecnestloopruntime · 进程堆栈（VecNestLoopRuntime）
 - layer: `os` · type: `metric`
 - matched_rule: `r9-pid-literal` · 含真 PID/OID 数字占位 · 需替换实际 PID 才能跑
@@ -1830,6 +1864,16 @@
   ```
 - 派生命令 (启发式 · 仅作参考起点):
   - `[os]` `echo '=== top ===' && top -b -n 1 | head -20 && echo '=== iostat ===' && iostat -x 1 1 && echo '=== free ===' && free -h`  — 按"I/O + 内存 + CPU 一把抓"派生
+
+## chk-pg-thread-wait-status-3 · pg_thread_wait_status · 线程等待状态
+- layer: `db-system-view` · type: `metric`
+- matched_rule: `r23-hardcoded-id-literal` · SQL 含硬编码具体长数字 id(query_id/sessionid · ≥12位)· 客户库不存在 → 返回空 · 需填实际值
+- 蒸馏原文:
+  ```
+  SELECT * FROM pg_thread_wait_status WHERE query_id='149181737656737395';
+  ```
+- 派生命令 (启发式 · 仅作参考起点):
+  - `[view]` `SELECT * FROM pg_thread_wait_status LIMIT 50;`
 
 ## chk-gstack-vecnestloopruntime · gstack · 进程堆栈中 VecNestLoopRuntime
 - layer: `os` · type: `metric`

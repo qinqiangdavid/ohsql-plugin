@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # GaussDB 离线采集 · 预编译版 · 完全自包含
-# 所有 119 个 auto 命令已 inline 为 heredoc (不解析 ndjson · 不需 jq).
+# 所有 48 个 auto 命令已 inline 为 heredoc (不解析 ndjson · 不需 jq).
 #
-# 生成时间: 2026-05-31T04:48:26.027Z
-# 数据: auto=119 · manual=222 · skip=1 · total=342
+# 生成时间: 2026-05-31T12:53:54.429Z
+# 数据: auto=48 · manual=226 · skip=1 · total=342
 #
 # 用法:
 #   source ~/gauss_env_file                      # 先 source gsql env (如需要)
@@ -146,7 +146,7 @@ run_check() {
 }
 
 i=0
-TOTAL=119
+TOTAL=48
 echo "开始: $TOTAL 个 auto 命令 · timeout ${TIMEOUT}s · outdir $OUTDIR"
 echo ""
 
@@ -201,20 +201,6 @@ EOF_CHK_WAIT_EVENT_COUNT
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-blocked-query · blocked_query · layer=db-system-view
-run_check "chk-blocked-query" "common" <<'EOF_CHK_BLOCKED_QUERY'
-select pid,sessionid,substr(query,0,100) from pg_stat_activity where sessionid in(select sessionid from pg_thread_wait_status where wait_event='wait_event');
-EOF_CHK_BLOCKED_QUERY
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-blocking-query · blocking_query · layer=db-system-view
-run_check "chk-blocking-query" "common" <<'EOF_CHK_BLOCKING_QUERY'
-select pid,sessionid,substr(query,0,100) from pg_stat_activity where sessionid in(select block_sessionid from pg_thread_wait_status where wait_event='wait_event');
-EOF_CHK_BLOCKING_QUERY
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-pg-total-memory-detail · pg_total_memory_detail · layer=db-system-view
 run_check "chk-pg-total-memory-detail" "common" <<'EOF_CHK_PG_TOTAL_MEMORY_DETAIL'
 select * from pg_total_memory_detail;
@@ -250,13 +236,6 @@ EOF_CHK_SQL_CPU
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-thread-pool-attr · thread_pool_attr · layer=db-shell
-run_check "chk-thread-pool-attr" "common" <<'EOF_CHK_THREAD_POOL_ATTR'
-show thread_pool_attr;
-EOF_CHK_THREAD_POOL_ATTR
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk--18 · 复制槽推动速度 · layer=db-system-view
 run_check "chk--18" "common" <<'EOF_CHK__18'
 select * from dbe_perf.global_replication_stat;
@@ -282,13 +261,6 @@ i=$((i+1))
 run_check "chk-cn" "distributed-only" <<'EOF_CHK_CN'
 select coorname, count(*) from pgxc_stat_activity group by coorname order by 2 desc;
 EOF_CHK_CN
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-undo-retention-time · undo_retention_time · layer=db-system-view
-run_check "chk-undo-retention-time" "common" <<'EOF_CHK_UNDO_RETENTION_TIME'
-show undo_retention_time;
-EOF_CHK_UNDO_RETENTION_TIME
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -327,13 +299,6 @@ EOF_CHK_TABLE_DISTRIBUTION_DN_1W
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-pg-stat-get-last-data-changed-time-2 · pg_stat_get_last_data_changed_time 最近变更的表 · layer=db-system-view
-run_check "chk-pg-stat-get-last-data-changed-time-2" "distributed-only" <<'EOF_CHK_PG_STAT_GET_LAST_DATA_CHANGED_TIME_2'
-SELECT table_distribution(schemaname,relname) FROM get_last_changed_table();
-EOF_CHK_PG_STAT_GET_LAST_DATA_CHANGED_TIME_2
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-top-sar-gaussdb-cpu · top / sar 中 gaussdb 进程 CPU 占用 · layer=os
 run_check "chk-top-sar-gaussdb-cpu" "common" <<'EOF_CHK_TOP_SAR_GAUSSDB_CPU'
 top -b -n 1
@@ -348,13 +313,6 @@ EOF_CHK_PGXC_THREAD_WAIT_STATUS_WAIT_STATUS
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk--38 · 线程等待状态 · layer=db-system-view
-run_check "chk--38" "distributed-only" <<'EOF_CHK__38'
-select * from pg_thread_wait_status where query_id='149181737656737395';
-EOF_CHK__38
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-sql-create-index · 活跃SQL及CREATE INDEX语句 · layer=db-system-view
 run_check "chk-sql-create-index" "distributed-only" <<'EOF_CHK_SQL_CREATE_INDEX'
 select * from pg_stat_activity where state !='idle' and usename !='omm';
@@ -366,13 +324,6 @@ i=$((i+1))
 run_check "chk-pgxc-get-stat-all-tables-dirty-page-rate" "distributed-only" <<'EOF_CHK_PGXC_GET_STAT_ALL_TABLES_DIRTY_PAGE_RATE'
 SELECT schemaname AS schema, relname AS table_name, n_live_tup AS analyze_count, pg_size_pretty(pg_table_size(relid)) as table_size, dirty_page_rate FROM PGXC_GET_STAT_ALL_TABLES WHERE schemaName NOT IN ('pg_toast', 'pg_catalog', 'information_schema', 'cstore', 'pmk') AND dirty_page_rate > 30 ORDER BY table_size DESC, dirty_page_rate DESC;
 EOF_CHK_PGXC_GET_STAT_ALL_TABLES_DIRTY_PAGE_RATE
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-enable-codegen · enable_codegen 参数状态 · layer=db-shell
-run_check "chk-enable-codegen" "distributed-only" <<'EOF_CHK_ENABLE_CODEGEN'
-SHOW turbo_engine_version;
-EOF_CHK_ENABLE_CODEGEN
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -432,20 +383,6 @@ EOF_CHK_PGXC_THREAD_WAIT_STATUS_DN
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-pgxc-get-table-skewness-2 · pgxc_get_table_skewness · 全库倾斜视图 · layer=db-system-view
-run_check "chk-pgxc-get-table-skewness-2" "distributed-only" <<'EOF_CHK_PGXC_GET_TABLE_SKEWNESS_2'
-SELECT * FROM pgxc_get_table_skewness ORDER BY totalsize DESC;
-EOF_CHK_PGXC_GET_TABLE_SKEWNESS_2
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-pg-thread-wait-status-3 · pg_thread_wait_status · 线程等待状态 · layer=db-system-view
-run_check "chk-pg-thread-wait-status-3" "distributed-only" <<'EOF_CHK_PG_THREAD_WAIT_STATUS_3'
-SELECT * FROM pg_thread_wait_status WHERE query_id='149181737656737395';
-EOF_CHK_PG_THREAD_WAIT_STATUS_3
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-pg-stat-activity-sql · pg_stat_activity 活跃SQL · layer=db-system-view
 run_check "chk-pg-stat-activity-sql" "distributed-only" <<'EOF_CHK_PG_STAT_ACTIVITY_SQL'
 SELECT * from pg_stat_activity where state !='idle' and usename !='Ruby';
@@ -478,13 +415,6 @@ i=$((i+1))
 run_check "chk-pgxc-stat-activity-vacuum-full-8-0-x" "distributed-only" <<'EOF_CHK_PGXC_STAT_ACTIVITY_VACUUM_FULL_8_0_X'
 SELECT * FROM pgxc_stat_activity WHERE query LIKE '%vacuum%'AND waiting = 't';
 EOF_CHK_PGXC_STAT_ACTIVITY_VACUUM_FULL_8_0_X
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-psort-work-mem · psort_work_mem 参数值 · layer=db-shell
-run_check "chk-psort-work-mem" "distributed-only" <<'EOF_CHK_PSORT_WORK_MEM'
-show psort_work_mem;
-EOF_CHK_PSORT_WORK_MEM
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
@@ -544,454 +474,23 @@ EOF_CHK_GTM_SNAPSHOT_OLDESTXMIN_XID
 
 i=$((i+1))
 [ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-net-core-netdev-max-backlog-2 · net.core.netdev_max_backlog · layer=gaussdb-guc-param
-run_check "chk-net-core-netdev-max-backlog-2" "common" <<'EOF_CHK_NET_CORE_NETDEV_MAX_BACKLOG_2'
-sysctl net.core.netdev_max_backlog
-EOF_CHK_NET_CORE_NETDEV_MAX_BACKLOG_2
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-shared-buffers · shared_buffers · layer=gaussdb-guc-param
-run_check "chk-shared-buffers" "common" <<'EOF_CHK_SHARED_BUFFERS'
-SHOW shared_buffers;
-EOF_CHK_SHARED_BUFFERS
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-work-mem · work_mem · layer=gaussdb-guc-param
-run_check "chk-work-mem" "common" <<'EOF_CHK_WORK_MEM'
-SHOW work_mem;
-EOF_CHK_WORK_MEM
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-recovery-max-workers-recovery-parse-workers-recovery-redo-wo-2 · recovery_max_workers/recovery_parse_workers/recovery_redo_workers · layer=gaussdb-guc-param
-run_check "chk-recovery-max-workers-recovery-parse-workers-recovery-redo-wo-2" "common" <<'EOF_CHK_RECOVERY_MAX_WORKERS_RECOVERY_PARSE_WORKERS_RECOVERY_REDO_WO_2'
-SHOW recovery_max_workers;
-SHOW recovery_parse_workers;
-SHOW recovery_redo_workers;
-EOF_CHK_RECOVERY_MAX_WORKERS_RECOVERY_PARSE_WORKERS_RECOVERY_REDO_WO_2
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-wal-file-init-num · wal file init num · layer=gaussdb-guc-param
-run_check "chk-wal-file-init-num" "common" <<'EOF_CHK_WAL_FILE_INIT_NUM'
-SHOW wal_file_init_num;
-EOF_CHK_WAL_FILE_INIT_NUM
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-advance-xlog-file-num · advance_xlog_file_num · layer=gaussdb-guc-param
-run_check "chk-advance-xlog-file-num" "common" <<'EOF_CHK_ADVANCE_XLOG_FILE_NUM'
-SHOW advance_xlog_file_num;
-EOF_CHK_ADVANCE_XLOG_FILE_NUM
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-query-dop · query_dop · layer=gaussdb-guc-param
-run_check "chk-query-dop" "common" <<'EOF_CHK_QUERY_DOP'
-SHOW query_dop;
-EOF_CHK_QUERY_DOP
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-log-min-duration-statement · log_min_duration_statement · layer=gaussdb-guc-param
-run_check "chk-log-min-duration-statement" "common" <<'EOF_CHK_LOG_MIN_DURATION_STATEMENT'
-SHOW log_min_duration_statement;
-EOF_CHK_LOG_MIN_DURATION_STATEMENT
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-walwriter-cpu-bind · walwriter_cpu_bind · layer=gaussdb-guc-param
-run_check "chk-walwriter-cpu-bind" "common" <<'EOF_CHK_WALWRITER_CPU_BIND'
-SHOW walwriter_cpu_bind;
-EOF_CHK_WALWRITER_CPU_BIND
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-thread-pool-attr-2 · thread_pool_attr · layer=gaussdb-guc-param
-run_check "chk-thread-pool-attr-2" "common" <<'EOF_CHK_THREAD_POOL_ATTR_2'
-SHOW thread_pool_attr;
-EOF_CHK_THREAD_POOL_ATTR_2
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-vacuum-cost-delay · vacuum_cost_delay · layer=gaussdb-guc-param
-run_check "chk-vacuum-cost-delay" "distributed-only" <<'EOF_CHK_VACUUM_COST_DELAY'
-SHOW vacuum_cost_delay;
-EOF_CHK_VACUUM_COST_DELAY
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-undo-retention-time-2 · undo_retention_time · layer=gaussdb-guc-param
-run_check "chk-undo-retention-time-2" "common" <<'EOF_CHK_UNDO_RETENTION_TIME_2'
-SHOW undo_retention_time;
-EOF_CHK_UNDO_RETENTION_TIME_2
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-recovery-parse-workers-recovery-redo-workers · recovery_parse_workers / recovery_redo_workers · layer=gaussdb-guc-param
-run_check "chk-recovery-parse-workers-recovery-redo-workers" "common" <<'EOF_CHK_RECOVERY_PARSE_WORKERS_RECOVERY_REDO_WORKERS'
-SHOW recovery_parse_workers;
-SHOW recovery_redo_workers;
-EOF_CHK_RECOVERY_PARSE_WORKERS_RECOVERY_REDO_WORKERS
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-client-encoding-server-encoding-2 · client_encoding / server_encoding · layer=gaussdb-guc-param
-run_check "chk-client-encoding-server-encoding-2" "distributed-only" <<'EOF_CHK_CLIENT_ENCODING_SERVER_ENCODING_2'
-SHOW client_encoding;
-SHOW server_encoding;
-EOF_CHK_CLIENT_ENCODING_SERVER_ENCODING_2
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-rewrite-rule · rewrite_rule · layer=gaussdb-guc-param
-run_check "chk-rewrite-rule" "common" <<'EOF_CHK_REWRITE_RULE'
-SHOW rewrite_rule;
-EOF_CHK_REWRITE_RULE
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-enable-hashjoin-2 · enable_hashjoin · layer=gaussdb-guc-param
-run_check "chk-enable-hashjoin-2" "common" <<'EOF_CHK_ENABLE_HASHJOIN_2'
-SHOW enable_hashjoin;
-EOF_CHK_ENABLE_HASHJOIN_2
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-enable-nestloop · enable_nestloop · layer=gaussdb-guc-param
-run_check "chk-enable-nestloop" "common" <<'EOF_CHK_ENABLE_NESTLOOP'
-SHOW enable_nestloop;
-EOF_CHK_ENABLE_NESTLOOP
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-enable-mergejoin · enable_mergejoin · layer=gaussdb-guc-param
-run_check "chk-enable-mergejoin" "common" <<'EOF_CHK_ENABLE_MERGEJOIN'
-SHOW enable_mergejoin;
-EOF_CHK_ENABLE_MERGEJOIN
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-enable-sort · enable_sort · layer=gaussdb-guc-param
-run_check "chk-enable-sort" "common" <<'EOF_CHK_ENABLE_SORT'
-SHOW enable_sort;
-EOF_CHK_ENABLE_SORT
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-best-agg-plan · best_agg_plan · layer=gaussdb-guc-param
-run_check "chk-best-agg-plan" "distributed-only" <<'EOF_CHK_BEST_AGG_PLAN'
-SHOW best_agg_plan;
-EOF_CHK_BEST_AGG_PLAN
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-a-format-load-with-constraints-violation · a_format_load_with_constraints_violation · layer=gaussdb-guc-param
-run_check "chk-a-format-load-with-constraints-violation" "centralized-only" <<'EOF_CHK_A_FORMAT_LOAD_WITH_CONSTRAINTS_VIOLATION'
-SHOW a_format_load_with_constraints_violation;
-EOF_CHK_A_FORMAT_LOAD_WITH_CONSTRAINTS_VIOLATION
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-cost-param · cost_param · layer=gaussdb-guc-param
-run_check "chk-cost-param" "common" <<'EOF_CHK_COST_PARAM'
-SHOW cost_param;
-EOF_CHK_COST_PARAM
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-skew-option · skew_option · layer=gaussdb-guc-param
-run_check "chk-skew-option" "distributed-only" <<'EOF_CHK_SKEW_OPTION'
-SHOW skew_option;
-EOF_CHK_SKEW_OPTION
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-default-statistics-target · default_statistics_target · layer=gaussdb-guc-param
-run_check "chk-default-statistics-target" "distributed-only" <<'EOF_CHK_DEFAULT_STATISTICS_TARGET'
-SHOW default_statistics_target;
-EOF_CHK_DEFAULT_STATISTICS_TARGET
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-behavior-compat-options · behavior_compat_options · layer=gaussdb-guc-param
-run_check "chk-behavior-compat-options" "common" <<'EOF_CHK_BEHAVIOR_COMPAT_OPTIONS'
-SHOW behavior_compat_options;
-EOF_CHK_BEHAVIOR_COMPAT_OPTIONS
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-enable-fast-query-shipping · enable_fast_query_shipping · layer=gaussdb-guc-param
-run_check "chk-enable-fast-query-shipping" "distributed-only" <<'EOF_CHK_ENABLE_FAST_QUERY_SHIPPING'
-SHOW enable_fast_query_shipping;
-EOF_CHK_ENABLE_FAST_QUERY_SHIPPING
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-recovery-parse-workers · recovery_parse_workers · layer=gaussdb-guc-param
-run_check "chk-recovery-parse-workers" "common" <<'EOF_CHK_RECOVERY_PARSE_WORKERS'
-SHOW recovery_parse_workers;
-EOF_CHK_RECOVERY_PARSE_WORKERS
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-recovery-redo-workers · recovery_redo_workers · layer=gaussdb-guc-param
-run_check "chk-recovery-redo-workers" "common" <<'EOF_CHK_RECOVERY_REDO_WORKERS'
-SHOW recovery_redo_workers;
-EOF_CHK_RECOVERY_REDO_WORKERS
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-enable-index-nestloop · enable_index_nestloop · layer=gaussdb-guc-param
-run_check "chk-enable-index-nestloop" "distributed-only" <<'EOF_CHK_ENABLE_INDEX_NESTLOOP'
-SHOW enable_index_nestloop;
-EOF_CHK_ENABLE_INDEX_NESTLOOP
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-enable-indexscan · enable_indexscan · layer=gaussdb-guc-param
-run_check "chk-enable-indexscan" "distributed-only" <<'EOF_CHK_ENABLE_INDEXSCAN'
-SHOW enable_indexscan;
-EOF_CHK_ENABLE_INDEXSCAN
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-max-process-memory · max_process_memory · layer=gaussdb-guc-param
-run_check "chk-max-process-memory" "distributed-only" <<'EOF_CHK_MAX_PROCESS_MEMORY'
-SHOW max_process_memory;
-EOF_CHK_MAX_PROCESS_MEMORY
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-qrw-inlist2join-optmode · qrw_inlist2join_optmode · layer=gaussdb-guc-param
-run_check "chk-qrw-inlist2join-optmode" "distributed-only" <<'EOF_CHK_QRW_INLIST2JOIN_OPTMODE'
-SHOW qrw_inlist2join_optmode;
-EOF_CHK_QRW_INLIST2JOIN_OPTMODE
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-period · period · layer=gaussdb-guc-param
-run_check "chk-period" "distributed-only" <<'EOF_CHK_PERIOD'
-SHOW period;
-EOF_CHK_PERIOD
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-ttl · ttl · layer=gaussdb-guc-param
-run_check "chk-ttl" "distributed-only" <<'EOF_CHK_TTL'
-SHOW ttl;
-EOF_CHK_TTL
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-disk-cache-max-size · disk_cache_max_size · layer=gaussdb-guc-param
-run_check "chk-disk-cache-max-size" "distributed-only" <<'EOF_CHK_DISK_CACHE_MAX_SIZE'
-SHOW disk_cache_max_size;
-EOF_CHK_DISK_CACHE_MAX_SIZE
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-disk-cache-dual-write-option · disk_cache_dual_write_option · layer=gaussdb-guc-param
-run_check "chk-disk-cache-dual-write-option" "distributed-only" <<'EOF_CHK_DISK_CACHE_DUAL_WRITE_OPTION'
-SHOW disk_cache_dual_write_option;
-EOF_CHK_DISK_CACHE_DUAL_WRITE_OPTION
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-min-batch-rows · min_batch_rows · layer=gaussdb-guc-param
-run_check "chk-min-batch-rows" "distributed-only" <<'EOF_CHK_MIN_BATCH_ROWS'
-SHOW min_batch_rows;
-EOF_CHK_MIN_BATCH_ROWS
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-autovacuum-2 · autovacuum · layer=gaussdb-guc-param
-run_check "chk-autovacuum-2" "distributed-only" <<'EOF_CHK_AUTOVACUUM_2'
-SHOW autovacuum;
-EOF_CHK_AUTOVACUUM_2
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-autovacuum-vacuum-cost-delay · autovacuum_vacuum_cost_delay · layer=gaussdb-guc-param
-run_check "chk-autovacuum-vacuum-cost-delay" "distributed-only" <<'EOF_CHK_AUTOVACUUM_VACUUM_COST_DELAY'
-SHOW autovacuum_vacuum_cost_delay;
-EOF_CHK_AUTOVACUUM_VACUUM_COST_DELAY
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-autovacuum-max-workers · autovacuum_max_workers · layer=gaussdb-guc-param
-run_check "chk-autovacuum-max-workers" "distributed-only" <<'EOF_CHK_AUTOVACUUM_MAX_WORKERS'
-SHOW autovacuum_max_workers;
-EOF_CHK_AUTOVACUUM_MAX_WORKERS
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-autovacuum-naptime · autovacuum_naptime · layer=gaussdb-guc-param
-run_check "chk-autovacuum-naptime" "distributed-only" <<'EOF_CHK_AUTOVACUUM_NAPTIME'
-SHOW autovacuum_naptime;
-EOF_CHK_AUTOVACUUM_NAPTIME
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-max-active-statements · max_active_statements · layer=gaussdb-guc-param
-run_check "chk-max-active-statements" "distributed-only" <<'EOF_CHK_MAX_ACTIVE_STATEMENTS'
-SHOW max_active_statements;
-EOF_CHK_MAX_ACTIVE_STATEMENTS
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-autovacuum-max-workers-hstore · autovacuum_max_workers_hstore · layer=gaussdb-guc-param
-run_check "chk-autovacuum-max-workers-hstore" "distributed-only" <<'EOF_CHK_AUTOVACUUM_MAX_WORKERS_HSTORE'
-SHOW autovacuum_max_workers_hstore;
-EOF_CHK_AUTOVACUUM_MAX_WORKERS_HSTORE
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-enable-codegen-2 · enable_codegen · layer=gaussdb-guc-param
-run_check "chk-enable-codegen-2" "distributed-only" <<'EOF_CHK_ENABLE_CODEGEN_2'
-SHOW enable_codegen;
-EOF_CHK_ENABLE_CODEGEN_2
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-enable-numa-bind · enable_numa_bind · layer=gaussdb-guc-param
-run_check "chk-enable-numa-bind" "distributed-only" <<'EOF_CHK_ENABLE_NUMA_BIND'
-SHOW enable_numa_bind;
-EOF_CHK_ENABLE_NUMA_BIND
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-abnormal-check-general-task · abnormal_check_general_task · layer=gaussdb-guc-param
-run_check "chk-abnormal-check-general-task" "distributed-only" <<'EOF_CHK_ABNORMAL_CHECK_GENERAL_TASK'
-SHOW abnormal_check_general_task;
-EOF_CHK_ABNORMAL_CHECK_GENERAL_TASK
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-resource-track-level · resource_track_level · layer=gaussdb-guc-param
-run_check "chk-resource-track-level" "distributed-only" <<'EOF_CHK_RESOURCE_TRACK_LEVEL'
-SHOW resource_track_level;
-EOF_CHK_RESOURCE_TRACK_LEVEL
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-track-activities · track_activities · layer=gaussdb-guc-param
-run_check "chk-track-activities" "distributed-only" <<'EOF_CHK_TRACK_ACTIVITIES'
-SHOW track_activities;
-EOF_CHK_TRACK_ACTIVITIES
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-lockwait-timeout · lockwait_timeout · layer=gaussdb-guc-param
-run_check "chk-lockwait-timeout" "distributed-only" <<'EOF_CHK_LOCKWAIT_TIMEOUT'
-SHOW lockwait_timeout;
-EOF_CHK_LOCKWAIT_TIMEOUT
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-psort-work-mem-2 · psort_work_mem · layer=gaussdb-guc-param
-run_check "chk-psort-work-mem-2" "distributed-only" <<'EOF_CHK_PSORT_WORK_MEM_2'
-SHOW psort_work_mem;
-EOF_CHK_PSORT_WORK_MEM_2
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-enable-delta · ENABLE_DELTA · layer=gaussdb-guc-param
-run_check "chk-enable-delta" "distributed-only" <<'EOF_CHK_ENABLE_DELTA'
-SHOW ENABLE_DELTA;
-EOF_CHK_ENABLE_DELTA
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-resource-pool-cpu-dedicated-quota · resource_pool.cpu_dedicated_quota · layer=gaussdb-guc-param
-run_check "chk-resource-pool-cpu-dedicated-quota" "distributed-only" <<'EOF_CHK_RESOURCE_POOL_CPU_DEDICATED_QUOTA'
-SHOW resource_pool.cpu_dedicated_quota;
-EOF_CHK_RESOURCE_POOL_CPU_DEDICATED_QUOTA
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-temp-file-limit · temp_file_limit · layer=gaussdb-guc-param
-run_check "chk-temp-file-limit" "distributed-only" <<'EOF_CHK_TEMP_FILE_LIMIT'
-SHOW temp_file_limit;
-EOF_CHK_TEMP_FILE_LIMIT
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-sequence-cache · sequence.cache · layer=gaussdb-guc-param
-run_check "chk-sequence-cache" "distributed-only" <<'EOF_CHK_SEQUENCE_CACHE'
-SHOW sequence.cache;
-EOF_CHK_SEQUENCE_CACHE
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-cstore-buffers · cstore_buffers · layer=gaussdb-guc-param
-run_check "chk-cstore-buffers" "distributed-only" <<'EOF_CHK_CSTORE_BUFFERS'
-SHOW cstore_buffers;
-EOF_CHK_CSTORE_BUFFERS
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-comm-max-stream · comm_max_stream · layer=gaussdb-guc-param
-run_check "chk-comm-max-stream" "distributed-only" <<'EOF_CHK_COMM_MAX_STREAM'
-SHOW comm_max_stream;
-EOF_CHK_COMM_MAX_STREAM
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-vacuum-defer-cleanup-age-2 · vacuum_defer_cleanup_age · layer=gaussdb-guc-param
-run_check "chk-vacuum-defer-cleanup-age-2" "distributed-only" <<'EOF_CHK_VACUUM_DEFER_CLEANUP_AGE_2'
-SHOW vacuum_defer_cleanup_age;
-EOF_CHK_VACUUM_DEFER_CLEANUP_AGE_2
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-enable-stream-operator · enable_stream_operator · layer=gaussdb-guc-param
-run_check "chk-enable-stream-operator" "distributed-only" <<'EOF_CHK_ENABLE_STREAM_OPERATOR'
-SHOW enable_stream_operator;
-EOF_CHK_ENABLE_STREAM_OPERATOR
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-table-skewness-warning-threshold · table_skewness_warning_threshold · layer=gaussdb-guc-param
-run_check "chk-table-skewness-warning-threshold" "distributed-only" <<'EOF_CHK_TABLE_SKEWNESS_WARNING_THRESHOLD'
-SHOW table_skewness_warning_threshold;
-EOF_CHK_TABLE_SKEWNESS_WARNING_THRESHOLD
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-table-skewness-warning-rows · table_skewness_warning_rows · layer=gaussdb-guc-param
-run_check "chk-table-skewness-warning-rows" "distributed-only" <<'EOF_CHK_TABLE_SKEWNESS_WARNING_ROWS'
-SHOW table_skewness_warning_rows;
-EOF_CHK_TABLE_SKEWNESS_WARNING_ROWS
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-session-timeout · session_timeout · layer=gaussdb-guc-param
-run_check "chk-session-timeout" "distributed-only" <<'EOF_CHK_SESSION_TIMEOUT'
-SHOW session_timeout;
-EOF_CHK_SESSION_TIMEOUT
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
-# chk-max-connections · max_connections · layer=gaussdb-guc-param
-run_check "chk-max-connections" "distributed-only" <<'EOF_CHK_MAX_CONNECTIONS'
-SHOW max_connections;
-EOF_CHK_MAX_CONNECTIONS
-
-i=$((i+1))
-[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
 # chk-slow-sql-statement-history · statement_history 慢 SQL 明细 (全列 + 等待事件解码) · layer=db-system-view
 run_check "chk-slow-sql-statement-history" "common" <<'EOF_CHK_SLOW_SQL_STATEMENT_HISTORY'
 SELECT db_name, user_name, unique_query_id, substr(query,1,200) AS query, start_time, finish_time, db_time, cpu_time, execution_time, n_returned_rows, n_tuples_fetched, n_blocks_fetched, n_blocks_hit, (n_blocks_fetched-n_blocks_hit) AS phys_read, lock_wait_time, lwlock_wait_time, statement_detail_decode(details, 'plaintext', true) AS wait_events, is_slow_sql FROM statement_history WHERE is_slow_sql ORDER BY start_time DESC LIMIT 20;
 EOF_CHK_SLOW_SQL_STATEMENT_HISTORY
 
+i=$((i+1))
+[ $((i % 30)) -eq 0 ] && echo "[$i/$TOTAL]" >&2
+# chk-guc-pg-settings-all · GUC 全量 (pg_settings · 整合自 65 条单独 SHOW) · layer=db-system-view
+run_check "chk-guc-pg-settings-all" "common" <<'EOF_CHK_GUC_PG_SETTINGS_ALL'
+SELECT name, setting, unit, context FROM pg_settings ORDER BY name;
+EOF_CHK_GUC_PG_SETTINGS_ALL
+
 
 echo ""
 echo "─────────────────────────────────────────────"
-echo "完成 · auto=119(本脚本只跑这些)· manual=222 · skip=1"
+echo "完成 · auto=48(本脚本只跑这些)· manual=226 · skip=1"
 echo "  异常清单:    $OUTDIR/report.tsv (只记非 ok · 全 ok 则只有表头)"
 echo "  数据文件:   $OUTDIR/<check_id>.txt (每条 check 一个)"
 echo "  报错汇总:   $OUTDIR/errors.log"
-echo "  人审清单:    见 kit 内独立文件 manual-audit.md (222 项 · 不在本采集脚本内)"
+echo "  人审清单:    见 kit 内独立文件 manual-audit.md (226 项 · 不在本采集脚本内)"

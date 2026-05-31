@@ -126,6 +126,11 @@ export function matchedRule(m) {
   // r17: 其它占位(花括号 {query_id} / xxxx-xx-xx 占位日期 / $a±$b 占位算式)· 需填值
   if (/\{[a-z_]{2,}\}|x{4,}-x{2}-x{2}|\bxxxx\b|\$[a-z_]{2,}\s*[-+]\s*\$[a-z_]{2,}/i.test(m)) return 'r17-placeholder-value';
 
+  // r23: SQL 里硬编码了具体长数字 id(query_id/sessionid 等 · ≥12 位)· 客户库上不存在 → 返回空 → 需填实际值
+  if (/=\s*'?\d{12,}'?/.test(m)) return 'r23-hardcoded-id-literal';
+  // r24: 形如 col = 'col'(列名被当字面量过滤 · distill 漏掉了实际值)· 永远匹配不到 → 需填实际值
+  if (/\b([a-z_]{3,})\s*=\s*'\1'/i.test(m)) return 'r24-self-name-literal';
+
   // r21: SHOW <JDBC 客户端驱动参数 / camelCase> · 非服务端 GUC · repair 修不成 auto → 人审
   //   (snake_case 版本特异 GUC 不在此列 · 保持 auto 靠运行时标 unsupported)
   {
@@ -165,3 +170,42 @@ export function matchedRule(m) {
   return null;
 }
 export function isManual(m) { return matchedRule(m) !== null; }
+
+// 命令是否为"纯 SHOW <guc>"(一条或多条 · 允许多行) — 用来整合进 pg_settings 全量抓取
+export function isPureShowGuc(m) {
+  const t = (m || '').trim();
+  if (!t) return false;
+  const stmts = t.split('\n').map(s => s.trim()).filter(Boolean);
+  return stmts.length > 0 && stmts.every(s => /^show\s+[a-z_][a-z0-9_.]*\s*;?$/i.test(s));
+}
+
+// 整合: 把所有"纯 SHOW <guc>"的 auto check 收敛成一条 pg_settings 全量抓取.
+// 全量(不用 WHERE name IN) — 一把抓全部参数; 缺失/版本特异参数不返回那行也不报错(消 unsupported 噪音).
+export function consolidateGucChecks(auto) {
+  const guc = auto.filter(c => isPureShowGuc(c.method));
+  if (!guc.length) return auto.slice();
+  const rest = auto.filter(c => !isPureShowGuc(c.method));
+  rest.push({
+    check_id: 'chk-guc-pg-settings-all',
+    name: `GUC 全量 (pg_settings · 整合自 ${guc.length} 条单独 SHOW)`,
+    collection_layer: 'db-system-view',
+    topology: 'common',
+    method: 'SELECT name, setting, unit, context FROM pg_settings ORDER BY name;',
+    matched_rule: null,
+    derived_commands: [],
+  });
+  return rest;
+}
+
+// 精确去重(忽略大小写 + 折叠空白): 同一条命令多个 check_id 只留第一个.
+export function dedupByMethod(checks) {
+  const seen = new Set();
+  const out = [];
+  for (const c of checks) {
+    const k = (c.method || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(c);
+  }
+  return out;
+}
